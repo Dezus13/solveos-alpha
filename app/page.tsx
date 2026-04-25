@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Loader2, Crown, AlertTriangle } from 'lucide-react';
 import DecisionBlueprint from '@/components/DecisionBlueprint';
-import BoardMock from '@/components/BoardMock';
+import AgentEngine from '@/components/AgentEngine';
 
 const LOADING_MESSAGES = [
   "Analyzing decision...",
@@ -20,7 +20,6 @@ export default function Home() {
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showBoard, setShowBoard] = useState(false);
-  const [isBoardLoading, setIsBoardLoading] = useState(false);
 
   useEffect(() => {
     if (!loading) {
@@ -43,7 +42,6 @@ export default function Home() {
     setError(null);
     setResult(null);
     setShowBoard(false);
-    setIsBoardLoading(false);
 
     try {
       const response = await fetch('/api/solve', {
@@ -215,8 +213,6 @@ export default function Home() {
                 animate={{ opacity: 1, y: 0 }}
                 onClick={() => {
                   setShowBoard(true);
-                  setIsBoardLoading(true);
-                  setTimeout(() => setIsBoardLoading(false), 2500);
                 }}
                 className="mt-16 px-10 py-4 bg-neutral-900/80 backdrop-blur-md hover:bg-neutral-800 border border-purple-500/30 text-white rounded-2xl font-medium text-base transition-all duration-300 flex items-center justify-center space-x-3 shadow-[0_0_30px_rgba(168,85,247,0.15)] hover:shadow-[0_0_50px_rgba(168,85,247,0.3)] group"
               >
@@ -224,13 +220,8 @@ export default function Home() {
                 <span>Run AI Board</span>
                 <span className="bg-purple-500/20 text-purple-300 text-[10px] uppercase px-2 py-0.5 rounded-full ml-2 border border-purple-500/20">Premium</span>
               </motion.button>
-            ) : isBoardLoading ? (
-              <div className="mt-16 flex flex-col items-center justify-center text-neutral-400 space-y-4">
-                <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
-                <p className="animate-pulse tracking-wide font-light">Consulting advisory board...</p>
-              </div>
             ) : (
-              <BoardMock />
+              <AgentEngine problem={problem} initialSolution={result!} />
             )}
           </div>
         )}
