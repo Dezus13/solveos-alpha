@@ -24,8 +24,8 @@ export default function Home() {
 
   useEffect(() => {
     if (!loading) {
-      setLoadingStep(0);
-      return;
+      const reset = setTimeout(() => setLoadingStep(0), 0);
+      return () => clearTimeout(reset);
     }
     const interval = setInterval(() => {
       setLoadingStep(prev => (prev + 1) % LOADING_MESSAGES.length);
@@ -61,8 +61,9 @@ export default function Home() {
       }
 
       setResult(data.result);
-    } catch (err: any) {
-      setError(err.message || 'An unexpected error occurred.');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -71,11 +72,11 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-black text-white selection:bg-neutral-800 flex flex-col items-center py-20 px-6 font-sans">
       <div className="w-full max-w-3xl flex flex-col items-center">
-        
+
         {/* Header */}
         <div className="text-center mb-16 mt-8 relative z-10">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-blue-500/10 blur-[100px] pointer-events-none rounded-full" />
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             className="inline-flex items-center justify-center space-x-2 mb-6 bg-white/5 backdrop-blur-md border border-white/10 shadow-[0_0_15px_rgba(255,255,255,0.05)] px-4 py-1.5 rounded-full"
@@ -83,14 +84,14 @@ export default function Home() {
             <Sparkles className="w-4 h-4 text-emerald-400" />
             <span className="text-xs sm:text-sm text-neutral-300 font-medium tracking-wide">Alpha 0.1</span>
           </motion.div>
-          <motion.h1 
+          <motion.h1
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             className="text-5xl sm:text-6xl lg:text-8xl font-black mb-4 sm:mb-6 tracking-tighter bg-clip-text text-transparent bg-gradient-to-br from-white via-neutral-200 to-neutral-600 px-4"
           >
             SolveOS
           </motion.h1>
-          <motion.p 
+          <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.1 }}
@@ -98,7 +99,7 @@ export default function Home() {
           >
             ChatGPT is for questions. <span className="text-white font-medium">SolveOS is for decisions.</span>
           </motion.p>
-          <motion.p 
+          <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
@@ -109,7 +110,7 @@ export default function Home() {
         </div>
 
         {/* Input Area */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
@@ -119,10 +120,10 @@ export default function Home() {
           <div className="absolute -inset-[1px] bg-gradient-to-b from-white/10 to-transparent rounded-3xl z-0" />
           <div className="relative w-full bg-neutral-900/60 backdrop-blur-2xl border border-white/10 rounded-3xl p-5 sm:p-8 shadow-2xl z-10">
             <div className="mb-5 flex items-center space-x-2 px-1">
-               <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
-               <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-widest text-purple-400">
-                 Decision Simulator
-               </span>
+              <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
+              <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-widest text-purple-400">
+                Decision Simulator
+              </span>
             </div>
             <textarea
               value={problem}
@@ -133,28 +134,28 @@ export default function Home() {
               placeholder="What major strategic decision are you facing?"
               className="w-full h-32 sm:h-48 bg-transparent text-lg sm:text-xl lg:text-3xl text-white placeholder-neutral-600 focus:outline-none resize-none font-light leading-relaxed px-1"
             />
-            
+
             <div className="mt-4 flex flex-wrap gap-2">
               {[
                 "Should I leave my job and start an AI startup?",
                 "Should I move abroad for a better opportunity?",
                 "Should I invest my savings into a business?"
               ].map((sample, i) => (
-                 <button 
-                   key={i}
-                   onClick={() => setProblem(sample)}
-                   className="text-xs bg-white/5 hover:bg-white/10 border border-white/10 text-neutral-400 hover:text-white px-4 py-2 rounded-full transition-colors font-medium text-left"
-                 >
-                   {sample}
-                 </button>
+                <button
+                  key={i}
+                  onClick={() => setProblem(sample)}
+                  className="text-xs bg-white/5 hover:bg-white/10 border border-white/10 text-neutral-400 hover:text-white px-4 py-2 rounded-full transition-colors font-medium text-left"
+                >
+                  {sample}
+                </button>
               ))}
             </div>
-            
+
             <div className="mt-8 flex flex-col sm:flex-row justify-between items-center sm:items-end space-y-6 sm:space-y-0 pt-6 border-t border-white/5">
               <div className="text-neutral-500 text-sm font-medium tracking-wide">
                 {problem.length} / 5000 chars
               </div>
-              
+
               <button
                 onClick={handleSolve}
                 disabled={loading || problem.trim().length === 0}
@@ -184,10 +185,10 @@ export default function Home() {
                 )}
               </button>
             </div>
-            
+
             <AnimatePresence>
               {error && (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, height: 0, marginTop: 0 }}
                   animate={{ opacity: 1, height: 'auto', marginTop: 16 }}
                   exit={{ opacity: 0, height: 0, marginTop: 0 }}
@@ -207,7 +208,7 @@ export default function Home() {
         {result && (
           <div className="w-full flex flex-col items-center">
             <DecisionBlueprint data={result} />
-            
+
             {!showBoard ? (
               <motion.button
                 initial={{ opacity: 0, y: 20 }}
@@ -224,16 +225,16 @@ export default function Home() {
                 <span className="bg-purple-500/20 text-purple-300 text-[10px] uppercase px-2 py-0.5 rounded-full ml-2 border border-purple-500/20">Premium</span>
               </motion.button>
             ) : isBoardLoading ? (
-               <div className="mt-16 flex flex-col items-center justify-center text-neutral-400 space-y-4">
-                 <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
-                 <p className="animate-pulse tracking-wide font-light">Consulting advisory board...</p>
-               </div>
+              <div className="mt-16 flex flex-col items-center justify-center text-neutral-400 space-y-4">
+                <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+                <p className="animate-pulse tracking-wide font-light">Consulting advisory board...</p>
+              </div>
             ) : (
-               <BoardMock />
+              <BoardMock />
             )}
           </div>
         )}
-        
+
       </div>
     </main>
   );

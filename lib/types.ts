@@ -3,6 +3,6 @@ export interface SolveRequest {
 }
 
 export interface SolveResponse {
-  result: any;
+  result: unknown;
   error?: string;
 }

@@ -1,9 +1,9 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Shuffle, Zap, Clock, Calendar, CheckCircle, TrendingUp, AlertOctagon, Anchor, Flame } from 'lucide-react';
+import { Shield, Shuffle, Zap, CheckCircle, TrendingUp, AlertOctagon, Anchor, Flame } from 'lucide-react';
 
 interface DecisionBlueprintProps {
-  data: any;
+  data: Record<string, unknown>;
 }
 
 export default function DecisionBlueprint({ data }: DecisionBlueprintProps) {

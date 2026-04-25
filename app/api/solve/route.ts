@@ -30,15 +30,16 @@ export async function POST(req: Request) {
     let result;
     try {
       result = JSON.parse(rawContent);
-    } catch (e) {
+    } catch {
       result = rawContent;
     }
 
     return NextResponse.json({ result } as SolveResponse);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'An unexpected error occurred while processing your decision.';
     console.error('API /api/solve error:', error);
     return NextResponse.json(
-      { error: error?.message || 'An unexpected error occurred while processing your decision.' },
+      { error: message },
       { status: 500 }
     );
   }
