@@ -98,23 +98,23 @@ export default function Home() {
             onClick={() => setDebugMode(!debugMode)}
             className="inline-flex items-center space-x-2 mb-4 bg-white/[0.03] border border-white/10 px-3 py-1 rounded-full cursor-pointer hover:bg-white/10 transition-colors"
           >
-            <span className="text-[10px] text-neutral-500 font-bold tracking-widest uppercase">System v0.1</span>
+            <span className="text-[10px] text-neutral-500 font-bold tracking-widest uppercase">{t.system_badge || 'ALPHA • DECISION OS'}</span>
             {debugMode && <span className="text-[10px] bg-red-500/20 text-red-400 px-1.5 rounded ml-1 font-bold tracking-tighter uppercase">Debug</span>}
           </motion.div>
           
           <motion.h1
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="text-6xl sm:text-7xl lg:text-8xl font-black mb-2 tracking-tighter text-white italic uppercase"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-7xl sm:text-8xl lg:text-9xl font-medium tracking-tighter text-white brand-wordmark mb-2"
           >
-            SolveOS
+            Solve<span className="system-core-glyph animate-breathing mx-1">O</span>S
           </motion.h1>
           
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.1 }}
-            className="text-lg sm:text-xl text-neutral-500 font-medium tracking-[0.2em] uppercase"
+            className="text-lg sm:text-xl text-neutral-400 font-light tracking-[0.15em] uppercase"
           >
             {t.simulate_outcomes}
           </motion.p>
