@@ -2,10 +2,12 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Loader2, Crown, AlertTriangle } from 'lucide-react';
+import { Sparkles, Crown, AlertTriangle } from 'lucide-react';
 import DecisionBlueprintBoard from '@/components/DecisionBlueprint';
 import AgentEngine from '@/components/AgentEngine';
-import LanguageSelector from '@/components/LanguageSelector';
+import Navbar from '@/components/Navbar';
+import SettingsModal from '@/components/SettingsModal';
+import IntelligenceRail from '@/components/IntelligenceRail';
 
 import type { DecisionBlueprint } from '../lib/types';
 
@@ -34,7 +36,9 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [showBoard, setShowBoard] = useState(false);
   const [activeTab, setActiveTab] = useState<'blueprint' | 'debate' | 'action'>('blueprint');
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [debugMode, setDebugMode] = useState(false);
+  const [terminalTab, setTerminalTab] = useState('Strategy');
 
   // Determine current translation set based on selected language
   // Use result.language if available (auto-detected), otherwise use selection state
@@ -84,10 +88,14 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-black text-white selection:bg-neutral-800 flex flex-col items-center py-6 sm:py-10 px-6 font-sans bg-terminal-notes overflow-x-hidden relative">
-      {/* Cinematic Neural Background */}
+      {/* Cinematic OS Background */}
       <div className="absolute inset-0 neural-grid opacity-20 pointer-events-none" />
+      <div className="absolute inset-0 neural-constellation opacity-30 animate-neural-drift pointer-events-none" />
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[150%] h-[150%] bg-purple-500/5 blur-[120px] rounded-full animate-neural pointer-events-none" />
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-500/5 blur-[100px] rounded-full animate-float pointer-events-none" />
 
+      <Navbar currentLanguage={language} onOpenSettings={() => setSettingsOpen(true)} />
+      
       <div className="w-full max-w-5xl flex flex-col items-center relative z-10">
 
         {/* Header */}
@@ -105,9 +113,13 @@ export default function Home() {
           <motion.h1
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-7xl sm:text-8xl lg:text-9xl font-medium tracking-tighter text-white brand-wordmark mb-1"
+            className="flex items-center justify-center text-7xl sm:text-8xl lg:text-9xl font-medium tracking-tighter text-white brand-wordmark mb-1"
           >
-            SOLVE<span className="system-core-glyph animate-breathing mx-2 text-purple-500">◉</span>OS
+            <span>SOLVE</span>
+            <div className="mx-4 w-[0.8em] h-[0.8em] flex items-center justify-center active-core-ring animate-core">
+               <span className="text-purple-500 animate-pulse text-[0.6em]">◉</span>
+            </div>
+            <span>S</span>
           </motion.h1>
           
           <motion.p
@@ -150,122 +162,146 @@ export default function Home() {
           <span className="text-[9px] text-neutral-600 font-black uppercase tracking-widest">Active Simulation Grid</span>
         </motion.div>
 
-        {/* Floating Insight Cards (Decorative) */}
-        <div className="hidden lg:block absolute -left-40 top-1/2 -translate-y-1/2 w-48 h-32 glass-note rounded-2xl p-4 border-emerald-500/20 animate-float opacity-40">
-           <div className="w-8 h-1 bg-emerald-500/50 mb-3" />
-           <div className="space-y-2">
-             <div className="w-full h-1 bg-white/5" />
-             <div className="w-2/3 h-1 bg-white/5" />
-             <div className="w-full h-1 bg-white/5" />
-           </div>
-        </div>
-        <div className="hidden lg:block absolute -right-40 top-1/4 w-48 h-32 glass-note rounded-2xl p-4 border-purple-500/20 animate-float opacity-40" style={{ animationDelay: '1s' }}>
-           <div className="w-8 h-1 bg-purple-500/50 mb-3" />
-           <div className="space-y-2">
-             <div className="w-full h-1 bg-white/5" />
-             <div className="w-2/3 h-1 bg-white/5" />
-             <div className="w-full h-1 bg-white/5" />
-           </div>
-        </div>
-
-        {/* Command Center Card */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="w-full relative z-10"
-        >
-          <div className="bg-neutral-900/60 backdrop-blur-3xl rounded-[40px] p-6 sm:p-10 border border-white/10 shadow-[0_40px_120px_rgba(0,0,0,0.8),0_0_80px_rgba(168,85,247,0.05)] overflow-hidden">
-            <div className="mb-8 flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 rounded-full bg-purple-500 animate-ping" />
-                <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/60">
-                  {t.decision_simulator}
-                </span>
-              </div>
-              <LanguageSelector currentLanguage={language} onLanguageChange={setLanguage} />
-            </div>
-            
-            <textarea
-              value={problem}
-              onChange={(e) => {
-                setProblem(e.target.value);
-                if (error) setError(null);
-              }}
-              placeholder={t.placeholder}
-              className="w-full h-32 sm:h-40 bg-transparent text-2xl sm:text-3xl lg:text-5xl text-white placeholder-neutral-800 focus:outline-none resize-none font-medium leading-tight px-0 border-none selection:bg-purple-500/30"
-            />
-
-            <div className="mt-10 flex flex-col space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-[9px] font-black text-neutral-600 uppercase tracking-widest">
-                  {t.quick_scenarios}
-                </span>
-                <div className="text-neutral-700 text-[9px] font-mono tracking-widest uppercase">
-                  {problem.length} / 5000 {t.chars}
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {[
-                  { text: t.scenario_quit, key: 'scenario_quit' },
-                  { text: t.scenario_move, key: 'scenario_move' },
-                  { text: t.scenario_invest, key: 'scenario_invest' }
-                ].map((sample, i) => (
+        {/* Main Console Layout */}
+        <div className="w-full flex items-start">
+          {/* Decision Briefing Terminal */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="flex-1 relative z-10"
+          >
+            <div className="bg-neutral-900/60 backdrop-blur-3xl rounded-[40px] border border-white/10 shadow-[0_40px_120px_rgba(0,0,0,0.8),0_0_80px_rgba(168,85,247,0.05)] overflow-hidden">
+              {/* Terminal Tabs */}
+              <div className="flex items-center px-10 pt-8 space-x-8 border-b border-white/5">
+                {['Strategy', 'Risk', 'Scenarios', 'Red Team'].map((tab) => (
                   <button
-                    key={i}
-                    onClick={() => {
-                      setProblem(sample.text);
-                      handleSolve(sample.text, true);
-                    }}
-                    className="flex items-center space-x-3 text-[11px] bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 text-neutral-500 hover:text-white px-4 py-2 rounded-full transition-all duration-300 font-bold uppercase tracking-wider"
+                    key={tab}
+                    onClick={() => setTerminalTab(tab)}
+                    className={`pb-4 text-[11px] font-black uppercase tracking-widest transition-all ${
+                      terminalTab === tab ? 'text-white border-b-2 border-purple-500' : 'text-neutral-600 hover:text-neutral-400'
+                    }`}
                   >
-                    <span>{sample.text}</span>
+                    {tab}
                   </button>
                 ))}
-              </div>
-            </div>
-
-            <div className="mt-10 pt-8 border-t border-white/[0.05]">
-              <button
-                onClick={() => handleSolve()}
-                disabled={loading || problem.trim().length === 0}
-                className="group relative w-full overflow-hidden rounded-full p-[2px] transition-all hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-600 via-emerald-500 to-blue-600 animate-gradient-x" />
-                <div className="relative flex h-16 w-full items-center justify-center rounded-full bg-neutral-900 transition-all group-hover:bg-transparent">
-                  {loading ? (
-                    <div className="flex items-center space-x-3 text-white">
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      <span className="text-xs font-black uppercase tracking-widest">
-                        {locales[language === 'auto' ? 'English' : language]?.processing || 'Processing...'}
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center space-x-3 text-white">
-                      <span className="text-sm font-black uppercase tracking-[0.3em] group-hover:text-black transition-colors">
-                        🚀 {t.launch_simulation}
-                      </span>
-                    </div>
-                  )}
+                <div className="ml-auto pb-4 flex items-center space-x-2 opacity-30">
+                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-telemetry" />
+                   <span className="text-[9px] font-black uppercase tracking-widest text-emerald-500">Terminal Active</span>
                 </div>
-              </button>
-            </div>
+              </div>
 
-            <AnimatePresence>
-              {error && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 10 }}
-                  className="mt-6 p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-2xl text-xs font-bold uppercase tracking-wider flex items-center"
-                >
-                  <AlertTriangle className="w-4 h-4 mr-3" />
-                  {error}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </motion.div>
+              <div className="p-6 sm:p-10">
+                <div className="mb-8 flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-2 h-2 rounded-full bg-purple-500 animate-ping" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/60">
+                      {t.decision_simulator}
+                    </span>
+                  </div>
+                  <div className="hidden sm:flex items-center space-x-2 text-[9px] font-mono text-neutral-600 uppercase tracking-widest">
+                     <span>⌘K Command Center</span>
+                  </div>
+                </div>
+                
+                <textarea
+                  value={problem}
+                  onChange={(e) => {
+                    setProblem(e.target.value);
+                    if (error) setError(null);
+                  }}
+                  placeholder="Describe the decision you need pressure-tested..."
+                  className="w-full h-32 sm:h-40 bg-transparent text-2xl sm:text-3xl lg:text-4xl text-white placeholder-neutral-800 focus:outline-none resize-none font-medium leading-tight px-0 border-none selection:bg-purple-500/30"
+                />
+
+                <div className="mt-10 flex flex-col space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] font-black text-neutral-600 uppercase tracking-widest">
+                      {t.quick_scenarios}
+                    </span>
+                    <div className="text-neutral-700 text-[9px] font-mono tracking-widest uppercase">
+                      {problem.length} / 5000 {t.chars}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { text: t.scenario_quit, key: 'scenario_quit' },
+                      { text: t.scenario_move, key: 'scenario_move' },
+                      { text: t.scenario_invest, key: 'scenario_invest' }
+                    ].map((sample, i) => (
+                      <button
+                        key={i}
+                        onClick={() => {
+                          setProblem(sample.text);
+                          handleSolve(sample.text, true);
+                        }}
+                        className="flex items-center space-x-3 text-[10px] bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 text-neutral-500 hover:text-white px-4 py-2 rounded-full transition-all duration-300 font-bold uppercase tracking-wider"
+                      >
+                        <span>{sample.text}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-10 pt-8 border-t border-white/[0.05]">
+                  <button
+                    onClick={() => handleSolve()}
+                    disabled={loading || problem.trim().length === 0}
+                    className="group relative w-full overflow-hidden rounded-3xl p-[2px] transition-all hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100 shadow-2xl"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-purple-600 via-emerald-500 to-blue-600 animate-gradient-x" />
+                    <div className="relative flex h-20 w-full items-center justify-center rounded-[22px] bg-neutral-900 transition-all group-hover:bg-transparent">
+                      {loading ? (
+                        <div className="flex items-center space-x-4 text-white">
+                          <div className="flex space-x-1">
+                             {[0, 1, 2].map((i) => (
+                               <motion.div 
+                                 key={i}
+                                 animate={{ opacity: [0.3, 1, 0.3] }}
+                                 transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
+                                 className="w-1.5 h-1.5 rounded-full bg-purple-500"
+                               />
+                             ))}
+                          </div>
+                          <span className="text-xs font-black uppercase tracking-[0.4em]">
+                             Simulating War Room
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center space-x-4 text-white">
+                          <span className="text-lg font-black uppercase tracking-[0.4em] group-hover:text-black transition-colors">
+                            START WAR ROOM →
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                  <div className="mt-4 flex items-center justify-center space-x-4 opacity-20">
+                     <div className="h-[1px] flex-1 bg-white" />
+                     <span className="text-[8px] font-black uppercase tracking-[0.5em]">Active Decision Core v2.0</span>
+                     <div className="h-[1px] flex-1 bg-white" />
+                  </div>
+                </div>
+              </div>
+
+              <AnimatePresence>
+                {error && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className="m-6 p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-2xl text-xs font-bold uppercase tracking-wider flex items-center"
+                  >
+                    <AlertTriangle className="w-4 h-4 mr-3" />
+                    {error}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </motion.div>
+
+          <IntelligenceRail />
+        </div>
 
         {/* Result Area */}
         {result && (
@@ -370,6 +406,13 @@ export default function Home() {
         )}
 
       </div>
+      <SettingsModal 
+        isOpen={settingsOpen} 
+        onClose={() => setSettingsOpen(false)} 
+        currentLanguage={language}
+        onLanguageChange={setLanguage}
+        locales={locales}
+      />
     </main>
   );
 }
