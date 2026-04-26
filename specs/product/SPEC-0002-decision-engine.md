@@ -9,6 +9,11 @@ The Decision Engine is the core processing unit of SolveOS. It takes unstructure
 - **Constraints**: Non-negotiable limits or boundaries.
 - **Goals**: The desired end state or success metrics.
 
+## Multilingual Requirements
+- **Language Preservation**: The input language must be preserved throughout the decision process.
+- **Consistent Response**: If a user writes in Russian, the AI must respond in Russian. This applies to German, Arabic, Japanese, and any other major language supported by the underlying LLM.
+- **Fallback Logic**: If the input language is unclear, the system should ask the user for clarification or default to the browser's language settings.
+
 ## Output
 - **Decision Blueprint**: A comprehensive report including:
   - **Executive Summary**: The recommended path.

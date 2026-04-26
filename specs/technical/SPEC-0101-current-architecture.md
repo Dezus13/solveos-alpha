@@ -28,3 +28,10 @@
 - Maintain strict TypeScript typing for all AI outputs.
 - Use premium CSS effects (glassmorphism, subtle animations) for all new UI components.
 - Ensure all API routes are idempotent and include robust error handling.
+
+## Future i18n Architecture
+- **Locale Detection**: Implement middleware to detect user locale from headers or profile settings.
+- **Translation Files**: Use a structured format (e.g., JSON) for UI strings to support multiple languages.
+- **Language Selector**: A premium UI component to allow users to manually override their language.
+- **AI Response Control**: Inject language-specific instructions into system prompts to ensure the LLM respects the user's language choice.
+

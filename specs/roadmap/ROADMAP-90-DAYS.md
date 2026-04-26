@@ -25,6 +25,7 @@
 - [ ] Explore enterprise-level security features (SSO, PII scrubbing).
 
 ## Key Milestones
+- **Day 7**: Multilingual MVP (AI response language matching).
 - **Day 30**: 100 Active Users.
 - **Day 60**: First 10 Paid Subscribers.
 - **Day 90**: 1,000+ Decisions simulated.
