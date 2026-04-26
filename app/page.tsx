@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Loader2, Crown, AlertTriangle } from 'lucide-react';
 import DecisionBlueprintBoard from '@/components/DecisionBlueprint';
@@ -26,18 +26,10 @@ const locales: Record<string, Record<string, string>> = {
   Chinese: zh 
 };
 
-const LOADING_MESSAGES = [
-  "Analyzing decision...",
-  "Running scenario simulations...",
-  "Consulting frameworks...",
-  "Finalizing blueprint..."
-];
-
 export default function Home() {
   const [problem, setProblem] = useState('');
   const [language, setLanguage] = useState('auto');
   const [loading, setLoading] = useState(false);
-  const [loadingStep, setLoadingStep] = useState(0);
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showBoard, setShowBoard] = useState(false);
@@ -49,16 +41,6 @@ export default function Home() {
   const currentLang = result?.language || language;
   const t = locales[currentLang as string] || locales.English;
 
-  useEffect(() => {
-    if (!loading) {
-      const reset = setTimeout(() => setLoadingStep(0), 0);
-      return () => clearTimeout(reset);
-    }
-    const interval = setInterval(() => {
-      setLoadingStep(prev => (prev + 1) % LOADING_MESSAGES.length);
-    }, 2500);
-    return () => clearInterval(interval);
-  }, [loading]);
 
   const handleSolve = async (overrideProblem?: unknown, autoBoard: boolean = false) => {
     const currentProblem = typeof overrideProblem === 'string' ? overrideProblem : problem;
@@ -101,16 +83,20 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-black text-white selection:bg-neutral-800 flex flex-col items-center py-8 sm:py-12 px-6 font-sans bg-terminal-notes overflow-x-hidden">
-      <div className="w-full max-w-4xl flex flex-col items-center">
+    <main className="min-h-screen bg-black text-white selection:bg-neutral-800 flex flex-col items-center py-6 sm:py-10 px-6 font-sans bg-terminal-notes overflow-x-hidden relative">
+      {/* Cinematic Neural Background */}
+      <div className="absolute inset-0 neural-grid opacity-20 pointer-events-none" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[150%] h-[150%] bg-purple-500/5 blur-[120px] rounded-full animate-neural pointer-events-none" />
+
+      <div className="w-full max-w-5xl flex flex-col items-center relative z-10">
 
         {/* Header */}
-        <div className="text-center mb-10 mt-4 relative z-10 w-full">
+        <div className="text-center mb-6 mt-2 w-full">
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             onClick={() => setDebugMode(!debugMode)}
-            className="inline-flex items-center space-x-2 mb-6 bg-white/[0.03] border border-white/10 px-3 py-1 rounded-full cursor-pointer hover:bg-white/10 transition-colors"
+            className="inline-flex items-center space-x-2 mb-4 bg-white/[0.03] border border-white/10 px-3 py-1 rounded-full cursor-pointer hover:bg-white/10 transition-colors"
           >
             <span className="text-[10px] text-neutral-500 font-bold tracking-widest uppercase">System v0.1</span>
             {debugMode && <span className="text-[10px] bg-red-500/20 text-red-400 px-1.5 rounded ml-1 font-bold tracking-tighter uppercase">Debug</span>}
@@ -119,44 +105,72 @@ export default function Home() {
           <motion.h1
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="text-5xl sm:text-6xl lg:text-8xl font-black mb-4 tracking-tighter text-white"
+            className="text-6xl sm:text-7xl lg:text-8xl font-black mb-2 tracking-tighter text-white italic uppercase"
           >
             SolveOS
           </motion.h1>
           
-          <div className="max-w-2xl mx-auto space-y-3">
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.1 }}
-              className="text-xl sm:text-2xl lg:text-3xl text-neutral-400 font-light tracking-tight px-4 leading-tight"
-            >
-              {t.tagline_questions} <span className="text-white font-medium">{t.tagline_decisions}</span>
-            </motion.p>
-            
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="text-[10px] sm:text-xs text-neutral-500 font-bold tracking-[0.3em] uppercase px-4"
-            >
-              {t.simulate_outcomes}
-            </motion.p>
-          </div>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.1 }}
+            className="text-lg sm:text-xl text-neutral-500 font-medium tracking-[0.2em] uppercase"
+          >
+            {t.simulate_outcomes}
+          </motion.p>
         </div>
 
-        {/* Input Area */}
-        <motion.div
+        {/* Agent Thinking Strip */}
+        <motion.div 
           initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="flex items-center space-x-8 mb-8 bg-white/[0.02] border border-white/5 px-6 py-2 rounded-full backdrop-blur-md"
+        >
+          {[
+            { name: t.agent_strategist, color: 'text-emerald-400', glow: 'bg-emerald-400' },
+            { name: t.agent_skeptic, color: 'text-rose-400', glow: 'bg-rose-400' },
+            { name: t.agent_operator, color: 'text-blue-400', glow: 'bg-blue-400' }
+          ].map((agent, i) => (
+            <div key={i} className="flex items-center space-x-2">
+              <div className={`w-1 h-1 rounded-full ${agent.glow} animate-pulse shadow-[0_0_8px_rgba(255,255,255,0.5)]`} />
+              <span className={`text-[9px] font-black uppercase tracking-widest ${agent.color}`}>{agent.name}</span>
+            </div>
+          ))}
+          <div className="w-[1px] h-3 bg-white/10" />
+          <span className="text-[9px] text-neutral-600 font-black uppercase tracking-widest">Active Simulation Grid</span>
+        </motion.div>
+
+        {/* Floating Insight Cards (Decorative) */}
+        <div className="hidden lg:block absolute -left-40 top-1/2 -translate-y-1/2 w-48 h-32 glass-note rounded-2xl p-4 border-emerald-500/20 animate-float opacity-40">
+           <div className="w-8 h-1 bg-emerald-500/50 mb-3" />
+           <div className="space-y-2">
+             <div className="w-full h-1 bg-white/5" />
+             <div className="w-2/3 h-1 bg-white/5" />
+             <div className="w-full h-1 bg-white/5" />
+           </div>
+        </div>
+        <div className="hidden lg:block absolute -right-40 top-1/4 w-48 h-32 glass-note rounded-2xl p-4 border-purple-500/20 animate-float opacity-40" style={{ animationDelay: '1s' }}>
+           <div className="w-8 h-1 bg-purple-500/50 mb-3" />
+           <div className="space-y-2">
+             <div className="w-full h-1 bg-white/5" />
+             <div className="w-2/3 h-1 bg-white/5" />
+             <div className="w-full h-1 bg-white/5" />
+           </div>
+        </div>
+
+        {/* Command Center Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
           className="w-full relative z-10"
         >
-          <div className="glass-note rounded-[40px] p-6 sm:p-10 shadow-[0_30px_100px_rgba(0,0,0,0.4)] border-white/10 overflow-hidden">
+          <div className="bg-neutral-900/60 backdrop-blur-3xl rounded-[40px] p-6 sm:p-10 border border-white/10 shadow-[0_40px_120px_rgba(0,0,0,0.8),0_0_80px_rgba(168,85,247,0.05)] overflow-hidden">
             <div className="mb-8 flex items-center justify-between">
-              <div className="flex items-center space-x-2 opacity-60">
-                <div className="w-1.5 h-1.5 rounded-full bg-white" />
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white">
+              <div className="flex items-center space-x-3">
+                <div className="w-2 h-2 rounded-full bg-purple-500 animate-ping" />
+                <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/60">
                   {t.decision_simulator}
                 </span>
               </div>
@@ -170,13 +184,18 @@ export default function Home() {
                 if (error) setError(null);
               }}
               placeholder={t.placeholder}
-              className="w-full h-32 sm:h-48 bg-transparent text-2xl sm:text-3xl lg:text-5xl text-white placeholder-neutral-700 focus:outline-none resize-none font-medium leading-tight px-0 border-none"
+              className="w-full h-32 sm:h-40 bg-transparent text-2xl sm:text-3xl lg:text-5xl text-white placeholder-neutral-800 focus:outline-none resize-none font-medium leading-tight px-0 border-none selection:bg-purple-500/30"
             />
 
             <div className="mt-10 flex flex-col space-y-4">
-              <span className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">
-                {t.quick_scenarios}
-              </span>
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] font-black text-neutral-600 uppercase tracking-widest">
+                  {t.quick_scenarios}
+                </span>
+                <div className="text-neutral-700 text-[9px] font-mono tracking-widest uppercase">
+                  {problem.length} / 5000 {t.chars}
+                </div>
+              </div>
               <div className="flex flex-wrap gap-2">
                 {[
                   { text: t.scenario_quit, key: 'scenario_quit' },
@@ -189,7 +208,7 @@ export default function Home() {
                       setProblem(sample.text);
                       handleSolve(sample.text, true);
                     }}
-                    className="flex items-center space-x-3 text-[13px] bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 text-neutral-300 hover:text-white px-5 py-2.5 rounded-full transition-all duration-300 font-medium"
+                    className="flex items-center space-x-3 text-[11px] bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 text-neutral-500 hover:text-white px-4 py-2 rounded-full transition-all duration-300 font-bold uppercase tracking-wider"
                   >
                     <span>{sample.text}</span>
                   </button>
@@ -197,34 +216,29 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="mt-10 flex flex-col sm:flex-row justify-between items-center sm:items-end space-y-8 sm:space-y-0 pt-8 border-t border-white/[0.05]">
-              <div className="text-neutral-600 text-[10px] font-mono tracking-widest uppercase">
-                {problem.length} / 5000 {t.chars || 'chars'}
-              </div>
-
+            <div className="mt-10 pt-8 border-t border-white/[0.05]">
               <button
                 onClick={() => handleSolve()}
                 disabled={loading || problem.trim().length === 0}
-                className="w-full sm:w-auto px-12 py-5 bg-white text-black disabled:bg-neutral-800 disabled:text-neutral-500 disabled:cursor-not-allowed rounded-full font-black text-lg transition-all duration-300 flex items-center justify-center space-x-3 hover:bg-neutral-200 active:scale-[0.98] shadow-[0_10px_30px_rgba(255,255,255,0.1)]"
+                className="group relative w-full overflow-hidden rounded-full p-[2px] transition-all hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100"
               >
-                {loading ? (
-                  <div className="flex items-center space-x-3">
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    <AnimatePresence mode="wait">
-                      <motion.span
-                        key={loadingStep}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="text-xs font-black uppercase tracking-widest"
-                      >
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-600 via-emerald-500 to-blue-600 animate-gradient-x" />
+                <div className="relative flex h-16 w-full items-center justify-center rounded-full bg-neutral-900 transition-all group-hover:bg-transparent">
+                  {loading ? (
+                    <div className="flex items-center space-x-3 text-white">
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <span className="text-xs font-black uppercase tracking-widest">
                         {locales[language === 'auto' ? 'English' : language]?.processing || 'Processing...'}
-                      </motion.span>
-                    </AnimatePresence>
-                  </div>
-                ) : (
-                  <span className="uppercase tracking-widest text-sm">{t.launch_simulation}</span>
-                )}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center space-x-3 text-white">
+                      <span className="text-sm font-black uppercase tracking-[0.3em] group-hover:text-black transition-colors">
+                        🚀 {t.launch_simulation}
+                      </span>
+                    </div>
+                  )}
+                </div>
               </button>
             </div>
 
