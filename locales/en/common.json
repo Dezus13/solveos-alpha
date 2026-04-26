@@ -1,0 +1,23 @@
+{
+  "app_name": "SolveOS",
+  "tagline": "The AI Decision Operating System",
+  "launch_simulation": "Launch Simulation",
+  "decision_blueprint": "Decision Blueprint",
+  "confidence_score": "Confidence Score",
+  "diagnosis": "Diagnosis",
+  "core_problem": "Core Problem",
+  "blind_spots": "Blind Spots",
+  "key_risks": "Key Risks",
+  "decision_paths": "Decision Paths",
+  "safe_path": "Safe Path",
+  "balanced_path": "Balanced Path",
+  "bold_path": "Bold Path",
+  "recommendation": "Primary Insight & Recommendation",
+  "contrarian_insight": "Contrarian Insight",
+  "future_simulation": "Future Simulation",
+  "action_plan": "Action Plan",
+  "today": "Today",
+  "this_week": "This Week",
+  "thirty_days": "30 Days",
+  "demo_mode": "Demo Simulation Mode"
+}

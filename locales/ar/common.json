@@ -1,0 +1,23 @@
+{
+  "app_name": "SolveOS",
+  "tagline": "نظام تشغيل القرارات القائم على الذكاء الاصطناعي",
+  "launch_simulation": "بدء المحاكاة",
+  "decision_blueprint": "مخطط القرار",
+  "confidence_score": "درجة الثقة",
+  "diagnosis": "التشخيص",
+  "core_problem": "المشكلة الأساسية",
+  "blind_spots": "النقاط العمياء",
+  "key_risks": "المخاطر الرئيسية",
+  "decision_paths": "مسارات القرار",
+  "safe_path": "المسار الآمن",
+  "balanced_path": "المسار المتوازن",
+  "bold_path": "المسار الجريء",
+  "recommendation": "التوصية والرؤية الأساسية",
+  "contrarian_insight": "رؤية معاكسة",
+  "future_simulation": "محاكاة المستقبل",
+  "action_plan": "خطة العمل",
+  "today": "اليوم",
+  "this_week": "هذا الأسبوع",
+  "thirty_days": "30 يومًا",
+  "demo_mode": "وضع المحاكاة التجريبي"
+}

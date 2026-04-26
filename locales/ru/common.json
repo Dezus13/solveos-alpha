@@ -1,0 +1,23 @@
+{
+  "app_name": "SolveOS",
+  "tagline": "Операционная система для принятия решений с ИИ",
+  "launch_simulation": "Запустить симуляцию",
+  "decision_blueprint": "План решения",
+  "confidence_score": "Уровень уверенности",
+  "diagnosis": "Диагноз",
+  "core_problem": "Основная проблема",
+  "blind_spots": "Слепые зоны",
+  "key_risks": "Ключевые риски",
+  "decision_paths": "Пути решения",
+  "safe_path": "Безопасный путь",
+  "balanced_path": "Сбалансированный путь",
+  "bold_path": "Смелый путь",
+  "recommendation": "Основная рекомендация",
+  "contrarian_insight": "Альтернативный взгляд",
+  "future_simulation": "Симуляция будущего",
+  "action_plan": "План действий",
+  "today": "Сегодня",
+  "this_week": "На этой неделе",
+  "thirty_days": "30 дней",
+  "demo_mode": "Демо-режим симуляции"
+}

@@ -15,10 +15,10 @@ In a world of information overload, decision-makers are paralyzed by data comple
 Turn ambiguity into actionable clarity.
 
 ## Category
-**AI Decision Operating System**
+**Global-First Multilingual AI Decision Operating System**
 
 ## Tagline
-> ChatGPT is for questions. SolveOS is for decisions.
+> ChatGPT is for questions. SolveOS is for decisions. In any language.
 
 ## Multilingual by Default
 SolveOS is a global product. High-stakes decisions are made in every language, and the platform must reflect this:
