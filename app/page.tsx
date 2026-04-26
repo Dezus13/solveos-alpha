@@ -39,6 +39,8 @@ export default function Home() {
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showBoard, setShowBoard] = useState(false);
+  const [activeTab, setActiveTab] = useState<'blueprint' | 'debate' | 'action'>('blueprint');
+  const [debugMode, setDebugMode] = useState(false);
 
   // Determine current translation set based on selected language
   // Use result.language if available (auto-detected), otherwise use selection state
@@ -106,10 +108,12 @@ export default function Home() {
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center justify-center space-x-2 mb-6 bg-white/5 backdrop-blur-md border border-white/10 shadow-[0_0_15px_rgba(255,255,255,0.05)] px-4 py-1.5 rounded-full"
+            onClick={() => setDebugMode(!debugMode)}
+            className="inline-flex items-center justify-center space-x-2 mb-6 bg-white/5 backdrop-blur-md border border-white/10 shadow-[0_0_15px_rgba(255,255,255,0.05)] px-4 py-1.5 rounded-full cursor-pointer hover:bg-white/10 transition-colors"
           >
             <Sparkles className="w-4 h-4 text-emerald-400" />
             <span className="text-xs sm:text-sm text-neutral-300 font-medium tracking-wide">Alpha 0.1</span>
+            {debugMode && <span className="text-[10px] bg-red-500/20 text-red-400 px-1.5 rounded ml-1 font-bold tracking-tighter uppercase">Debug</span>}
           </motion.div>
           <motion.h1
             initial={{ opacity: 0, scale: 0.95 }}
@@ -246,25 +250,103 @@ export default function Home() {
 
         {/* Result Area */}
         {result && (
-          <div className="w-full flex flex-col items-center">
-            <DecisionBlueprint data={result} />
+          <div className="w-full flex flex-col items-center mt-12">
+            {/* Tabs */}
+            <div className="flex space-x-1 bg-white/5 p-1 rounded-2xl mb-8 border border-white/10 backdrop-blur-md">
+              {[
+                { id: 'blueprint', label: t.tab_blueprint || 'Blueprint' },
+                { id: 'debate', label: t.tab_debate || 'War Room' },
+                { id: 'action', label: t.tab_action || 'Action Plan' }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${
+                    activeTab === tab.id 
+                      ? 'bg-white/10 text-white shadow-xl border border-white/10' 
+                      : 'text-neutral-500 hover:text-neutral-300'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
 
-            {!showBoard ? (
-              <motion.button
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                onClick={() => {
-                  setShowBoard(true);
-                }}
-                className="mt-16 px-10 py-4 bg-neutral-900/80 backdrop-blur-md hover:bg-neutral-800 border border-purple-500/30 text-white rounded-2xl font-medium text-base transition-all duration-300 flex items-center justify-center space-x-3 shadow-[0_0_30px_rgba(168,85,247,0.15)] hover:shadow-[0_0_50px_rgba(168,85,247,0.3)] group"
-              >
-                <Crown className="w-5 h-5 text-purple-400 group-hover:scale-110 group-hover:-rotate-12 transition-transform" />
-                <span>{t.run_ai_board || 'Run AI Board'}</span>
-                <span className="bg-purple-500/20 text-purple-300 text-[10px] uppercase px-2 py-0.5 rounded-full ml-2 border border-purple-500/20">{t.premium || 'Premium'}</span>
-              </motion.button>
-            ) : (
-              <AgentEngine problem={problem} initialSolution={result!} />
-            )}
+            <AnimatePresence mode="wait">
+              {activeTab === 'blueprint' && (
+                <motion.div
+                  key="blueprint"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  className="w-full flex flex-col items-center"
+                >
+                  <DecisionBlueprint data={result} debugMode={debugMode} />
+                </motion.div>
+              )}
+
+              {activeTab === 'debate' && (
+                <motion.div
+                  key="debate"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  className="w-full flex flex-col items-center"
+                >
+                  {!showBoard ? (
+                    <motion.button
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      onClick={() => setShowBoard(true)}
+                      className="mt-16 px-10 py-5 bg-neutral-900/80 backdrop-blur-md hover:bg-neutral-800 border border-purple-500/30 text-white rounded-2xl font-bold text-lg transition-all duration-300 flex items-center justify-center space-x-3 shadow-[0_0_30px_rgba(168,85,247,0.15)] hover:shadow-[0_0_50px_rgba(168,85,247,0.3)] group"
+                    >
+                      <Crown className="w-6 h-6 text-purple-400 group-hover:scale-110 group-hover:-rotate-12 transition-transform" />
+                      <span>{t.run_ai_board || 'Run AI Board'}</span>
+                      <span className="bg-purple-500/20 text-purple-300 text-[10px] uppercase px-2 py-0.5 rounded-full ml-2 border border-purple-500/20">{t.premium || 'Premium'}</span>
+                    </motion.button>
+                  ) : (
+                    <AgentEngine problem={problem} initialSolution={result!} />
+                  )}
+                </motion.div>
+              )}
+
+              {activeTab === 'action' && (
+                <motion.div
+                  key="action"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  className="w-full flex flex-col items-center"
+                >
+                  <div className="w-full max-w-3xl bg-neutral-900/40 backdrop-blur-md border border-white/10 rounded-3xl p-8 mt-8">
+                     <h3 className="text-2xl font-bold text-white mb-8 flex items-center">
+                       <Sparkles className="w-6 h-6 mr-3 text-amber-400" />
+                       {t.tab_action || 'Action Plan'}
+                     </h3>
+                     <div className="space-y-8">
+                        {[
+                          { label: t.today, content: (result as any).actionPlan?.today },
+                          { label: t.this_week, content: (result as any).actionPlan?.thisWeek },
+                          { label: t.thirty_days, content: (result as any).actionPlan?.thirtyDays }
+                        ].map((step, i) => (
+                          <div key={i} className="flex space-x-6">
+                            <div className="flex flex-col items-center">
+                              <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white font-black text-sm">
+                                {i + 1}
+                              </div>
+                              {i < 2 && <div className="w-0.5 h-full bg-white/5 mt-2" />}
+                            </div>
+                            <div className="pb-8">
+                              <h4 className="text-sm font-bold text-neutral-500 uppercase tracking-widest mb-2">{step.label}</h4>
+                              <p className="text-white text-lg font-light leading-relaxed">{step.content || '...'}</p>
+                            </div>
+                          </div>
+                        ))}
+                     </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         )}
 

@@ -8,6 +8,55 @@ interface AgentEngineProps {
   initialSolution: Record<string, unknown>;
 }
 
+const DIALECTIC_LOCALES: Record<string, any> = {
+  English: {
+    strategist: "Strategist",
+    skeptic: "Skeptic",
+    operator: "Operator",
+    role_initial: "Initial Proposal",
+    role_attack: "Assumptions Attack",
+    role_revision: "Strategic Revision",
+    role_execution: "Execution Blueprint",
+    proposal_content: (rec: string) => `I propose we move immediately into the "${rec.substring(0, 50)}..." phase. The market window is open, and our first-mover advantage in the data layer is the only thing that matters right now. We should burn capital early to secure the moat.`,
+    attack_content: "Wait. You're assuming market liquidity that doesn't exist yet. If we burn capital now as proposed, we have zero runway if customer acquisition cost (CAC) doubles—which it usually does in this sector. This plan is blind to the 40% churn risk I identified. It's a suicide mission without validated feedback.",
+    revision_content: "Valid critique. I will revise: We scale in two phases. Phase 1 is a 'Thin-Layer' MVP to validate the CAC and churn assumptions the Skeptic raised. We cap the burn at 20% of the initial budget. If the unit economics hold after 45 days, only then do we commit to the full moat-building burn.",
+    execution_content: "I've processed the revised strategy. We can execute this 'Thin-Layer' approach using 30% of our current engineering bandwidth by repurposing the existing legacy API. We launch in 14 days, focus purely on retention metrics, and freeze all other non-essential feature dev to protect the validation window.",
+    verdict_title: "WAR ROOM VERDICT",
+    verdict_content: "Entering the space immediately is strategic suicide. However, the revised \"Thin-Layer\" Execution Plan allows us to validate high-churn risk via a 14-day Sprint with zero new tech debt. We commit only after CAC proves sustainable.",
+    recommended_decision: "Recommended Decision",
+    share_snapshot: "Share Decision Snapshot",
+    audit_log: "View Audit Log",
+    processing: "Processing...",
+    confidence: "Confidence",
+    risk_factor: "Risk Factor",
+    intensity: "Debate Intensity",
+    phase: "Phase"
+  },
+  Russian: {
+    strategist: "Стратег",
+    skeptic: "Скептик",
+    operator: "Оператор",
+    role_initial: "Первичное предложение",
+    role_attack: "Анализ допущений",
+    role_revision: "Стратегическая ревизия",
+    role_execution: "План реализации",
+    proposal_content: (rec: string) => `Я предлагаю немедленно перейти к этапу "${rec.substring(0, 50)}...". Рыночное окно открыто, и наше преимущество первого игрока в слое данных — единственное, что имеет значение сейчас. Мы должны инвестировать капитал на раннем этапе, чтобы создать защитный ров.`,
+    attack_content: "Подождите. Вы предполагаете рыночную ликвидность, которой еще нет. Если мы потратим капитал сейчас, как предложено, у нас будет нулевой запас прочности, если стоимость привлечения клиента (CAC) удвоится — что обычно и происходит в этом секторе. Этот план игнорирует 40% риск оттока, который я выявил. Это самоубийственная миссия без подтвержденной обратной связи.",
+    revision_content: "Справедливая критика. Я пересмотрю стратегию: мы масштабируемся в два этапа. Этап 1 — это MVP 'тонкого слоя' для проверки CAC и предположений об оттоке, которые поднял Скептик. Мы ограничиваем расходы на уровне 20% от первоначального бюджета. Если экономика юнита подтвердится через 45 дней, только тогда мы перейдем к полноценному этапу развития.",
+    execution_content: "Я обработал пересмотренную стратегию. Мы можем реализовать этот подход 'тонкого слоя', используя 30% нашей текущей инженерной мощности путем переиспользования существующего API. Мы запускаемся через 14 дней, фокусируемся исключительно на метриках удержания и замораживаем разработку всех второстепенных функций для защиты окна валидации.",
+    verdict_title: "ВЕРДИКТ ШТАБА",
+    verdict_content: "Немедленный вход в этот сегмент — стратегическое самоубийство. Однако пересмотренный план реализации 'Тонкого слоя' позволяет нам проверить риск высокого оттока через 14-дневный спринт без накопления нового технического долга. Мы принимаем окончательное решение только после подтверждения устойчивости CAC.",
+    recommended_decision: "Рекомендуемое решение",
+    share_snapshot: "Поделиться снимком решения",
+    audit_log: "Аудит логов",
+    processing: "Обработка...",
+    confidence: "Уверенность",
+    risk_factor: "Фактор риска",
+    intensity: "Интенсивность дебатов",
+    phase: "Фаза"
+  }
+};
+
 interface DebateTurn {
   agent: string;
   role: string;
@@ -21,6 +70,9 @@ export default function AgentEngine({ problem, initialSolution }: AgentEnginePro
   const [step, setStep] = useState(0);
   const [showVerdict, setShowVerdict] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+
+  const lang = (initialSolution.language as string) || 'English';
+  const lt = DIALECTIC_LOCALES[lang] || DIALECTIC_LOCALES.English;
 
   // Simulation timeline
   useEffect(() => {
@@ -38,31 +90,31 @@ export default function AgentEngine({ problem, initialSolution }: AgentEnginePro
 
   const debateTurns: DebateTurn[] = [
     {
-      agent: 'Strategist',
-      role: 'Initial Proposal',
-      content: `I propose we move immediately into the "${String(initialSolution.recommendation).substring(0, 50)}..." phase. The market window is open, and our first-mover advantage in the data layer is the only thing that matters right now. We should burn capital early to secure the moat.`,
+      agent: lt.strategist,
+      role: lt.role_initial,
+      content: lt.proposal_content(String(initialSolution.recommendation)),
       icon: <Brain className="w-5 h-5 text-emerald-400" />,
       color: 'emerald'
     },
     {
-      agent: 'Skeptic',
-      role: 'Assumptions Attack',
-      content: "Wait. You're assuming market liquidity that doesn't exist yet. If we burn capital now as proposed, we have zero runway if customer acquisition cost (CAC) doubles—which it usually does in this sector. This plan is blind to the 40% churn risk I identified. It's a suicide mission without validated feedback.",
+      agent: lt.skeptic,
+      role: lt.role_attack,
+      content: lt.attack_content,
       icon: <AlertTriangle className="w-5 h-5 text-rose-500" />,
       color: 'rose'
     },
     {
-      agent: 'Strategist',
-      role: 'Strategic Revision',
-      content: "Valid critique. I will revise: We scale in two phases. Phase 1 is a 'Thin-Layer' MVP to validate the CAC and churn assumptions the Skeptic raised. We cap the burn at 20% of the initial budget. If the unit economics hold after 45 days, only then do we commit to the full moat-building burn.",
+      agent: lt.strategist,
+      role: lt.role_revision,
+      content: lt.revision_content,
       icon: <ShieldCheck className="w-5 h-5 text-purple-400" />,
       color: 'purple',
       isRevision: true
     },
     {
-      agent: 'Operator',
-      role: 'Execution Blueprint',
-      content: "I've processed the revised strategy. We can execute this 'Thin-Layer' approach using 30% of our current engineering bandwidth by repurposing the existing legacy API. We launch in 14 days, focus purely on retention metrics, and freeze all other non-essential feature dev to protect the validation window.",
+      agent: lt.operator,
+      role: lt.role_execution,
+      content: lt.execution_content,
       icon: <Settings className="w-5 h-5 text-blue-400" />,
       color: 'blue'
     }
@@ -85,15 +137,15 @@ export default function AgentEngine({ problem, initialSolution }: AgentEnginePro
         <div className="space-y-1 mb-6 md:mb-0">
           <div className="flex items-center space-x-2">
             <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            <h2 className="text-4xl font-black tracking-tighter text-white">Decision War Room</h2>
+            <h2 className="text-4xl font-black tracking-tighter text-white">{lt.war_room_title || 'Decision War Room'}</h2>
           </div>
-          <p className="text-neutral-500 font-medium uppercase tracking-widest text-xs">Simulated Multi-Agent Dialectic</p>
+          <p className="text-neutral-500 font-medium uppercase tracking-widest text-xs">{lt.dialectic_subtitle || 'Simulated Multi-Agent Dialectic'}</p>
         </div>
 
         <div className="flex items-center space-x-8">
           {/* Confidence Score */}
           <div className="flex flex-col items-center">
-            <span className="text-[10px] text-neutral-500 uppercase tracking-widest mb-2">Confidence</span>
+            <span className="text-[10px] text-neutral-500 uppercase tracking-widest mb-2">{lt.confidence}</span>
             <div className="relative flex items-center justify-center">
               <svg className="w-16 h-16 transform -rotate-90">
                 <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-neutral-800" />
@@ -111,7 +163,7 @@ export default function AgentEngine({ problem, initialSolution }: AgentEnginePro
 
           {/* Risk Meter */}
           <div className="flex flex-col items-end">
-            <span className="text-[10px] text-neutral-500 uppercase tracking-widest mb-2">Risk Factor</span>
+            <span className="text-[10px] text-neutral-500 uppercase tracking-widest mb-2">{lt.risk_factor}</span>
             <div className="flex items-center space-x-1">
               {[1, 2, 3, 4, 5].map((idx) => (
                 <motion.div 
@@ -137,7 +189,7 @@ export default function AgentEngine({ problem, initialSolution }: AgentEnginePro
               className="bg-emerald-500/10 border border-emerald-500/30 px-4 py-2 rounded-xl flex items-center space-x-2"
             >
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span className="text-xs font-bold text-emerald-400 uppercase tracking-tight">Recommended Decision</span>
+              <span className="text-xs font-bold text-emerald-400 uppercase tracking-tight">{lt.recommended_decision}</span>
             </motion.div>
           )}
         </div>
@@ -176,7 +228,7 @@ export default function AgentEngine({ problem, initialSolution }: AgentEnginePro
                       {idx === step && !showVerdict && (
                         <div className="flex items-center space-x-2">
                            <Activity className="w-3 h-3 text-purple-400 animate-pulse" />
-                           <span className="text-[10px] text-purple-400 font-bold uppercase tracking-widest">Processing...</span>
+                           <span className="text-[10px] text-purple-400 font-bold uppercase tracking-widest">{lt.processing}</span>
                         </div>
                       )}
                     </div>
@@ -210,7 +262,7 @@ export default function AgentEngine({ problem, initialSolution }: AgentEnginePro
 
                 <div className="flex-grow space-y-4 text-center md:text-left">
                   <div>
-                    <h3 className="text-3xl font-black text-white tracking-tighter mb-1 uppercase italic">WAR ROOM VERDICT</h3>
+                    <h3 className="text-3xl font-black text-white tracking-tighter mb-1 uppercase italic">{lt.verdict_title}</h3>
                     <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
                       <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">Validated Path</span>
                       <span className="bg-purple-500/10 text-purple-400 border border-purple-500/20 px-3 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">Iterative Risk-Cap</span>
@@ -218,7 +270,7 @@ export default function AgentEngine({ problem, initialSolution }: AgentEnginePro
                   </div>
 
                   <p className="text-neutral-200 text-lg md:text-xl font-light leading-relaxed max-w-2xl mx-auto md:mx-0">
-                    Entering the space immediately is strategic suicide. However, the revised <span className="text-white font-medium">&ldquo;Thin-Layer&rdquo; Execution Plan</span> allows us to validate high-churn risk via a 14-day Sprint with zero new tech debt. We commit only after CAC proves sustainable.
+                    {lt.verdict_content}
                   </p>
                   
                   <div className="pt-4 flex flex-col sm:flex-row items-center justify-center md:justify-start gap-4">
@@ -227,10 +279,10 @@ export default function AgentEngine({ problem, initialSolution }: AgentEnginePro
                       className="px-8 py-3 bg-white text-black font-bold rounded-xl hover:bg-neutral-200 transition-all scale-100 hover:scale-[1.02] active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.2)] flex items-center space-x-2"
                     >
                       <Share2 className="w-4 h-4" />
-                      <span>Share Decision Snapshot</span>
+                      <span>{lt.share_snapshot}</span>
                     </button>
                     <button className="px-8 py-3 bg-neutral-900 border border-white/10 text-white font-medium rounded-xl hover:bg-neutral-800 transition-all shadow-xl">
-                      View Audit Log
+                      {lt.audit_log}
                     </button>
                   </div>
                 </div>
@@ -244,8 +296,8 @@ export default function AgentEngine({ problem, initialSolution }: AgentEnginePro
         <div className="fixed bottom-12 left-1/2 -translate-x-1/2 w-full max-w-md px-6 z-50">
           <div className="bg-neutral-900/90 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-2xl">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest">Debate Intensity</span>
-              <span className="text-[10px] text-purple-400 font-bold uppercase tracking-widest">Phase {step + 1} / 4</span>
+              <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest">{lt.intensity}</span>
+              <span className="text-[10px] text-purple-400 font-bold uppercase tracking-widest">{lt.phase} {step + 1} / 4</span>
             </div>
             <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
                <motion.div 

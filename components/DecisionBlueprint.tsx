@@ -21,9 +21,10 @@ const locales: Record<string, any> = {
 
 interface DecisionBlueprintProps {
   data: Record<string, unknown>;
+  debugMode?: boolean;
 }
 
-export default function DecisionBlueprint({ data }: DecisionBlueprintProps) {
+export default function DecisionBlueprint({ data, debugMode }: DecisionBlueprintProps) {
   // Select the appropriate locale based on the detected language, default to English
   const t = locales[data?.language as string] || locales.English;
   
@@ -222,17 +223,22 @@ export default function DecisionBlueprint({ data }: DecisionBlueprintProps) {
         </motion.div>
       </div>
       
-      {/* Raw Output Accordion (To prove API integration is unchanged) */}
-      <motion.div variants={item} className="pt-8">
-        <details className="group border border-white/10 bg-neutral-900/20 rounded-2xl p-4 cursor-pointer">
-          <summary className="text-neutral-500 text-sm font-medium focus:outline-none user-select-none">View Original AI Raw Output</summary>
-          <div className="mt-4 pt-4 border-t border-white/10">
-             <div className="prose prose-invert max-w-none text-xs text-neutral-400 font-mono whitespace-pre-wrap">
-               {JSON.stringify(data, null, 2)}
-             </div>
-          </div>
-        </details>
-      </motion.div>
+      {/* Raw Output Accordion (Only in Debug Mode) */}
+      {debugMode && (
+        <motion.div variants={item} className="pt-8">
+          <details className="group border border-red-500/20 bg-red-500/5 rounded-2xl p-4 cursor-pointer">
+            <summary className="text-red-400 text-sm font-bold focus:outline-none user-select-none flex items-center">
+               <span className="w-2 h-2 bg-red-500 rounded-full mr-2 animate-ping" />
+               {t.view_raw || 'View Original AI Raw Output'} (DEBUG)
+            </summary>
+            <div className="mt-4 pt-4 border-t border-red-500/20">
+               <div className="prose prose-invert max-w-none text-xs text-neutral-400 font-mono whitespace-pre-wrap">
+                 {JSON.stringify(data, null, 2)}
+               </div>
+            </div>
+          </details>
+        </motion.div>
+      )}
 
     </motion.div>
   );
