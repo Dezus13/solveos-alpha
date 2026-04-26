@@ -137,6 +137,20 @@ export default function DecisionBlueprint({ data, debugMode }: DecisionBlueprint
         </p>
       </motion.div>
 
+      {/* Why this recommendation? (Immersion Section) */}
+      <motion.div variants={item} className="bg-neutral-900/40 backdrop-blur-md border border-white/10 rounded-3xl p-6 md:p-8 hover:bg-neutral-900/60 transition-colors">
+         <h3 className="text-lg font-bold text-white mb-4 flex items-center">
+           <Zap className="w-5 h-5 mr-3 text-yellow-400" />
+           {t.why_this_recommendation || 'Why this recommendation?'}
+         </h3>
+         <p className="text-neutral-400 text-sm leading-relaxed max-w-3xl">
+           {String(data?.recommendation).length > 100 
+             ? `This conclusion was reached by synthesizing the ${data?.paths?.balanced?.description ? 'Balanced path' : 'strategic'} trajectory while accounting for the ${data?.diagnosis?.coreProblem || 'core problem'}. By prioritizing the ${data?.paths?.balanced?.pros?.[0] || 'efficiency'}, SolveOS aims to mitigate the ${data?.diagnosis?.keyRisks || 'identified risks'} before committing to a higher burn rate.`
+             : t.reasoning_summary_placeholder || 'Our agents have cross-referenced your core problem with multiple strategic frameworks to identify the path with the highest probability of success and lowest resource drain.'
+           }
+         </p>
+      </motion.div>
+
       {/* Card: Contrarian Insight (New Signature Feature) */}
       <motion.div variants={item} className="bg-gradient-to-br from-orange-950/40 via-red-950/20 to-neutral-900/40 backdrop-blur-xl border border-orange-500/20 rounded-3xl p-5 md:p-8 relative overflow-hidden shadow-[0_0_60px_rgba(234,88,12,0.1)] group">
         <div className="absolute top-0 w-full h-[2px] left-0 bg-gradient-to-r from-transparent via-orange-500 to-transparent opacity-50" />
@@ -222,17 +236,16 @@ export default function DecisionBlueprint({ data, debugMode }: DecisionBlueprint
            </div>
         </motion.div>
       </div>
-      
-      {/* Raw Output Accordion (Only in Debug Mode) */}
-      {debugMode && (
-        <motion.div variants={item} className="pt-8">
-          <details className="group border border-red-500/20 bg-red-500/5 rounded-2xl p-4 cursor-pointer">
-            <summary className="text-red-400 text-sm font-bold focus:outline-none user-select-none flex items-center">
-               <span className="w-2 h-2 bg-red-500 rounded-full mr-2 animate-ping" />
-               {t.view_raw || 'View Original AI Raw Output'} (DEBUG)
+
+      {/* Raw Output (Strictly for Developers in Local Dev) */}
+      {process.env.NODE_ENV === 'development' && (
+        <motion.div variants={item} className="pt-8 opacity-20 hover:opacity-100 transition-opacity">
+          <details className="group border border-white/5 bg-neutral-950 rounded-2xl p-4 cursor-pointer">
+            <summary className="text-neutral-600 text-xs font-mono focus:outline-none user-select-none">
+               [DEV_ONLY] RAW_JSON_PAYLOAD
             </summary>
-            <div className="mt-4 pt-4 border-t border-red-500/20">
-               <div className="prose prose-invert max-w-none text-xs text-neutral-400 font-mono whitespace-pre-wrap">
+            <div className="mt-4 pt-4 border-t border-white/5">
+               <div className="prose prose-invert max-w-none text-[10px] text-neutral-500 font-mono whitespace-pre-wrap">
                  {JSON.stringify(data, null, 2)}
                </div>
             </div>
