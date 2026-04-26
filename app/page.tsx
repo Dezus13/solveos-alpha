@@ -99,25 +99,25 @@ export default function Home() {
       <div className="w-full max-w-5xl flex flex-col items-center relative z-10">
 
         {/* Header */}
-        <div className="text-center mb-10 mt-12 w-full">
+        <div className="text-center mb-12 mt-16 w-full">
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             onClick={() => setDebugMode(!debugMode)}
-            className="inline-flex items-center space-x-2 mb-6 bg-white/[0.03] border border-white/10 px-3 py-1 rounded-full cursor-pointer hover:bg-white/10 transition-colors"
+            className="inline-flex items-center space-x-2 mb-8 bg-white/[0.02] border border-white/5 px-4 py-1.5 rounded-full cursor-pointer hover:bg-white/10 transition-colors"
           >
-            <span className="text-[10px] text-neutral-500 font-bold tracking-widest uppercase">{t.system_badge || 'ALPHA • DECISION OS'}</span>
+            <span className="text-[9px] text-neutral-600 font-bold tracking-[0.3em] uppercase">{t.system_badge || 'ALPHA • DECISION OS'}</span>
             {debugMode && <span className="text-[10px] bg-red-500/20 text-red-400 px-1.5 rounded ml-1 font-bold tracking-tighter uppercase">Debug</span>}
           </motion.div>
           
           <motion.h1
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-center justify-center text-7xl sm:text-8xl lg:text-[10rem] font-medium tracking-tighter text-white brand-wordmark mb-1"
+            className="flex items-center justify-center text-6xl sm:text-7xl lg:text-[7rem] font-medium tracking-tighter text-white brand-wordmark mb-2"
           >
             <span>SOLVE</span>
-            <div className={`mx-4 w-[0.8em] h-[0.8em] flex items-center justify-center active-core-ring animate-breathing-core ${loading ? 'animate-active-core core-active-glow' : ''}`}>
-               <span className="text-purple-500 text-[0.6em] relative z-10">◉</span>
+            <div className={`mx-4 w-[0.7em] h-[0.7em] flex items-center justify-center active-core-ring ${loading ? 'animate-active-core border-purple-500/50' : 'border-white/10'}`}>
+               <div className={`w-2 h-2 rounded-full bg-purple-500 ${loading ? 'animate-pulse shadow-[0_0_15px_rgba(168,85,247,0.5)]' : 'opacity-20'}`} />
             </div>
             <span>S</span>
           </motion.h1>
@@ -126,7 +126,7 @@ export default function Home() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.1 }}
-            className="text-lg sm:text-2xl text-neutral-400 font-black tracking-[0.2em] uppercase mb-1"
+            className="text-base sm:text-lg text-neutral-500 font-bold tracking-[0.4em] uppercase mb-1"
           >
             {t.tagline}
           </motion.p>
@@ -135,13 +135,10 @@ export default function Home() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className="flex flex-col items-center"
+            className="flex flex-col items-center mt-2"
           >
-            <p className="text-sm sm:text-lg text-neutral-600 font-medium tracking-tight italic mb-2">
-              {t.simulate_outcomes}
-            </p>
-            <p className="text-[10px] text-neutral-800 font-black uppercase tracking-[0.5em]">
-              Simulate before you commit.
+            <p className="text-[9px] text-neutral-700 font-black uppercase tracking-[0.6em]">
+              Precision Intelligence for High-Stakes Decisions
             </p>
           </motion.div>
         </div>
@@ -151,18 +148,18 @@ export default function Home() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="flex items-center space-x-6 mb-12 bg-white/[0.02] border border-white/5 px-8 py-3 rounded-full backdrop-blur-3xl shadow-2xl"
+          className="flex items-center space-x-6 mb-12 bg-white/[0.01] border border-white/5 px-6 py-2 rounded-full backdrop-blur-xl"
         >
           {[
-            { name: t.agent_strategist, color: 'text-emerald-400', glow: 'bg-emerald-500' },
-            { name: t.agent_skeptic, color: 'text-rose-400', glow: 'bg-rose-500' },
-            { name: t.agent_operator, color: 'text-blue-400', glow: 'bg-blue-500' },
-            { name: 'Contrarian', color: 'text-amber-400', glow: 'bg-amber-500' },
-            { name: 'Black Swan', color: 'text-purple-400', glow: 'bg-purple-500' }
+            { name: t.agent_strategist, color: 'text-emerald-500/80', glow: 'bg-emerald-500' },
+            { name: t.agent_skeptic, color: 'text-rose-500/80', glow: 'bg-rose-500' },
+            { name: t.agent_operator, color: 'text-blue-500/80', glow: 'bg-blue-500' },
+            { name: 'Contrarian', color: 'text-amber-500/80', glow: 'bg-amber-500' },
+            { name: 'Black Swan', color: 'text-purple-500/80', glow: 'bg-purple-500' }
           ].map((agent, i) => (
             <div key={i} className="flex items-center space-x-2 border-r border-white/5 pr-6 last:border-0 last:pr-0">
-              <div className={`w-1.5 h-1.5 rounded-full ${agent.glow} ${loading ? 'animate-pulse' : 'opacity-40'} shadow-[0_0_8px_rgba(255,255,255,0.2)]`} />
-              <span className={`text-[9px] font-black uppercase tracking-widest ${agent.color} ${loading ? 'opacity-100' : 'opacity-40'}`}>{agent.name}</span>
+              <div className={`w-1 h-1 rounded-full ${agent.glow} ${loading ? 'animate-pulse' : 'opacity-20'}`} />
+              <span className={`text-[8px] font-black uppercase tracking-[0.2em] ${agent.color} ${loading ? 'opacity-100' : 'opacity-40'}`}>{agent.name}</span>
             </div>
           ))}
         </motion.div>
@@ -197,15 +194,21 @@ export default function Home() {
               </div>
 
               <div className="p-6 sm:p-10">
-                <div className="mb-8 flex items-center justify-between">
+                <div className="mb-10 flex items-center justify-between border-b border-white/5 pb-6">
                   <div className="flex items-center space-x-3">
-                    <div className="w-2 h-2 rounded-full bg-purple-500 animate-ping" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/60">
-                      {t.decision_simulator}
+                    <div className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
+                    <span className="text-[9px] font-black uppercase tracking-[0.4em] text-white/40">
+                      Primary Simulation Interface
                     </span>
                   </div>
-                  <div className="hidden sm:flex items-center space-x-2 text-[9px] font-mono text-neutral-600 uppercase tracking-widest">
-                     <span>⌘K Command Center</span>
+                  <div className="flex items-center space-x-4">
+                     <div className="hidden sm:flex items-center space-x-2 text-[8px] font-mono text-neutral-700 uppercase tracking-widest">
+                        <span>Input Telemetry: Active</span>
+                     </div>
+                     <div className="w-1 h-3 bg-white/5 rounded-full" />
+                     <div className="hidden sm:flex items-center space-x-2 text-[8px] font-mono text-neutral-700 uppercase tracking-widest">
+                        <span>Encrypted: AES-256</span>
+                     </div>
                   </div>
                 </div>
                 
@@ -215,17 +218,17 @@ export default function Home() {
                     setProblem(e.target.value);
                     if (error) setError(null);
                   }}
-                  placeholder="Describe the decision you need pressure-tested..."
-                  className="w-full h-32 sm:h-40 bg-transparent text-2xl sm:text-3xl lg:text-4xl text-white placeholder-neutral-800 focus:outline-none resize-none font-medium leading-tight px-0 border-none selection:bg-purple-500/30"
+                  placeholder="Enter the parameters of your high-stakes decision for mission-critical analysis..."
+                  className="w-full h-32 sm:h-48 bg-transparent text-xl sm:text-2xl lg:text-3xl text-white placeholder-neutral-800 focus:outline-none resize-none font-medium leading-relaxed px-0 border-none selection:bg-purple-500/30"
                 />
 
-                <div className="mt-10 flex flex-col space-y-4">
+                <div className="mt-12 flex flex-col space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-[9px] font-black text-neutral-600 uppercase tracking-widest">
-                      {t.quick_scenarios}
+                    <span className="text-[9px] font-black text-neutral-700 uppercase tracking-[0.3em]">
+                      Baseline Scenarios
                     </span>
-                    <div className="text-neutral-700 text-[9px] font-mono tracking-widest uppercase">
-                      {problem.length} / 5000 {t.chars}
+                    <div className="text-neutral-800 text-[8px] font-mono tracking-widest uppercase">
+                      Payload: {problem.length} / 5000 bytes
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -240,7 +243,7 @@ export default function Home() {
                           setProblem(sample.text);
                           handleSolve(sample.text, true);
                         }}
-                        className="flex items-center space-x-3 text-[10px] bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 text-neutral-500 hover:text-white px-4 py-2 rounded-full transition-all duration-300 font-bold uppercase tracking-wider"
+                        className="flex items-center space-x-3 text-[9px] bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 text-neutral-600 hover:text-white px-4 py-2 rounded-xl transition-all duration-300 font-bold uppercase tracking-wider"
                       >
                         <span>{sample.text}</span>
                       </button>
@@ -248,33 +251,36 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div className="mt-10 pt-8 border-t border-white/[0.05]">
+                <div className="mt-12 pt-8 border-t border-white/[0.03]">
                   <button
                     onClick={() => handleSolve()}
                     disabled={loading || problem.trim().length === 0}
-                    className="group relative w-full overflow-hidden rounded-3xl p-[2px] transition-all hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100 shadow-2xl"
+                    className="group relative w-full overflow-hidden rounded-2xl p-[1px] transition-all hover:scale-[1.005] active:scale-[0.995] disabled:opacity-30 shadow-2xl"
                   >
-                    <div className="absolute inset-0 bg-gradient-to-r from-purple-600 via-emerald-500 to-blue-600 animate-gradient-x" />
-                    <div className="relative flex h-20 w-full items-center justify-center rounded-[22px] bg-neutral-900 transition-all group-hover:bg-transparent">
+                    <div className="absolute inset-0 bg-white/10" />
+                    <div className="relative flex h-20 w-full items-center justify-center rounded-[15px] bg-neutral-900 transition-all group-hover:bg-neutral-800">
                       {loading ? (
-                        <div className="flex items-center space-x-4 text-white">
-                          <div className="flex space-x-1">
-                             {[0, 1, 2].map((i) => (
+                        <div className="flex items-center space-x-6 text-white">
+                          <div className="flex space-x-2">
+                             {[0, 1, 2, 3].map((i) => (
                                <motion.div 
                                  key={i}
-                                 animate={{ opacity: [0.3, 1, 0.3] }}
-                                 transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
-                                 className="w-1.5 h-1.5 rounded-full bg-purple-500"
+                                 animate={{ 
+                                   height: [4, 12, 4],
+                                   opacity: [0.3, 1, 0.3]
+                                 }}
+                                 transition={{ duration: 1, repeat: Infinity, delay: i * 0.1 }}
+                                 className="w-1 bg-purple-500 rounded-full"
                                />
                              ))}
                           </div>
-                          <span className="text-xs font-black uppercase tracking-[0.4em]">
-                             Simulating War Room
+                          <span className="text-[10px] font-black uppercase tracking-[0.6em]">
+                             Processing Dialectic Simulation
                           </span>
                         </div>
                       ) : (
                         <div className="flex items-center space-x-4 text-white">
-                          <span className="text-lg font-black uppercase tracking-[0.4em] group-hover:text-black transition-colors">
+                          <span className="text-base font-black uppercase tracking-[0.5em] group-hover:text-purple-400 transition-colors">
                             PRESSURE TEST DECISION →
                           </span>
                         </div>

@@ -30,7 +30,7 @@ export default function SettingsModal({
     setTimeout(() => {
       onLanguageChange(lang);
       setIsConfiguring(false);
-    }, 1500);
+    }, 800); // Faster, more professional transition
   };
 
   const navItems = [
@@ -250,25 +250,15 @@ export default function SettingsModal({
                    initial={{ opacity: 0 }}
                    animate={{ opacity: 1 }}
                    exit={{ opacity: 0 }}
-                   className="absolute inset-0 z-50 bg-black/90 backdrop-blur-2xl flex flex-col items-center justify-center"
+                   className="absolute inset-0 z-50 bg-black/95 backdrop-blur-3xl flex flex-col items-center justify-center"
                  >
-                    <motion.div
-                      animate={{ 
-                        rotate: 360,
-                        scale: [1, 1.1, 1]
-                      }}
-                      transition={{ 
-                        rotate: { duration: 2, repeat: Infinity, ease: "linear" },
-                        scale: { duration: 1, repeat: Infinity }
-                      }}
-                      className="w-12 h-12 border-2 border-purple-500/30 border-t-purple-500 rounded-full mb-6"
-                    />
+                    <div className="w-8 h-8 border border-white/10 border-t-purple-500 rounded-full animate-spin mb-6" />
                     <motion.p
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="text-xs font-black uppercase tracking-[0.3em] text-white"
+                      className="text-[9px] font-black uppercase tracking-[0.5em] text-neutral-500"
                     >
-                      Reconfiguring Interface...
+                      Applying System Configuration
                     </motion.p>
                  </motion.div>
                )}
