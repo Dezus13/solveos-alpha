@@ -138,9 +138,6 @@ export default function AgentEngine({ problem, initialSolution }: AgentEnginePro
       {/* Background glow enhancement */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-purple-500/5 blur-[150px] pointer-events-none rounded-full" />
 
-      {/* Header: War Room Metrics */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-white/10 pb-8 relative z-20">
-        <div className="space-y-1 mb-6 md:mb-0">
       {/* Header with Terminal Metrics */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 space-y-6 md:space-y-0 px-2">
         <div className="space-y-1">
@@ -296,16 +293,6 @@ export default function AgentEngine({ problem, initialSolution }: AgentEnginePro
                />
             </div>
             <Activity className="w-3 h-3 text-white animate-pulse" />
-          </div>
-        </div>
-      )}
-            <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
-               <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: `${(step + 1) * 25}%` }}
-                  className="h-full bg-gradient-to-r from-emerald-500 via-purple-500 to-blue-500"
-               />
-            </div>
           </div>
         </div>
       )}

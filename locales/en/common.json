@@ -49,5 +49,6 @@
   "risk_factor": "Risk Factor",
   "processing": "Processing...",
   "recommended_decision": "Recommended Decision",
-  "share_snapshot": "Share Decision Snapshot"
+  "share_snapshot": "Share Decision Snapshot",
+  "chars": "chars"
 }

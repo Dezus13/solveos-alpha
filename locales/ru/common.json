@@ -50,5 +50,6 @@
   "risk_factor": "Риск",
   "processing": "Анализ данных...",
   "recommended_decision": "Рекомендуемый сценарий",
-  "share_snapshot": "Экспорт стратегии"
+  "share_snapshot": "Экспорт стратегии",
+  "chars": "симв."
 }

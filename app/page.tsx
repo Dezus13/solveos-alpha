@@ -99,16 +99,17 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-black text-white selection:bg-neutral-800 flex flex-col items-center py-12 sm:py-20 px-6 font-sans bg-terminal-notes overflow-x-hidden">
+  return (
+    <main className="min-h-screen bg-black text-white selection:bg-neutral-800 flex flex-col items-center py-8 sm:py-12 px-6 font-sans bg-terminal-notes overflow-x-hidden">
       <div className="w-full max-w-4xl flex flex-col items-center">
 
         {/* Header */}
-        <div className="text-center mb-16 mt-8 relative z-10 w-full">
+        <div className="text-center mb-10 mt-4 relative z-10 w-full">
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             onClick={() => setDebugMode(!debugMode)}
-            className="inline-flex items-center space-x-2 mb-8 bg-white/[0.03] border border-white/10 px-3 py-1 rounded-full cursor-pointer hover:bg-white/10 transition-colors"
+            className="inline-flex items-center space-x-2 mb-6 bg-white/[0.03] border border-white/10 px-3 py-1 rounded-full cursor-pointer hover:bg-white/10 transition-colors"
           >
             <span className="text-[10px] text-neutral-500 font-bold tracking-widest uppercase">System v0.1</span>
             {debugMode && <span className="text-[10px] bg-red-500/20 text-red-400 px-1.5 rounded ml-1 font-bold tracking-tighter uppercase">Debug</span>}
@@ -117,17 +118,17 @@ export default function Home() {
           <motion.h1
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="text-6xl sm:text-7xl lg:text-9xl font-black mb-6 tracking-tighter text-white"
+            className="text-5xl sm:text-6xl lg:text-8xl font-black mb-4 tracking-tighter text-white"
           >
             SolveOS
           </motion.h1>
           
-          <div className="max-w-2xl mx-auto space-y-4">
+          <div className="max-w-2xl mx-auto space-y-3">
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.1 }}
-              className="text-xl sm:text-2xl lg:text-4xl text-neutral-400 font-light tracking-tight px-4 leading-tight"
+              className="text-xl sm:text-2xl lg:text-3xl text-neutral-400 font-light tracking-tight px-4 leading-tight"
             >
               {t.tagline_questions} <span className="text-white font-medium">{t.tagline_decisions}</span>
             </motion.p>
@@ -136,7 +137,7 @@ export default function Home() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
-              className="text-xs sm:text-sm text-neutral-500 font-medium tracking-[0.2em] uppercase px-4"
+              className="text-[10px] sm:text-xs text-neutral-500 font-bold tracking-[0.3em] uppercase px-4"
             >
               {t.simulate_outcomes}
             </motion.p>
@@ -150,16 +151,17 @@ export default function Home() {
           transition={{ delay: 0.2 }}
           className="w-full relative z-10"
         >
-          <div className="glass-note rounded-[40px] p-6 sm:p-10 shadow-[0_30px_100px_rgba(0,0,0,0.4)] border-white/5 overflow-hidden">
-            <div className="mb-8 flex items-center space-x-2 opacity-40">
-              <div className="w-1.5 h-1.5 rounded-full bg-white" />
-              <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-white">
-                {t.decision_simulator}
-              </span>
+          <div className="glass-note rounded-[40px] p-6 sm:p-10 shadow-[0_30px_100px_rgba(0,0,0,0.4)] border-white/10 overflow-hidden">
+            <div className="mb-8 flex items-center justify-between">
+              <div className="flex items-center space-x-2 opacity-60">
+                <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white">
+                  {t.decision_simulator}
+                </span>
+              </div>
+              <LanguageSelector currentLanguage={language} onLanguageChange={setLanguage} />
             </div>
             
-            <LanguageSelector currentLanguage={language} onLanguageChange={setLanguage} />
-
             <textarea
               value={problem}
               onChange={(e) => {
@@ -167,18 +169,18 @@ export default function Home() {
                 if (error) setError(null);
               }}
               placeholder={t.placeholder}
-              className="w-full h-32 sm:h-56 bg-transparent text-2xl sm:text-3xl lg:text-5xl text-white placeholder-neutral-800 focus:outline-none resize-none font-medium leading-tight px-0 border-none"
+              className="w-full h-32 sm:h-48 bg-transparent text-2xl sm:text-3xl lg:text-5xl text-white placeholder-neutral-700 focus:outline-none resize-none font-medium leading-tight px-0 border-none"
             />
 
-            <div className="mt-12 flex flex-col space-y-4">
-              <span className="text-[10px] font-bold text-neutral-600 uppercase tracking-widest">
+            <div className="mt-10 flex flex-col space-y-4">
+              <span className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">
                 {t.quick_scenarios}
               </span>
               <div className="flex flex-wrap gap-2">
                 {[
-                  { text: t.scenario_quit, icon: "🚀" },
-                  { text: t.scenario_move, icon: "🌍" },
-                  { text: t.scenario_invest, icon: "💰" }
+                  { text: t.scenario_quit, key: 'scenario_quit' },
+                  { text: t.scenario_move, key: 'scenario_move' },
+                  { text: t.scenario_invest, key: 'scenario_invest' }
                 ].map((sample, i) => (
                   <button
                     key={i}
@@ -186,7 +188,7 @@ export default function Home() {
                       setProblem(sample.text);
                       handleSolve(sample.text, true);
                     }}
-                    className="flex items-center space-x-3 text-[13px] bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 text-neutral-400 hover:text-white px-5 py-3 rounded-full transition-all duration-300 font-medium"
+                    className="flex items-center space-x-3 text-[13px] bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 text-neutral-300 hover:text-white px-5 py-2.5 rounded-full transition-all duration-300 font-medium"
                   >
                     <span>{sample.text}</span>
                   </button>
@@ -194,15 +196,15 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="mt-10 flex flex-col sm:flex-row justify-between items-center sm:items-end space-y-8 sm:space-y-0 pt-10 border-t border-white/[0.03]">
-              <div className="text-neutral-600 text-xs font-mono tracking-tighter">
-                {problem.length} / 5000 chars
+            <div className="mt-10 flex flex-col sm:flex-row justify-between items-center sm:items-end space-y-8 sm:space-y-0 pt-8 border-t border-white/[0.05]">
+              <div className="text-neutral-600 text-[10px] font-mono tracking-widest uppercase">
+                {problem.length} / 5000 {t.chars || 'chars'}
               </div>
 
               <button
-                onClick={handleSolve}
+                onClick={() => handleSolve()}
                 disabled={loading || problem.trim().length === 0}
-                className="w-full sm:w-auto px-12 py-5 bg-white text-black disabled:bg-neutral-800 disabled:text-neutral-500 disabled:cursor-not-allowed rounded-full font-black text-lg transition-all duration-300 flex items-center justify-center space-x-3 hover:scale-[1.02] active:scale-[0.98] disabled:hover:scale-100"
+                className="w-full sm:w-auto px-12 py-5 bg-white text-black disabled:bg-neutral-800 disabled:text-neutral-500 disabled:cursor-not-allowed rounded-full font-black text-lg transition-all duration-300 flex items-center justify-center space-x-3 hover:bg-neutral-200 active:scale-[0.98] shadow-[0_10px_30px_rgba(255,255,255,0.1)]"
               >
                 {loading ? (
                   <div className="flex items-center space-x-3">
@@ -213,14 +215,14 @@ export default function Home() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="text-sm font-bold uppercase tracking-widest"
+                        className="text-xs font-black uppercase tracking-widest"
                       >
-                        {LOADING_MESSAGES[loadingStep]}
+                        {locales[language === 'auto' ? 'English' : language]?.processing || 'Processing...'}
                       </motion.span>
                     </AnimatePresence>
                   </div>
                 ) : (
-                  <span>{t.launch_simulation}</span>
+                  <span className="uppercase tracking-widest text-sm">{t.launch_simulation}</span>
                 )}
               </button>
             </div>

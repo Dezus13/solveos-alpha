@@ -134,7 +134,7 @@ export async function solveDecision(problem: string, overrideLanguage?: string):
     }, {
       // If we have an override, we could technically skip the 'detect' node
       // but for simplicity and robustness we'll just let it run or force the state
-    });
+    }) as any;
 
     // Force the override language if it was explicitly selected by user
     if (overrideLanguage && overrideLanguage !== 'auto' && result.finalBlueprint) {
