@@ -154,6 +154,7 @@ export async function solveDecision(problem: string, overrideLanguage?: string):
       console.warn('OPENAI QUOTA EXCEEDED: Engaging Demo Simulation Mode.');
     }
     
-    return getMockBlueprint(problem);
+    const finalLanguage = (overrideLanguage && overrideLanguage !== 'auto') ? overrideLanguage : 'English';
+    return getMockBlueprint(problem, finalLanguage);
   }
 }
