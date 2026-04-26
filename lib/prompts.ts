@@ -94,13 +94,32 @@ Operator: ${operator}
 Your goal is to provide a final, structured Decision Blueprint.
 YOU MUST RETURN A VALID JSON OBJECT exactly matching this structure:
 {
-  "verdict": "Clear recommendation (Go/No-Go or specific path)",
-  "confidenceScore": 0-100,
-  "riskMeter": "Low" | "Medium" | "High" | "Critical",
-  "strategistAnalysis": "Summary of the upside",
-  "skepticAnalysis": "Summary of the risks",
-  "operatorAnalysis": "Summary of the execution",
-  "actionItems": ["Immediate step 1", "Immediate step 2", "Next week step 3"]
+  "score": 0-100,
+  "recommendation": "The definitive stance on which path is best and why.",
+  "diagnosis": {
+    "coreProblem": "Briefly state the core problem",
+    "blindSpots": "What is the user failing to see?",
+    "keyRisks": "What are the immediate risks identified by the Skeptic?"
+  },
+  "paths": {
+    "safe": { "description": "The conservative path", "pros": ["pro1", "pro2"], "cons": ["con1", "con2"] },
+    "balanced": { "description": "The Operator's pragmatic path", "pros": ["pro1", "pro2"], "cons": ["con1", "con2"] },
+    "bold": { "description": "The Strategist's visionary path", "pros": ["pro1", "pro2"], "cons": ["con1", "con2"] }
+  },
+  "contrarianInsight": {
+    "perspective": "A sharp take on why the obvious choice might be wrong",
+    "hiddenOpportunity": "One opportunity being ignored",
+    "uncomfortableTruth": "A hard reality the user must face"
+  },
+  "futureSimulation": {
+    "threeMonths": "Scenario in 3 months",
+    "twelveMonths": "Scenario in 12 months"
+  },
+  "actionPlan": {
+    "today": "Immediate action",
+    "thisWeek": "Weekly milestone",
+    "thirtyDays": "30-day objective"
+  }
 }
 Only output JSON.`;
 }

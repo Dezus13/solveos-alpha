@@ -7,6 +7,7 @@ import {
   buildSynthesizerPrompt 
 } from './prompts';
 import { DecisionBlueprint } from './types';
+import { getMockBlueprint } from './mocks';
 
 // Define the state shape
 interface AgentState {
@@ -90,17 +91,28 @@ const workflow = new StateGraph<AgentState>({
 export const engine = workflow.compile();
 
 export async function solveDecision(problem: string): Promise<DecisionBlueprint> {
-  const result = await engine.invoke({ 
-    problem,
-    strategistAnalysis: '',
-    skepticAnalysis: '',
-    operatorAnalysis: '',
-    finalBlueprint: null
-  });
-  
-  if (!result.finalBlueprint) {
-    throw new Error('Engine failed to generate a final blueprint.');
+  try {
+    const result = await engine.invoke({ 
+      problem,
+      strategistAnalysis: '',
+      skepticAnalysis: '',
+      operatorAnalysis: '',
+      finalBlueprint: null
+    });
+    
+    if (!result.finalBlueprint) {
+      throw new Error('Engine failed to generate a final blueprint.');
+    }
+    
+    return result.finalBlueprint;
+  } catch (error: any) {
+    console.error('Real Engine failed, falling back to Demo Mode:', error.message);
+    
+    // Check if it's a quota/API error to provide a specific log
+    if (error.message?.includes('429') || error.message?.includes('quota')) {
+      console.warn('OPENAI QUOTA EXCEEDED: Engaging Demo Simulation Mode.');
+    }
+    
+    return getMockBlueprint(problem);
   }
-  
-  return result.finalBlueprint;
 }

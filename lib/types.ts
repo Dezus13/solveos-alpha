@@ -9,13 +9,33 @@ export interface AgentAnalysis {
 }
 
 export interface DecisionBlueprint {
-  verdict: string;
-  confidenceScore: number;
-  riskMeter: 'Low' | 'Medium' | 'High' | 'Critical';
-  strategistAnalysis: string;
-  skepticAnalysis: string;
-  operatorAnalysis: string;
-  actionItems: string[];
+  score: number;
+  recommendation: string;
+  diagnosis: {
+    coreProblem: string;
+    blindSpots: string;
+    keyRisks: string;
+  };
+  paths: {
+    safe: { description: string; pros: string[]; cons: string[] };
+    balanced: { description: string; pros: string[]; cons: string[] };
+    bold: { description: string; pros: string[]; cons: string[] };
+  };
+  contrarianInsight: {
+    perspective: string;
+    hiddenOpportunity: string;
+    uncomfortableTruth: string;
+  };
+  futureSimulation: {
+    threeMonths: string;
+    twelveMonths: string;
+  };
+  actionPlan: {
+    today: string;
+    thisWeek: string;
+    thirtyDays: string;
+  };
+  isDemo?: boolean;
 }
 
 export interface SolveResponse {

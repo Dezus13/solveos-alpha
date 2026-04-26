@@ -37,7 +37,14 @@ export default function DecisionBlueprint({ data }: DecisionBlueprintProps) {
           <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-neutral-400 tracking-tight">
             Decision Blueprint
           </h2>
-          <p className="text-neutral-500 mt-1">Synthesized strategic breakdown</p>
+          <div className="flex items-center mt-1">
+            <p className="text-neutral-500">Synthesized strategic breakdown</p>
+            {data?.isDemo && (
+              <span className="ml-3 px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded-full text-[10px] uppercase tracking-tighter text-amber-500 font-bold animate-pulse">
+                Demo Simulation Mode
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex flex-col items-end">
            <span className="text-xs text-neutral-500 uppercase tracking-widest mb-1 font-medium">Confidence Score</span>
