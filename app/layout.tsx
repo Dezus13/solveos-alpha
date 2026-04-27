@@ -3,6 +3,11 @@ import './globals.css';
 export const metadata = {
   title: 'SolveOS',
   description: 'AI for hard life decisions',
+  icons: {
+    icon: '/solveos-icon.svg',
+    shortcut: '/solveos-icon.svg',
+    apple: '/solveos-icon.svg'
+  },
 }
 
 export default function RootLayout({

@@ -190,10 +190,10 @@ export default function SettingsModal({
                               </div>
                               {opt.toggle ? (
                                 <div className="w-10 h-5 bg-purple-500 rounded-full relative p-1 cursor-pointer shadow-[0_0_15px_rgba(168,85,247,0.3)]">
-                                   <div className="absolute right-1 top-1 w-3 h-3 bg-white rounded-full" />
+                                   <div className="absolute right-1 top-1 w-3 h-3 bg-purple-100 rounded-full" />
                                 </div>
                               ) : (
-                                <ChevronRight className="w-4 h-4 text-neutral-800 group-hover:text-neutral-500 transition-all" />
+                                <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-slate-300 transition-all" />
                               )}
                            </div>
                          ))}

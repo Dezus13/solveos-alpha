@@ -56,7 +56,7 @@ export default function ShareCard({ isOpen, onClose, problem, recommendation, co
               <div className="p-8">
                 <div 
                   id="share-card-content"
-                  className="relative aspect-[1.91/1] w-full bg-[#050505] rounded-2xl border border-white/10 p-10 overflow-hidden flex flex-col justify-between"
+                  className="relative aspect-[1.91/1] w-full bg-[#070B16] rounded-2xl border border-white/10 p-10 overflow-hidden flex flex-col justify-between"
                 >
                   {/* Branding & Glow */}
                   <div className="absolute top-0 right-0 w-64 h-64 bg-purple-600/10 blur-[80px] -mr-20 -mt-20" />
@@ -64,8 +64,8 @@ export default function ShareCard({ isOpen, onClose, problem, recommendation, co
                   
                   <div className="relative z-10">
                     <div className="flex items-center space-x-2 mb-8">
-                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-white to-neutral-500 flex items-center justify-center">
-                        <span className="text-black font-black text-xs">S</span>
+                      <div className="w-8 h-8 rounded-full border border-purple-300/60 bg-purple-500/10 flex items-center justify-center shadow-[0_0_18px_rgba(168,85,247,0.35)]">
+                        <span className="text-purple-100 font-black text-xs">S</span>
                       </div>
                       <span className="text-xl font-black text-white tracking-tighter">SolveOS</span>
                     </div>
@@ -113,7 +113,7 @@ export default function ShareCard({ isOpen, onClose, problem, recommendation, co
               <div className="p-6 bg-white/[0.02] border-t border-white/5 flex flex-col sm:flex-row gap-3">
                 <button 
                   onClick={handleCopyLink}
-                  className="flex-grow flex items-center justify-center space-x-2 bg-white text-black font-bold py-4 rounded-2xl hover:bg-neutral-200 transition-all active:scale-[0.98]"
+                  className="flex-grow flex items-center justify-center space-x-2 bg-purple-500/15 text-purple-100 border border-purple-400/30 font-bold py-4 rounded-2xl hover:bg-purple-500/25 transition-all active:scale-[0.98]"
                 >
                   {copied ? (
                     <>

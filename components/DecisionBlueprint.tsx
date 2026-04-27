@@ -1,58 +1,21 @@
-import React from 'react';
-import { motion } from 'framer-motion';
 import { Shield, Zap, CheckCircle, TrendingUp, AlertOctagon, Flame } from 'lucide-react';
-
-// Import locales
-import en from '../locales/en/common.json';
-import ru from '../locales/ru/common.json';
-import ar from '../locales/ar/common.json';
-import de from '../locales/de/common.json';
-import es from '../locales/es/common.json';
-import zh from '../locales/zh/common.json';
-
-const locales: Record<string, Record<string, string>> = { 
-  English: en, 
-  Russian: ru, 
-  Arabic: ar, 
-  German: de, 
-  Spanish: es, 
-  Chinese: zh 
-};
 
 import type { DecisionBlueprint } from '../lib/types';
 
 interface DecisionBlueprintProps {
   data: DecisionBlueprint;
   debugMode?: boolean;
+  t: Record<string, string>;
 }
 
-export default function DecisionBlueprint({ data }: DecisionBlueprintProps) {
-  // Select the appropriate locale based on the detected language, default to English
-  const t = locales[data?.language as string] || locales.English;
-  
-  const container = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: { staggerChildren: 0.1 }
-    }
-  };
-
-  const item = {
-    hidden: { opacity: 0, y: 10 },
-    show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 300, damping: 30 } }
-  };
-
+export default function DecisionBlueprint({ data, t }: DecisionBlueprintProps) {
   return (
-    <motion.div 
-      variants={container}
-      initial="hidden"
-      animate="show"
+    <div
       dir={data?.language === 'Arabic' ? 'rtl' : 'ltr'}
-      className={`w-full max-w-5xl mt-16 space-y-6 md:space-y-10 relative font-sans ${data?.language === 'Arabic' ? 'text-right' : 'text-left'}`}
+      className={`w-full max-w-5xl mt-16 space-y-6 md:space-y-10 relative font-sans blueprint-enter ${data?.language === 'Arabic' ? 'text-right' : 'text-left'}`}
     >
       {/* Header Summary */}
-      <motion.div variants={item} className="flex justify-between items-center border-b border-white/[0.03] pb-8 mb-4">
+      <div className="flex justify-between items-center border-b border-white/[0.03] pb-8 mb-4">
         <div className="space-y-1">
           <h2 className="text-4xl font-black tracking-tighter text-white">
             {t.decision_blueprint}
@@ -72,11 +35,11 @@ export default function DecisionBlueprint({ data }: DecisionBlueprintProps) {
              <span className="text-4xl font-black text-white tracking-tighter">{data?.score || 0}<span className="text-lg text-neutral-700 ml-0.5">/100</span></span>
            </div>
         </div>
-      </motion.div>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
         {/* Diagnosis: Left Column (High Density) */}
-        <motion.div variants={item} className="md:col-span-4 space-y-8 glass-note p-8 rounded-[32px]">
+        <div className="md:col-span-4 space-y-8 glass-note p-8 rounded-[32px]">
           <h3 className="text-xs font-black text-white uppercase tracking-[0.3em] mb-8 border-l-2 border-white pl-3">{t.diagnosis}</h3>
           
           <div className="space-y-8">
@@ -93,11 +56,11 @@ export default function DecisionBlueprint({ data }: DecisionBlueprintProps) {
                <p className="text-neutral-300 text-sm leading-relaxed font-medium">{data?.diagnosis?.keyRisks || '...'}</p>
             </div>
           </div>
-        </motion.div>
+        </div>
 
         {/* Paths: Right Column (Apple Notes clarity) */}
         <div className="md:col-span-8 space-y-6">
-          <motion.div variants={item} className="glass-note p-8 rounded-[32px] border-emerald-500/10 hover:border-emerald-500/20 transition-colors">
+          <div className="glass-note p-8 rounded-[32px] border-emerald-500/10 hover:border-emerald-500/20 transition-colors">
             <div className="flex items-center justify-between mb-4">
               <h4 className="text-sm font-black text-emerald-400 uppercase tracking-widest">{t.safe_path}</h4>
               <Shield className="w-4 h-4 text-emerald-400/40" />
@@ -106,9 +69,9 @@ export default function DecisionBlueprint({ data }: DecisionBlueprintProps) {
             <div className="flex flex-wrap gap-4">
                {data?.paths?.safe?.pros?.map((p: string, i: number) => <span key={i} className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider bg-white/[0.03] px-3 py-1 rounded-full">+ {p}</span>)}
             </div>
-          </motion.div>
+          </div>
 
-          <motion.div variants={item} className="glass-note p-8 rounded-[32px] border-purple-500/20 bg-gradient-to-br from-white/[0.02] to-transparent shadow-2xl relative overflow-hidden">
+          <div className="glass-note p-8 rounded-[32px] border-purple-500/20 bg-gradient-to-br from-white/[0.02] to-transparent shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 right-0 p-8 opacity-10"><Zap className="w-12 h-12 text-purple-400" /></div>
             <div className="flex items-center justify-between mb-4">
               <h4 className="text-sm font-black text-purple-400 uppercase tracking-widest">{t.balanced_path}</h4>
@@ -128,9 +91,9 @@ export default function DecisionBlueprint({ data }: DecisionBlueprintProps) {
                  </ul>
                </div>
             </div>
-          </motion.div>
+          </div>
 
-          <motion.div variants={item} className="glass-note p-8 rounded-[32px] border-rose-500/10 hover:border-rose-500/20 transition-colors">
+          <div className="glass-note p-8 rounded-[32px] border-rose-500/10 hover:border-rose-500/20 transition-colors">
             <div className="flex items-center justify-between mb-4">
               <h4 className="text-sm font-black text-rose-400 uppercase tracking-widest">{t.bold_path}</h4>
               <AlertOctagon className="w-4 h-4 text-rose-400/40" />
@@ -139,21 +102,21 @@ export default function DecisionBlueprint({ data }: DecisionBlueprintProps) {
             <div className="flex flex-wrap gap-4">
                {data?.paths?.bold?.pros?.map((p: string, i: number) => <span key={i} className="text-[10px] text-neutral-600 font-bold uppercase tracking-wider bg-white/[0.03] px-3 py-1 rounded-full">+ {p}</span>)}
             </div>
-          </motion.div>
+          </div>
         </div>
       </div>
 
       {/* Card 4: Recommendation (Highlighted) */}
-      <motion.div variants={item} className="bg-gradient-to-br from-blue-900/20 to-purple-900/20 backdrop-blur-xl border border-blue-500/30 rounded-3xl p-5 md:p-8 relative overflow-hidden shadow-[0_0_60px_rgba(59,130,246,0.15)]">
+      <div className="bg-gradient-to-br from-blue-900/20 to-purple-900/20 backdrop-blur-xl border border-blue-500/30 rounded-3xl p-5 md:p-8 relative overflow-hidden shadow-[0_0_60px_rgba(59,130,246,0.15)]">
         <div className="absolute top-0 w-full h-1 left-0 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 opacity-80" />
         <h3 className="text-sm font-semibold uppercase tracking-widest text-blue-400 mb-3">{t.recommendation}</h3>
         <p className="text-xl text-white font-light leading-relaxed">
           {data?.recommendation || '...'}
         </p>
-      </motion.div>
+      </div>
 
       {/* Why this recommendation? (Immersion Section) */}
-      <motion.div variants={item} className="bg-neutral-900/40 backdrop-blur-md border border-white/10 rounded-3xl p-6 md:p-8 hover:bg-neutral-900/60 transition-colors">
+      <div className="bg-neutral-900/40 backdrop-blur-md border border-white/10 rounded-3xl p-6 md:p-8 hover:bg-neutral-900/60 transition-colors">
          <h3 className="text-lg font-bold text-white mb-4 flex items-center">
            <Zap className="w-5 h-5 mr-3 text-yellow-400" />
            {t.why_this_recommendation || 'Why this recommendation?'}
@@ -164,10 +127,10 @@ export default function DecisionBlueprint({ data }: DecisionBlueprintProps) {
              : t.reasoning_summary_placeholder || 'Our agents have cross-referenced your core problem with multiple strategic frameworks to identify the path with the highest probability of success and lowest resource drain.'
            }
          </p>
-      </motion.div>
+      </div>
 
       {/* Card: Contrarian Insight (New Signature Feature) */}
-      <motion.div variants={item} className="bg-gradient-to-br from-orange-950/40 via-red-950/20 to-neutral-900/40 backdrop-blur-xl border border-orange-500/20 rounded-3xl p-5 md:p-8 relative overflow-hidden shadow-[0_0_60px_rgba(234,88,12,0.1)] group">
+      <div className="bg-gradient-to-br from-orange-950/40 via-red-950/20 to-neutral-900/40 backdrop-blur-xl border border-orange-500/20 rounded-3xl p-5 md:p-8 relative overflow-hidden shadow-[0_0_60px_rgba(234,88,12,0.1)] group">
         <div className="absolute top-0 w-full h-[2px] left-0 bg-gradient-to-r from-transparent via-orange-500 to-transparent opacity-50" />
         <h3 className="text-xl font-medium text-white mb-6 flex items-center"><Flame className="w-5 h-5 mr-3 text-orange-500 group-hover:animate-pulse" /> {t.contrarian_insight}</h3>
         
@@ -185,11 +148,11 @@ export default function DecisionBlueprint({ data }: DecisionBlueprintProps) {
              <p className="text-orange-100/90 text-sm leading-relaxed">{data?.contrarianInsight?.uncomfortableTruth || 'A hard reality you might be avoiding.'}</p>
           </div>
         </div>
-      </motion.div>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
         {/* Card 3: Future Simulation */}
-        <motion.div variants={item} className="bg-neutral-900/40 backdrop-blur-md border border-white/10 rounded-3xl p-5 md:p-8 hover:bg-neutral-900/60 transition-colors">
+        <div className="bg-neutral-900/40 backdrop-blur-md border border-white/10 rounded-3xl p-5 md:p-8 hover:bg-neutral-900/60 transition-colors">
            <h3 className="text-xl font-medium text-white mb-6 flex items-center"><TrendingUp className="w-5 h-5 mr-3 text-pink-400" /> {t.future_simulation}</h3>
            <div className="space-y-6">
              <div className="flex space-x-4">
@@ -207,10 +170,10 @@ export default function DecisionBlueprint({ data }: DecisionBlueprintProps) {
                </div>
              </div>
            </div>
-        </motion.div>
+        </div>
 
         {/* Card 5: Action Plan */}
-        <motion.div variants={item} className="bg-neutral-900/40 backdrop-blur-md border border-white/10 rounded-3xl p-5 md:p-8 hover:bg-neutral-900/60 transition-colors">
+        <div className="bg-neutral-900/40 backdrop-blur-md border border-white/10 rounded-3xl p-5 md:p-8 hover:bg-neutral-900/60 transition-colors">
            <h3 className="text-xl font-medium text-white mb-6 flex items-center"><CheckCircle className="w-5 h-5 mr-3 text-amber-400" /> {t.action_plan}</h3>
            <div className="space-y-4 relative before:absolute before:inset-0 before:ml-2.5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-white/10 before:to-transparent">
               <div className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
@@ -249,12 +212,12 @@ export default function DecisionBlueprint({ data }: DecisionBlueprintProps) {
                  </div>
               </div>
            </div>
-        </motion.div>
+        </div>
       </div>
 
       {/* Raw Output (Strictly for Developers in Local Dev) */}
       {process.env.NODE_ENV === 'development' && (
-        <motion.div variants={item} className="pt-8 opacity-20 hover:opacity-100 transition-opacity">
+        <div className="pt-8 opacity-20 hover:opacity-100 transition-opacity">
           <details className="group border border-white/5 bg-neutral-950 rounded-2xl p-4 cursor-pointer">
             <summary className="text-neutral-600 text-xs font-mono focus:outline-none user-select-none">
                [DEV_ONLY] RAW_JSON_PAYLOAD
@@ -265,9 +228,9 @@ export default function DecisionBlueprint({ data }: DecisionBlueprintProps) {
                </div>
             </div>
           </details>
-        </motion.div>
+        </div>
       )}
 
-    </motion.div>
+    </div>
   );
 }

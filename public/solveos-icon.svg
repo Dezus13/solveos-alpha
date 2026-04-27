@@ -1,0 +1,21 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="112" fill="#070B16"/>
+  <circle cx="256" cy="256" r="176" fill="url(#halo)" opacity="0.95"/>
+  <circle cx="256" cy="256" r="132" stroke="#7C3AED" stroke-width="3" opacity="0.42"/>
+  <circle cx="256" cy="256" r="96" fill="#A855F7" fill-opacity="0.045" stroke="#D8B4FE" stroke-width="18"/>
+  <circle cx="256" cy="256" r="116" stroke="#F8FAFF" stroke-opacity="0.16" stroke-width="4" stroke-dasharray="92 48"/>
+  <circle cx="256" cy="256" r="22" fill="#D8B4FE"/>
+  <circle cx="256" cy="256" r="22" fill="url(#dotGlow)"/>
+  <defs>
+    <radialGradient id="halo" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(256 256) rotate(90) scale(176)">
+      <stop stop-color="#A855F7" stop-opacity="0.34"/>
+      <stop offset="0.45" stop-color="#A855F7" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#A855F7" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="dotGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(256 256) rotate(90) scale(64)">
+      <stop stop-color="#F8FAFF" stop-opacity="0.86"/>
+      <stop offset="0.42" stop-color="#D8B4FE" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#D8B4FE" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+</svg>

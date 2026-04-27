@@ -1,7 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { memo, useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import dynamic from 'next/dynamic';
 import { Brain, AlertTriangle, Settings, ShieldCheck, Activity, Share2 } from 'lucide-react';
-import ShareCard from './ShareCard';
+
+const ShareCard = dynamic(() => import('./ShareCard'), {
+  loading: () => null
+});
 
 interface AgentEngineProps {
   problem: string;
@@ -101,7 +105,15 @@ interface DebateTurn {
   isRevision?: boolean;
 }
 
-export default function AgentEngine({ problem, initialSolution }: AgentEngineProps) {
+const riskBars = [1, 2, 3, 4, 5, 6, 7, 8];
+const colorMap: Record<string, { bg: string; text: string; border: string }> = {
+  emerald: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20' },
+  rose: { bg: 'bg-rose-500/10', text: 'text-rose-400', border: 'border-rose-500/20' },
+  purple: { bg: 'bg-purple-500/10', text: 'text-purple-400', border: 'border-purple-500/20' },
+  blue: { bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/20' },
+};
+
+function AgentEngine({ problem, initialSolution }: AgentEngineProps) {
   const [step, setStep] = useState(0);
   const [showVerdict, setShowVerdict] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -123,7 +135,7 @@ export default function AgentEngine({ problem, initialSolution }: AgentEnginePro
     return () => timers.forEach(clearTimeout);
   }, [problem]);
 
-  const debateTurns: DebateTurn[] = [
+  const debateTurns: DebateTurn[] = useMemo(() => [
     {
       agent: lt.strategist,
       role: lt.role_initial,
@@ -153,14 +165,7 @@ export default function AgentEngine({ problem, initialSolution }: AgentEnginePro
       icon: <Settings className="w-5 h-5 text-blue-400" />,
       color: 'blue'
     }
-  ];
-
-  const colorMap: Record<string, { bg: string; text: string; border: string }> = {
-    emerald: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20' },
-    rose: { bg: 'bg-rose-500/10', text: 'text-rose-400', border: 'border-rose-500/20' },
-    purple: { bg: 'bg-purple-500/10', text: 'text-purple-400', border: 'border-purple-500/20' },
-    blue: { bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/20' },
-  };
+  ], [initialSolution.recommendation, lt]);
 
   return (
     <div className="w-full max-w-5xl mt-12 flex flex-col space-y-10 relative pb-32">
@@ -171,7 +176,7 @@ export default function AgentEngine({ problem, initialSolution }: AgentEnginePro
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 space-y-6 md:space-y-0 px-2">
         <div className="space-y-1">
           <div className="flex items-center space-x-3">
-            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.5)]" />
+            <div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]" />
             <h2 className="text-3xl font-black tracking-tighter text-white uppercase italic">{lt.war_room_title || 'War Room'}</h2>
           </div>
           <p className="text-neutral-600 font-bold uppercase tracking-[0.3em] text-[10px]">{lt.dialectic_subtitle || 'Simulated Multi-Agent Dialectic'}</p>
@@ -190,15 +195,14 @@ export default function AgentEngine({ problem, initialSolution }: AgentEnginePro
           <div className="flex flex-col items-end">
             <span className="text-[9px] text-neutral-600 uppercase tracking-widest mb-2 font-black">{lt.risk_factor}</span>
             <div className="flex items-center space-x-1">
-              {[1, 2, 3, 4, 5, 6, 7, 8].map((idx) => (
-                <motion.div 
+              {riskBars.map((idx) => (
+                <div
                   key={idx}
-                  initial={{ opacity: 0.1 }}
-                  animate={{ 
+                  style={{
                     opacity: idx <= (step === 1 ? 7 : step === 2 ? 5 : 3) ? 1 : 0.1,
                     backgroundColor: idx <= 3 ? '#10b981' : idx <= 5 ? '#f59e0b' : '#ef4444'
                   }}
-                  className="w-1.5 h-6 rounded-full"
+                  className="w-1.5 h-6 rounded-full transition-opacity duration-300"
                 />
               ))}
             </div>
@@ -247,7 +251,7 @@ export default function AgentEngine({ problem, initialSolution }: AgentEnginePro
                       </div>
                       {idx === step && !showVerdict && (
                         <div className="flex items-center space-x-2">
-                           <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-ping" />
+                           <div className="w-1.5 h-1.5 bg-purple-500 rounded-full shadow-[0_0_10px_rgba(168,85,247,0.7)]" />
                            <span className="text-[9px] text-purple-400 font-black uppercase tracking-widest">{lt.processing}</span>
                         </div>
                       )}
@@ -294,7 +298,7 @@ export default function AgentEngine({ problem, initialSolution }: AgentEnginePro
                   <div className="pt-6 flex flex-col sm:flex-row items-center justify-center md:justify-start gap-4">
                     <button 
                       onClick={() => setIsShareModalOpen(true)}
-                      className="px-10 py-4 bg-white text-black font-black rounded-full hover:bg-neutral-200 transition-all scale-100 hover:scale-[1.02] active:scale-95 shadow-[0_0_30px_rgba(255,255,255,0.1)] flex items-center space-x-3"
+                      className="px-10 py-4 bg-purple-500/15 text-purple-100 border border-purple-400/30 font-black rounded-full hover:bg-purple-500/25 transition-all scale-100 hover:scale-[1.02] active:scale-95 shadow-[0_0_30px_rgba(168,85,247,0.16)] flex items-center space-x-3"
                     >
                       <Share2 className="w-4 h-4" />
                       <span className="text-sm uppercase tracking-widest">{lt.share_snapshot}</span>
@@ -315,24 +319,24 @@ export default function AgentEngine({ problem, initialSolution }: AgentEnginePro
           <div className="glass-note rounded-full px-6 py-3 border-white/10 shadow-2xl flex items-center justify-between">
             <span className="text-[9px] text-neutral-500 font-black uppercase tracking-widest">{lt.phase} {step + 1} / 4</span>
             <div className="flex-grow mx-6 h-[2px] bg-white/5 rounded-full overflow-hidden">
-               <motion.div 
-                 className="h-full bg-white"
-                 initial={{ width: '0%' }}
-                 animate={{ width: `${(step + 1) * 25}%` }}
-               />
+               <div className="h-full bg-white transition-[width] duration-300" style={{ width: `${(step + 1) * 25}%` }} />
             </div>
-            <Activity className="w-3 h-3 text-white animate-pulse" />
+            <Activity className="w-3 h-3 text-white" />
           </div>
         </div>
       )}
       {/* Share Modal */}
-      <ShareCard 
-        isOpen={isShareModalOpen}
-        onClose={() => setIsShareModalOpen(false)}
-        problem={problem}
-        recommendation="Initiate 'Thin-Layer' Pivot with 14-day validation Sprint."
-        confidence={87}
-      />
+      {isShareModalOpen && (
+        <ShareCard
+          isOpen={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          problem={problem}
+          recommendation="Initiate 'Thin-Layer' Pivot with 14-day validation Sprint."
+          confidence={87}
+        />
+      )}
     </div>
   );
 }
+
+export default memo(AgentEngine);
