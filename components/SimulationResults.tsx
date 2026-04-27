@@ -2,7 +2,7 @@
 
 import { memo, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { Crown, Gauge, Sparkles } from 'lucide-react';
+import { Crown, Gauge, Sparkles, Activity } from 'lucide-react';
 import type { DecisionBlueprint } from '@/lib/types';
 import type { IntelligenceSnapshot } from '@/components/IntelligenceRail';
 
@@ -23,22 +23,44 @@ const AgentEngine = dynamic(() => import('@/components/AgentEngine'), {
   loading: () => <ResultSkeleton label="Loading AI war room" />
 });
 
+const WarRoomDashboard = dynamic(() => import('@/components/WarRoomDashboard'), {
+  loading: () => <ResultSkeleton label="Loading strategic dashboard" />
+});
+
+const MemoryGraphPanel = dynamic(() => import('@/components/MemoryGraphPanel'), {
+  loading: () => <ResultSkeleton label="Loading memory graph" />
+});
+
+const EnterpriseDashboard = dynamic(() => import('@/components/EnterpriseDashboard'), {
+  loading: () => <ResultSkeleton label="Loading enterprise intelligence" />
+});
+
 interface SimulationResultsProps {
   result: DecisionBlueprint;
   intelligence: IntelligenceSnapshot;
   submittedProblem: string;
   initialShowBoard: boolean;
   t: Record<string, string>;
+  memoryScore?: number;
+  networkScore?: number;
+  calibratedScore?: number;
+  calibrationOffset?: number;
 }
+
+type TabId = 'blueprint' | 'warroom' | 'debate' | 'action' | 'memory' | 'enterprise';
 
 function SimulationResults({
   result,
   intelligence,
   submittedProblem,
   initialShowBoard,
-  t
+  t,
+  memoryScore,
+  networkScore,
+  calibratedScore,
+  calibrationOffset,
 }: SimulationResultsProps) {
-  const [activeTab, setActiveTab] = useState<'blueprint' | 'debate' | 'action'>('blueprint');
+  const [activeTab, setActiveTab] = useState<TabId>('blueprint');
   const [showBoard, setShowBoard] = useState(initialShowBoard);
 
   const verdictMetrics = useMemo(() => [
@@ -46,6 +68,20 @@ function SimulationResults({
     { label: 'Downside', value: intelligence.downsideRisk, tone: 'text-rose-400' },
     { label: 'Black Swan', value: intelligence.blackSwanExposure, tone: 'text-amber-400' }
   ], [intelligence.blackSwanExposure, intelligence.downsideRisk, intelligence.successProbability]);
+
+  const hasCalibration =
+    typeof calibratedScore === 'number' &&
+    typeof calibrationOffset === 'number' &&
+    calibrationOffset !== 0;
+
+  const tabs: { id: TabId; label: string }[] = [
+    { id: 'blueprint', label: t.tab_blueprint || 'Blueprint' },
+    { id: 'warroom', label: 'War Room' },
+    { id: 'debate', label: t.tab_debate || 'Council' },
+    { id: 'action', label: t.tab_action || 'Action Plan' },
+    { id: 'memory', label: memoryScore && memoryScore > 0 ? `Memory · ${memoryScore}` : 'Memory' },
+    { id: 'enterprise', label: networkScore && networkScore > 0 ? `Enterprise · ${networkScore}` : 'Enterprise' },
+  ];
 
   return (
     <>
@@ -55,6 +91,18 @@ function SimulationResults({
             <div className="mb-3 flex items-center space-x-2">
               <Gauge className="h-4 w-4 text-purple-400" />
               <span className="text-[10px] font-black uppercase text-slate-400">Decision Verdict</span>
+              {hasCalibration && (
+                <span
+                  className={`ml-2 text-[8px] font-black uppercase px-2 py-0.5 rounded-full border ${
+                    calibrationOffset! < 0
+                      ? 'text-amber-400 bg-amber-500/10 border-amber-500/20'
+                      : 'text-blue-400 bg-blue-500/10 border-blue-500/20'
+                  }`}
+                >
+                  <Activity className="inline w-2.5 h-2.5 mr-1" />
+                  Calibrated: {calibratedScore} ({calibrationOffset! > 0 ? '+' : ''}{calibrationOffset})
+                </span>
+              )}
             </div>
             <h2 className="text-2xl font-black text-[#F8FAFF]">{intelligence.recommendedPath}</h2>
             <p className="mt-3 text-sm leading-relaxed text-slate-300">{intelligence.verdict}</p>
@@ -71,19 +119,16 @@ function SimulationResults({
       </div>
 
       <div className="w-full flex flex-col items-center mt-12">
-        <div className="flex space-x-1 bg-white/5 p-1 rounded-2xl mb-8 border border-white/10 backdrop-blur-md">
-          {[
-            { id: 'blueprint', label: t.tab_blueprint || 'Blueprint' },
-            { id: 'debate', label: t.tab_debate || 'War Room' },
-            { id: 'action', label: t.tab_action || 'Action Plan' }
-          ].map((tab) => (
+        <div className="flex space-x-1 bg-white/5 p-1 rounded-2xl mb-8 border border-white/10 backdrop-blur-md overflow-x-auto">
+          {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as typeof activeTab)}
-              className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-150 ${activeTab === tab.id
-                ? 'bg-white/10 text-white shadow-xl border border-white/10'
-                : 'text-neutral-500 hover:text-neutral-300'
-                }`}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-150 whitespace-nowrap ${
+                activeTab === tab.id
+                  ? 'bg-white/10 text-white shadow-xl border border-white/10'
+                  : 'text-neutral-500 hover:text-neutral-300'
+              }`}
             >
               {tab.label}
             </button>
@@ -93,6 +138,12 @@ function SimulationResults({
         {activeTab === 'blueprint' && (
           <div className="w-full flex flex-col items-center">
             <DecisionBlueprintBoard data={result} t={t} />
+          </div>
+        )}
+
+        {activeTab === 'warroom' && (
+          <div className="w-full flex flex-col items-center">
+            <WarRoomDashboard blueprint={result} />
           </div>
         )}
 
@@ -141,6 +192,18 @@ function SimulationResults({
                 ))}
               </div>
             </div>
+          </div>
+        )}
+
+        {activeTab === 'memory' && (
+          <div className="w-full flex flex-col items-center">
+            <MemoryGraphPanel />
+          </div>
+        )}
+
+        {activeTab === 'enterprise' && (
+          <div className="w-full flex flex-col items-center">
+            <EnterpriseDashboard />
           </div>
         )}
       </div>

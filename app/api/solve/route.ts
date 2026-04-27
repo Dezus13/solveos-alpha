@@ -1,35 +1,82 @@
 import { NextResponse } from 'next/server';
 import { solveDecision } from '@/lib/engine';
-import { saveDecision } from '@/lib/memory';
+import { saveDecision, getDecisionHistory } from '@/lib/memory';
+import { getMemoryIntelligenceFromHistory } from '@/lib/memory-graph';
+import { computeNetworkIntelligence, calibrateScore, buildCalibrationContext } from '@/lib/benchmarks';
 import { SolveRequest, SolveResponse } from '@/lib/types';
 
 export async function POST(req: Request) {
   try {
     const body: SolveRequest = await req.json();
-    
-    if (!body.problem || body.problem.trim().length < 10) {
+
+    if (!body.problem || !body.problem.trim()) {
       return NextResponse.json(
-        { error: 'Problem description must be at least 10 characters long.' },
+        { error: 'Decision description is required.' },
         { status: 400 }
       );
     }
 
+    if (body.problem.trim().length < 20) {
+      return NextResponse.json(
+        { error: `Decision details must be at least 20 characters. Current: ${body.problem.trim().length} characters.` },
+        { status: 400 }
+      );
+    }
+
+    const problem = body.problem.trim();
+    const domain = body.context?.domain;
+
+    // Read history once — used for both memory intelligence and calibration
+    const history = await getDecisionHistory();
+
+    // Build memory intelligence + calibration context from history
+    let memoryContext = '';
+    let memoryScore = 0;
+    let networkScore = 0;
+    let calibrationNote = '';
+
+    try {
+      const intel = getMemoryIntelligenceFromHistory(problem, history, body.context);
+      memoryScore = intel.memoryScore;
+      memoryContext = intel.strategicContext;
+
+      const netIntel = computeNetworkIntelligence(history);
+      networkScore = netIntel.networkScore;
+
+      calibrationNote = buildCalibrationContext(history, domain);
+    } catch {
+      // degrade gracefully — proceed without enrichment
+    }
+
+    // Combine memory context + calibration note for agent injection
+    const fullContext = [memoryContext, calibrationNote].filter(Boolean).join('\n\n');
+
     // Run the multi-agent engine
-    const blueprint = await solveDecision(body.problem.trim(), body.language);
+    const blueprint = await solveDecision(problem, body.language, fullContext);
 
-    // Save to memory foundation
-    await saveDecision({
-      problem: body.problem.trim(),
-      blueprint
-    });
+    // Calibrate the raw confidence score against historical outcomes
+    // Re-read history after potential updates — but use the pre-run snapshot for calibration
+    const calibration = calibrateScore(blueprint.score, history, domain);
 
-    return NextResponse.json({ result: blueprint } as SolveResponse);
+    // Persist to memory
+    const saved = await saveDecision({ problem, blueprint, context: body.context });
+
+    const response: SolveResponse = {
+      result: blueprint,
+      decisionId: saved.id,
+      memoryScore,
+      networkScore,
+      calibratedScore: calibration.calibratedScore,
+      calibrationOffset: calibration.offset,
+    };
+
+    return NextResponse.json(response);
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'An unexpected error occurred while processing your decision.';
+    const message =
+      error instanceof Error
+        ? error.message
+        : 'An unexpected error occurred while processing your decision.';
     console.error('API /api/solve error:', error);
-    return NextResponse.json(
-      { error: message },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

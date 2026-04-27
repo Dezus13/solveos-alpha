@@ -107,6 +107,10 @@ export default function HomeExperience() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [intelligence, setIntelligence] = useState<IntelligenceSnapshot>(idleSnapshot);
   const [locales, setLocales] = useState<LocaleDictionary>(initialLocales);
+  const [memoryScore, setMemoryScore] = useState<number>(0);
+  const [networkScore, setNetworkScore] = useState<number>(0);
+  const [calibratedScore, setCalibratedScore] = useState<number | undefined>(undefined);
+  const [calibrationOffset, setCalibrationOffset] = useState<number | undefined>(undefined);
 
   const currentLang = result?.language || language;
   const t = locales[currentLang as string] || locales.English;
@@ -145,14 +149,30 @@ export default function HomeExperience() {
     setShowBoard(false);
   }, []);
 
-  const onSimulationResult = useCallback((blueprint: DecisionBlueprint, problem: string, autoBoard: boolean) => {
+  const onSimulationResult = useCallback((
+    blueprint: DecisionBlueprint,
+    problem: string,
+    autoBoard: boolean,
+    incomingMemoryScore?: number,
+    incomingNetworkScore?: number,
+    incomingCalibratedScore?: number,
+    incomingCalibrationOffset?: number,
+  ) => {
     if (blueprint.language) {
       void ensureLocale(blueprint.language);
     }
 
     setSubmittedProblem(problem);
     setResult(blueprint);
-    setIntelligence(buildIntelligenceSnapshot(blueprint, 'complete'));
+    const snap = buildIntelligenceSnapshot(blueprint, 'complete');
+    if (typeof incomingMemoryScore === 'number') {
+      snap.memoryScore = incomingMemoryScore;
+      setMemoryScore(incomingMemoryScore);
+    }
+    if (typeof incomingNetworkScore === 'number') setNetworkScore(incomingNetworkScore);
+    if (typeof incomingCalibratedScore === 'number') setCalibratedScore(incomingCalibratedScore);
+    if (typeof incomingCalibrationOffset === 'number') setCalibrationOffset(incomingCalibrationOffset);
+    setIntelligence(snap);
     setShowBoard(autoBoard);
   }, [ensureLocale]);
 
@@ -203,6 +223,10 @@ export default function HomeExperience() {
             submittedProblem={submittedProblem}
             initialShowBoard={showBoard}
             t={t}
+            memoryScore={memoryScore}
+            networkScore={networkScore}
+            calibratedScore={calibratedScore}
+            calibrationOffset={calibrationOffset}
           />
         )}
       </div>

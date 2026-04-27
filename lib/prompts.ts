@@ -56,11 +56,19 @@ CRITICAL RULES FOR RESPONSE QUALITY:
 
 Maintain an elite, emotionally intelligent, but strictly strategic advisor tone. Only output JSON.`;
 }
-export function buildStrategistPrompt(problem: string, language: string = 'English'): string {
+export function buildStrategistPrompt(
+  problem: string,
+  language: string = 'English',
+  memoryContext?: string
+): string {
+  const memorySection = memoryContext
+    ? `\n\n${memoryContext}\n\nUse the above memory context to calibrate your analysis. Reference past patterns where relevant, but do not be constrained by them.`
+    : '';
+
   return `You are the STRATEGIST in the SolveOS War Room.
 Your goal is to find the biggest upside and the most visionary path for this decision: "${problem}"
-Focus on growth, opportunity, and long-term positioning. 
-Be bold but logical.
+Focus on growth, opportunity, and long-term positioning.
+Be bold but logical.${memorySection}
 
 CRITICAL: You MUST provide your entire analysis in ${language}.
 Output your analysis in a few punchy paragraphs.`;
@@ -89,13 +97,16 @@ CRITICAL: You MUST provide your entire analysis in ${language}.
 Output your analysis in a few punchy paragraphs.`;
 }
 
-export function buildSynthesizerPrompt(problem: string, strategist: string, skeptic: string, operator: string, language: string = 'English'): string {
+export function buildSynthesizerPrompt(problem: string, strategist: string, skeptic: string, operator: string, language: string = 'English', memoryContext?: string): string {
+  const memorySection = memoryContext
+    ? `\n\nSTRATEGIC MEMORY (reference when scoring and writing recommendations):\n${memoryContext}`
+    : '';
   return `You are the SYNTHESIZER in the SolveOS War Room.
 You have heard from the Strategist, the Skeptic, and the Operator regarding: "${problem}"
 
 Strategist: ${strategist}
 Skeptic: ${skeptic}
-Operator: ${operator}
+Operator: ${operator}${memorySection}
 
 Your goal is to provide a final, structured Decision Blueprint.
 

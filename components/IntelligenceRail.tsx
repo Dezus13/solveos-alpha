@@ -1,5 +1,5 @@
 import React, { memo, useMemo } from 'react';
-import { Activity, Target, Cpu, ShieldAlert, GitBranch, Route } from 'lucide-react';
+import { Activity, Target, Cpu, ShieldAlert, GitBranch, Route, Brain } from 'lucide-react';
 
 export interface IntelligenceSnapshot {
   status: 'idle' | 'running' | 'complete';
@@ -8,6 +8,7 @@ export interface IntelligenceSnapshot {
   blackSwanExposure: number;
   recommendedPath: string;
   verdict: string;
+  memoryScore?: number;
 }
 
 interface IntelligenceRailProps {
@@ -112,6 +113,34 @@ function IntelligenceRail({ snapshot }: IntelligenceRailProps) {
            ))}
         </div>
       </div>
+
+      {/* Memory Score */}
+      {typeof snapshot.memoryScore === 'number' && (
+        <div className="bg-[#0B1020]/72 backdrop-blur-xl p-6 rounded-2xl border border-purple-400/15">
+          <div className="flex items-center space-x-2 mb-3">
+            <Brain className="w-3.5 h-3.5 text-purple-300" />
+            <span className="text-[9px] font-black uppercase text-slate-300">Memory Score</span>
+          </div>
+          <div className="flex items-end space-x-2 mb-2">
+            <span className="text-3xl font-mono font-black text-purple-300 tracking-tighter">
+              {snapshot.memoryScore}
+            </span>
+            <span className="text-xs font-mono text-slate-500 mb-1">/ 100</span>
+          </div>
+          <div className="h-0.5 w-full bg-white/5 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-purple-500/70 transition-[width] duration-700"
+              style={{ width: `${snapshot.memoryScore}%` }}
+            />
+          </div>
+          <p className="mt-2 text-[8px] font-mono text-slate-500 uppercase">
+            {snapshot.memoryScore < 20 ? 'No history yet' :
+             snapshot.memoryScore < 40 ? 'Building context' :
+             snapshot.memoryScore < 60 ? 'Established' :
+             snapshot.memoryScore < 80 ? 'Intelligent' : 'Compounding'}
+          </p>
+        </div>
+      )}
 
       {/* Kernel Footer */}
       <div className="mt-auto px-6 pb-4">

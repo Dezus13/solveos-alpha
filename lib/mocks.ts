@@ -42,7 +42,60 @@ export const MOCK_RESPONSES: Record<string, Record<string, DecisionBlueprint>> =
         today: "Lock down MVP spec by EOD and define success metrics.",
         thisWeek: "Set up core LangGraph nodes for Strategist and Skeptic agents.",
         thirtyDays: "Deploy initial alpha to 5 trusted testers for feedback."
-      }
+      },
+      council: {
+        strategistConfidence: 82,
+        skepticAgreement: 28,
+        operatorFeasibility: 71,
+        consensusScore: 60,
+        debateIntensity: 44,
+        keyDisagreements: [
+          "Skeptic questions market timing assumptions"
+        ],
+        resolutionPath: "Moderate agreement with manageable risks: Pilot with safeguards."
+      },
+      riskMap: {
+        opportunity: 78,
+        risk: 36
+      },
+      scenarioBranches: [
+        {
+          id: "scenario-bull",
+          name: "Bull Case (Best Execution)",
+          probability: 31,
+          upside: 500,
+          downside: -50,
+          timeline: "6-12 months",
+          description: "Perfect execution: market embrace, zero churn, rapid adoption by founders"
+        },
+        {
+          id: "scenario-base",
+          name: "Base Case (Plan)",
+          probability: 40,
+          upside: 150,
+          downside: -100,
+          timeline: "3-6 months",
+          description: "Normal execution with expected friction and gradual market discovery"
+        },
+        {
+          id: "scenario-bear",
+          name: "Bear Case (Stress Test)",
+          probability: 22,
+          upside: -200,
+          downside: -800,
+          timeline: "1-3 months",
+          description: "Key features underperform, higher CAC than projected, founder churn begins"
+        },
+        {
+          id: "scenario-tail",
+          name: "Tail Risk (Black Swan)",
+          probability: 7,
+          upside: -1000,
+          downside: -5000,
+          timeline: "Immediate",
+          description: "Regulatory challenge, major security incident, or founding team fracture"
+        }
+      ]
     }
   },
   Russian: {

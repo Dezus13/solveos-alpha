@@ -31,7 +31,15 @@ interface DecisionConsoleProps {
   language: string;
   loading: boolean;
   onLoadingChange: (loading: boolean) => void;
-  onResult: (result: DecisionBlueprint, problem: string, autoBoard: boolean) => void;
+  onResult: (
+    result: DecisionBlueprint,
+    problem: string,
+    autoBoard: boolean,
+    memoryScore?: number,
+    networkScore?: number,
+    calibratedScore?: number,
+    calibrationOffset?: number,
+  ) => void;
   onResetResult: () => void;
   onSimulationStart: () => void;
   onSimulationError: () => void;
@@ -56,8 +64,13 @@ function DecisionConsole({
     const currentProblem = overrideProblem ?? problem;
     const isScenarioRun = typeof overrideProblem === 'string';
 
-    if (currentProblem.trim().length < 10) {
-      setError('Please provide a bit more detail (at least 10 characters).');
+    if (!currentProblem.trim()) {
+      setError('Please describe your decision to enable simulation.');
+      return;
+    }
+    
+    if (currentProblem.trim().length < 20) {
+      setError(`Decision details too brief (${currentProblem.trim().length}/20 characters minimum). Provide more context about stakes, constraints, and timeline.`);
       return;
     }
 
@@ -88,7 +101,15 @@ function DecisionConsole({
 
       const blueprint = data.result as DecisionBlueprint;
       setWorkflowStep(3);
-      onResult(blueprint, currentProblem, autoBoard);
+      onResult(
+        blueprint,
+        currentProblem,
+        autoBoard,
+        data.memoryScore as number | undefined,
+        data.networkScore as number | undefined,
+        data.calibratedScore as number | undefined,
+        data.calibrationOffset as number | undefined,
+      );
       setWorkflowStep(4);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'An unexpected error occurred.';

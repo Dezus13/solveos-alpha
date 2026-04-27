@@ -1,5 +1,133 @@
 [
   {
+    "problem": "Should I quit my job and go all-in on my startup within the next 60 days?",
+    "blueprint": {
+      "score": 78,
+      "isDemo": true,
+      "language": "English",
+      "recommendation": "Proceed with a measured, phased approach. The opportunity is real, but execution complexity requires careful management.",
+      "diagnosis": {
+        "coreProblem": "Strategic expansion into unproven territory.",
+        "blindSpots": "Overestimating internal velocity and underestimating competitive response.",
+        "keyRisks": "The Skeptic warns of high resource drain and potential brand dilution if the MVP fails to deliver premium value."
+      },
+      "paths": {
+        "safe": {
+          "description": "Maintain current trajectory while running low-cost experiments.",
+          "pros": [
+            "Zero capital risk",
+            "Team focus preserved"
+          ],
+          "cons": [
+            "Market opportunity loss",
+            "Stagnation"
+          ]
+        },
+        "balanced": {
+          "description": "The Operator's recommended path: Phased rollout over 12 weeks.",
+          "pros": [
+            "Controlled burn",
+            "Faster feedback"
+          ],
+          "cons": [
+            "Moderate resource strain"
+          ]
+        },
+        "bold": {
+          "description": "The Strategist's vision: Aggressive pivot to capture the market immediately.",
+          "pros": [
+            "First-mover advantage",
+            "High potential ROI"
+          ],
+          "cons": [
+            "Binary outcome risk",
+            "Maximum burn"
+          ]
+        }
+      },
+      "contrarianInsight": {
+        "perspective": "What if the market doesn't want an OS, but just a better single tool?",
+        "hiddenOpportunity": "Niche dominance in the 'Founder' segment before going broad.",
+        "uncomfortableTruth": "Your current team might not have the specific AI expertise for a full-scale engine."
+      },
+      "futureSimulation": {
+        "threeMonths": "Early feedback confirms core value, but UI complexity is a hurdle.",
+        "twelveMonths": "SolveOS becomes the standard for high-stakes decisions in mid-market firms."
+      },
+      "actionPlan": {
+        "today": "Lock down MVP spec by EOD and define success metrics.",
+        "thisWeek": "Set up core LangGraph nodes for Strategist and Skeptic agents.",
+        "thirtyDays": "Deploy initial alpha to 5 trusted testers for feedback."
+      }
+    },
+    "id": "4725wdx",
+    "timestamp": "2026-04-27T14:03:52.648Z"
+  },
+  {
+    "problem": "Should I quit my job and go all-in on my startup within the next 60 days?",
+    "blueprint": {
+      "score": 78,
+      "isDemo": true,
+      "language": "English",
+      "recommendation": "Proceed with a measured, phased approach. The opportunity is real, but execution complexity requires careful management.",
+      "diagnosis": {
+        "coreProblem": "Strategic expansion into unproven territory.",
+        "blindSpots": "Overestimating internal velocity and underestimating competitive response.",
+        "keyRisks": "The Skeptic warns of high resource drain and potential brand dilution if the MVP fails to deliver premium value."
+      },
+      "paths": {
+        "safe": {
+          "description": "Maintain current trajectory while running low-cost experiments.",
+          "pros": [
+            "Zero capital risk",
+            "Team focus preserved"
+          ],
+          "cons": [
+            "Market opportunity loss",
+            "Stagnation"
+          ]
+        },
+        "balanced": {
+          "description": "The Operator's recommended path: Phased rollout over 12 weeks.",
+          "pros": [
+            "Controlled burn",
+            "Faster feedback"
+          ],
+          "cons": [
+            "Moderate resource strain"
+          ]
+        },
+        "bold": {
+          "description": "The Strategist's vision: Aggressive pivot to capture the market immediately.",
+          "pros": [
+            "First-mover advantage",
+            "High potential ROI"
+          ],
+          "cons": [
+            "Binary outcome risk",
+            "Maximum burn"
+          ]
+        }
+      },
+      "contrarianInsight": {
+        "perspective": "What if the market doesn't want an OS, but just a better single tool?",
+        "hiddenOpportunity": "Niche dominance in the 'Founder' segment before going broad.",
+        "uncomfortableTruth": "Your current team might not have the specific AI expertise for a full-scale engine."
+      },
+      "futureSimulation": {
+        "threeMonths": "Early feedback confirms core value, but UI complexity is a hurdle.",
+        "twelveMonths": "SolveOS becomes the standard for high-stakes decisions in mid-market firms."
+      },
+      "actionPlan": {
+        "today": "Lock down MVP spec by EOD and define success metrics.",
+        "thisWeek": "Set up core LangGraph nodes for Strategist and Skeptic agents.",
+        "thirtyDays": "Deploy initial alpha to 5 trusted testers for feedback."
+      }
+    },
+    "id": "29uohm6",
+    "timestamp": "2026-04-27T14:03:45.284Z"
+  },
+  {
     "problem": "Стоит ли мне запускать стартап без инвестиций?",
     "blueprint": {
       "score": 78,
