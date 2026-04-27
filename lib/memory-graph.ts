@@ -278,15 +278,18 @@ function extractLessons(subset: DecisionMemoryEntry[]): string[] {
 // ─── Full Graph ───────────────────────────────────────────────────────────────
 
 export function buildMemoryGraph(history: DecisionMemoryEntry[]): MemoryGraph {
-  const nodes = buildGraph(history);
-  const patterns = detectPatterns(history);
-  const strategicMemoryScore = computeStrategicMemoryScore(history, patterns);
-  const lessonsLearned = extractLessons(history);
-  const trend = accuracyTrend(history);
-  const predictionImprovement = computePredictionImprovement(history);
+  // Demo entries are seed data — exclude from all graph computation
+  const real = history.filter(e => !e.blueprint.isDemo);
+
+  const nodes = buildGraph(real);
+  const patterns = detectPatterns(real);
+  const strategicMemoryScore = computeStrategicMemoryScore(real, patterns);
+  const lessonsLearned = extractLessons(real);
+  const trend = accuracyTrend(real);
+  const predictionImprovement = computePredictionImprovement(real);
 
   const topDomains: Record<string, number> = {};
-  history.forEach(e => {
+  real.forEach(e => {
     const d = e.context?.domain || 'general';
     topDomains[d] = (topDomains[d] || 0) + 1;
   });
@@ -294,7 +297,7 @@ export function buildMemoryGraph(history: DecisionMemoryEntry[]): MemoryGraph {
   return {
     nodes,
     patterns,
-    totalDecisions: history.length,
+    totalDecisions: real.length,
     strategicMemoryScore,
     topDomains,
     accuracyTrend: trend,
@@ -383,7 +386,9 @@ export function getMemoryIntelligenceFromHistory(
   context?: DecisionContext,
   limit = 3
 ): MemoryIntelligence {
-  if (history.length === 0) {
+  const real = history.filter(e => !e.blueprint.isDemo);
+
+  if (real.length === 0) {
     return {
       relevantDecisions: [],
       applicablePatterns: [],
@@ -394,12 +399,12 @@ export function getMemoryIntelligenceFromHistory(
     };
   }
 
-  const patterns = detectPatterns(history);
-  const memoryScore = computeStrategicMemoryScore(history, patterns);
+  const patterns = detectPatterns(real);
+  const memoryScore = computeStrategicMemoryScore(real, patterns);
   const problemTags = localExtractTags(problem, context);
 
-  // Score each historical decision for relevance
-  const scored = history.map(entry => {
+  // Score each real historical decision for relevance
+  const scored = real.map(entry => {
     const overlap = problemTags.filter(t => entry.tags.includes(t)).length;
     const tagScore = problemTags.length > 0 ? overlap / problemTags.length : 0;
     const domainBonus =
@@ -429,9 +434,9 @@ export function getMemoryIntelligenceFromHistory(
     .slice(0, 2)
     .forEach(p => warningFlags.push(p.lesson));
 
-  // High weekly velocity warning
+  // High weekly velocity warning (real decisions only)
   const weekMs = 7 * 86_400_000;
-  const recentWeek = history.filter(
+  const recentWeek = real.filter(
     d => Date.now() - new Date(d.timestamp).getTime() < weekMs
   );
   if (recentWeek.length >= 3) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, memo } from 'react';
+import { useCallback, useEffect, useRef, useState, memo } from 'react';
 import {
   BarChart2,
   TrendingUp,
@@ -10,8 +10,143 @@ import {
   CheckCircle2,
   Lightbulb,
   Activity,
+  Clock,
+  ChevronRight,
 } from 'lucide-react';
 import type { NetworkIntelligence, DomainBenchmark, CalibrationBucket, TrendPoint } from '@/lib/types';
+
+// ─── Pending Review Types ─────────────────────────────────────────────────────
+
+interface DueReview {
+  id: string;
+  problem: string;
+  timestamp: string;
+  blueprintScore: number;
+  pendingReview: {
+    reviewType: '7day' | '30day';
+    scheduledFor: string;
+    createdAt: string;
+  };
+}
+
+// ─── Pending Reviews Panel ────────────────────────────────────────────────────
+
+type ReviewOutcome = 'succeeded' | 'partial' | 'failed';
+
+const REVIEW_OUTCOMES: { id: ReviewOutcome; label: string; scoreAccuracy: number; color: string }[] = [
+  { id: 'succeeded', label: 'Succeeded', scoreAccuracy: 85, color: 'text-emerald-300' },
+  { id: 'partial', label: 'Partial', scoreAccuracy: 50, color: 'text-amber-300' },
+  { id: 'failed', label: 'Failed', scoreAccuracy: 15, color: 'text-rose-300' },
+];
+
+function PendingReviewCard({
+  review,
+  onLogged,
+}: {
+  review: DueReview;
+  onLogged: (id: string) => void;
+}) {
+  const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
+
+  const log = async (outcome: ReviewOutcome) => {
+    setSubmitting(true);
+    try {
+      await fetch('/api/outcomes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          decisionId: review.id,
+          outcome: {
+            actualOutcome: outcome,
+            scoreAccuracy: REVIEW_OUTCOMES.find(o => o.id === outcome)!.scoreAccuracy,
+            lessons: [],
+            recommendations: [],
+          },
+        }),
+      });
+      setDone(true);
+      setTimeout(() => onLogged(review.id), 600);
+    } catch {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className={`rounded-xl border border-white/10 bg-white/[0.02] p-4 transition-opacity ${done ? 'opacity-40' : ''}`}>
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <p className="text-[11px] text-slate-300 leading-relaxed line-clamp-2 flex-1">{review.problem}</p>
+        <span className="text-[8px] font-mono text-slate-600 whitespace-nowrap flex-shrink-0">
+          Score {review.blueprintScore}
+        </span>
+      </div>
+      <div className="flex items-center gap-2 flex-wrap">
+        {REVIEW_OUTCOMES.map(o => (
+          <button
+            key={o.id}
+            disabled={submitting || done}
+            onClick={() => void log(o.id)}
+            className={`px-3 py-1.5 rounded-lg border border-white/10 bg-white/[0.02] hover:bg-white/[0.05] text-[8px] font-black uppercase tracking-widest ${o.color} disabled:opacity-40 transition-all`}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const PendingReviewsPanel = memo(function PendingReviewsPanel() {
+  const [reviews, setReviews] = useState<DueReview[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/reviews')
+      .then(r => r.json())
+      .then(data => { if (!cancelled) { setReviews(data.reviews || []); setLoading(false); } })
+      .catch(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleLogged = useCallback((id: string) => {
+    setReviews(prev => prev.filter(r => r.id !== id));
+  }, []);
+
+  if (loading || reviews.length === 0) return null;
+
+  return (
+    <div className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.04] p-6 shadow-[0_0_24px_rgba(245,158,11,0.06)]">
+      <button
+        className="w-full flex items-center gap-3 mb-1"
+        onClick={() => setExpanded(v => !v)}
+      >
+        <Clock className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+        <span className="text-[9px] font-black uppercase text-slate-300 flex-1 text-left">
+          Pending Reviews
+        </span>
+        <span className="text-[9px] font-black uppercase text-amber-400 bg-amber-500/15 border border-amber-500/25 px-2 py-0.5 rounded-full">
+          {reviews.length} due
+        </span>
+        <ChevronRight
+          className={`w-3.5 h-3.5 text-slate-500 transition-transform ${expanded ? 'rotate-90' : ''}`}
+        />
+      </button>
+      <p className="text-[9px] text-slate-500 mb-4 leading-relaxed">
+        These decisions reached their scheduled review date. Log outcomes to feed the calibration flywheel.
+      </p>
+
+      {expanded && (
+        <div className="space-y-3">
+          {reviews.map(r => (
+            <PendingReviewCard key={r.id} review={r} onLogged={handleLogged} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+});
 
 // ─── Colour Helpers ───────────────────────────────────────────────────────────
 
@@ -445,6 +580,9 @@ function EnterpriseDashboard() {
 
   return (
     <div className="w-full max-w-5xl space-y-6">
+
+      {/* Due reviews — shown only when there are scheduled reviews past their date */}
+      <PendingReviewsPanel />
 
       {/* Network Intelligence Score */}
       <div className="rounded-2xl border border-amber-500/15 bg-amber-500/[0.03] p-6 shadow-[0_0_32px_rgba(245,158,11,0.06)]">

@@ -1,136 +1,215 @@
 "use client";
 
-import { memo, useCallback, useState } from 'react';
-import { AlertTriangle, CheckCircle2, FileText, Play, ShieldQuestion } from 'lucide-react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { AlertTriangle, CheckCircle2, FileText, Play, RotateCcw, Send, ShieldQuestion } from 'lucide-react';
 import SolveOSSymbol from '@/components/SolveOSSymbol';
-import type { DecisionBlueprint } from '@/lib/types';
+import type { ConversationTurn } from '@/lib/types';
+
+// ─── Streaming hook ──────────────────────────────────────────────────────────
+
+function useStreamingText(text: string, active: boolean, speed = 28): string {
+  const [displayed, setDisplayed] = useState('');
+
+  useEffect(() => {
+    if (!active) return;
+    const words = text.split(' ');
+    let i = 0;
+    const id = setInterval(() => {
+      i++;
+      if (i > words.length) { clearInterval(id); return; }
+      setDisplayed(words.slice(0, i).join(' '));
+    }, speed);
+    return () => clearInterval(id);
+  }, [text, active, speed]);
+
+  // For historical (non-active) turns, return full text directly without state
+  return active ? displayed : text;
+}
+
+// ─── Thread message components ───────────────────────────────────────────────
+
+function UserTurn({ content }: { content: string }) {
+  return (
+    <div className="flex justify-end">
+      <div className="max-w-[85%] bg-white/[0.04] border border-white/[0.08] rounded-2xl rounded-tr-sm px-5 py-4">
+        <div className="text-[9px] font-black uppercase text-slate-500 mb-2 tracking-widest">You</div>
+        <p className="text-[#F8FAFF] text-sm leading-relaxed font-medium">{content}</p>
+      </div>
+    </div>
+  );
+}
+
+function ThinkingBubble() {
+  return (
+    <div className="flex items-center space-x-4 py-2">
+      <SolveOSSymbol active className="loading-core-mark w-5 h-5 flex-shrink-0" />
+      <span className="text-[10px] font-black uppercase text-purple-300 tracking-widest">
+        Processing Dialectic Simulation
+      </span>
+    </div>
+  );
+}
+
+function AssistantTurn({ turn, isLatest }: { turn: ConversationTurn; isLatest: boolean }) {
+  const bp = turn.blueprint;
+  const streamedVerdict = useStreamingText(turn.content, isLatest);
+  const streamDone = streamedVerdict === turn.content;
+  const [showCards, setShowCards] = useState(!isLatest);
+
+  useEffect(() => {
+    if (!isLatest || showCards) return;
+    if (!streamDone) return;
+    const timer = setTimeout(() => setShowCards(true), 180);
+    return () => clearTimeout(timer);
+  }, [isLatest, streamDone, showCards]);
+
+  if (turn.isError) {
+    return (
+      <div className="flex items-start space-x-3">
+        <AlertTriangle className="w-4 h-4 text-rose-400 mt-0.5 flex-shrink-0" />
+        <p className="text-rose-400 text-sm leading-relaxed">{turn.content}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4 blueprint-enter">
+      {/* Status bar */}
+      <div className="flex items-center space-x-3">
+        <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.6)] flex-shrink-0" />
+        <span className="text-[9px] font-black uppercase text-emerald-300 tracking-widest">Analysis Complete</span>
+        <div className="h-[1px] flex-1 bg-gradient-to-r from-emerald-500/20 to-transparent" />
+      </div>
+
+      {/* Verdict card */}
+      <div className="bg-gradient-to-br from-purple-500/[0.08] to-blue-500/[0.04] border border-purple-500/20 rounded-2xl p-5">
+        <div className="text-[9px] font-black uppercase text-purple-400 mb-3 tracking-widest">Verdict</div>
+        <p className="text-[#F8FAFF] text-lg font-semibold leading-relaxed">
+          {streamedVerdict}
+          {isLatest && !streamDone && (
+            <span className="inline-block w-0.5 h-4 bg-purple-400 ml-0.5 animate-pulse align-middle" />
+          )}
+        </p>
+      </div>
+
+      {/* Why / Risks / Next Move */}
+      {showCards && bp && (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="bg-white/[0.025] border border-white/[0.06] rounded-xl p-4">
+              <div className="text-[9px] font-black uppercase text-slate-500 mb-2 tracking-widest">Why This</div>
+              <p className="text-slate-300 text-xs leading-relaxed">{bp.recommendation}</p>
+            </div>
+            <div className="bg-rose-500/[0.03] border border-rose-500/[0.15] rounded-xl p-4">
+              <div className="text-[9px] font-black uppercase text-rose-400 mb-2 tracking-widest">Key Risks</div>
+              <p className="text-slate-300 text-xs leading-relaxed">{bp.diagnosis.keyRisks}</p>
+            </div>
+            <div className="bg-emerald-500/[0.04] border border-emerald-500/20 rounded-xl p-4">
+              <div className="text-[9px] font-black uppercase text-emerald-400 mb-2 tracking-widest">Next Move</div>
+              <p className="text-slate-300 text-xs leading-relaxed">{bp.actionPlan.today}</p>
+            </div>
+          </div>
+
+          {/* Agent perspectives */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {[
+              { label: 'Strategist', color: 'text-emerald-400', dot: 'bg-emerald-500', glow: 'rgba(52,211,153,0.5)', text: bp.paths.bold.description },
+              { label: 'Skeptic', color: 'text-rose-400', dot: 'bg-rose-500', glow: 'rgba(239,68,68,0.5)', text: bp.contrarianInsight.perspective },
+              { label: 'Operator', color: 'text-blue-400', dot: 'bg-blue-500', glow: 'rgba(59,130,246,0.5)', text: bp.actionPlan.thisWeek },
+            ].map(({ label, color, dot, glow, text }) => (
+              <div key={label} className="flex items-start space-x-3 bg-white/[0.015] border border-white/[0.04] rounded-xl p-3">
+                <div className={`w-1.5 h-1.5 rounded-full ${dot} mt-1.5 flex-shrink-0`}
+                  style={{ boxShadow: `0 0 7px ${glow}` }} />
+                <div>
+                  <div className={`text-[9px] font-black uppercase ${color} mb-1`}>{label}</div>
+                  <p className="text-slate-400 text-[11px] leading-relaxed">{text}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-center space-x-3 opacity-25 pt-1">
+            <div className="h-[1px] flex-1 bg-white/20" />
+            <span className="text-[8px] font-black uppercase text-slate-400">Full Analysis Below</span>
+            <div className="h-[1px] flex-1 bg-white/20" />
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── Empty-state workflow steps ───────────────────────────────────────────────
 
 const decisionSteps = [
   { label: 'Define', description: 'Clarify the decision, constraints, and stakes.', icon: FileText },
   { label: 'Simulate', description: 'Run safe, balanced, and bold futures.', icon: Play },
   { label: 'Pressure Test', description: 'Expose risk, downside, and fragile assumptions.', icon: ShieldQuestion },
-  { label: 'Recommended Move', description: 'Collapse the analysis into a next move.', icon: CheckCircle2 }
+  { label: 'Recommended Move', description: 'Collapse the analysis into a next move.', icon: CheckCircle2 },
 ];
 
 const quickScenarios = [
-  {
-    label: 'Quit job',
-    text: 'Should I quit my job and go all-in on my startup within the next 60 days?'
-  },
-  {
-    label: 'Relocate',
-    text: 'Should I relocate to a new city for a role with higher upside but less stability?'
-  },
-  {
-    label: 'Invest',
-    text: 'Should I invest more capital into a product launch before the first sales cycle closes?'
-  }
+  { label: 'Quit job', text: 'Should I quit my job and go all-in on my startup within the next 60 days?' },
+  { label: 'Relocate', text: 'Should I relocate to a new city for a role with higher upside but less stability?' },
+  { label: 'Invest', text: 'Should I invest more capital into a product launch before the first sales cycle closes?' },
 ];
 
+// ─── Main component ───────────────────────────────────────────────────────────
+
 interface DecisionConsoleProps {
-  language: string;
+  thread: ConversationTurn[];
   loading: boolean;
-  onLoadingChange: (loading: boolean) => void;
-  onResult: (
-    result: DecisionBlueprint,
-    problem: string,
-    autoBoard: boolean,
-    memoryScore?: number,
-    networkScore?: number,
-    calibratedScore?: number,
-    calibrationOffset?: number,
-  ) => void;
-  onResetResult: () => void;
-  onSimulationStart: () => void;
-  onSimulationError: () => void;
+  onSubmit: (message: string) => void;
+  onReset: () => void;
 }
 
-function DecisionConsole({
-  language,
-  loading,
-  onLoadingChange,
-  onResult,
-  onResetResult,
-  onSimulationStart,
-  onSimulationError
-}: DecisionConsoleProps) {
-  const [problem, setProblem] = useState('');
+function DecisionConsole({ thread, loading, onSubmit, onReset }: DecisionConsoleProps) {
+  const [input, setInput] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [terminalTab, setTerminalTab] = useState('Strategy');
-  const [workflowStep, setWorkflowStep] = useState(0);
-  const [selectedScenario, setSelectedScenario] = useState<string | null>(null);
+  const threadEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const handleSolve = useCallback(async (overrideProblem?: string, autoBoard = false) => {
-    const currentProblem = overrideProblem ?? problem;
-    const isScenarioRun = typeof overrideProblem === 'string';
+  const hasThread = thread.length > 0;
 
-    if (!currentProblem.trim()) {
-      setError('Please describe your decision to enable simulation.');
+  useEffect(() => {
+    threadEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [thread.length, loading]);
+
+  const handleSubmit = useCallback((override?: string) => {
+    const text = (override ?? input).trim();
+    if (!text) { setError('Please describe your decision to enable simulation.'); return; }
+    if (text.length < 20) {
+      setError(`Decision details too brief (${text.length}/20 characters minimum). Provide more context about stakes, constraints, and timeline.`);
       return;
     }
-    
-    if (currentProblem.trim().length < 20) {
-      setError(`Decision details too brief (${currentProblem.trim().length}/20 characters minimum). Provide more context about stakes, constraints, and timeline.`);
-      return;
-    }
-
-    onLoadingChange(true);
     setError(null);
-    onResetResult();
-    setWorkflowStep(1);
-    onSimulationStart();
-    if (!isScenarioRun) {
-      setSelectedScenario(null);
+    setInput('');
+    onSubmit(text);
+  }, [input, onSubmit]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
     }
-
-    try {
-      setWorkflowStep(2);
-      const response = await fetch('/api/solve', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ problem: currentProblem, language }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to generate solution');
-      }
-
-      const blueprint = data.result as DecisionBlueprint;
-      setWorkflowStep(3);
-      onResult(
-        blueprint,
-        currentProblem,
-        autoBoard,
-        data.memoryScore as number | undefined,
-        data.networkScore as number | undefined,
-        data.calibratedScore as number | undefined,
-        data.calibrationOffset as number | undefined,
-      );
-      setWorkflowStep(4);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
-      setError(message);
-      setWorkflowStep(0);
-      onSimulationError();
-    } finally {
-      onLoadingChange(false);
-    }
-  }, [language, onLoadingChange, onResetResult, onResult, onSimulationError, onSimulationStart, problem]);
+  }, [handleSubmit]);
 
   return (
     <div className="flex-1 relative z-10">
       <div className="bg-[#0B1020]/78 backdrop-blur-3xl rounded-[32px] border border-white/10 shadow-[0_40px_120px_rgba(0,0,0,0.45),0_0_80px_rgba(168,85,247,0.08)] overflow-hidden">
+
+        {/* Tab bar */}
         <div className="flex items-center px-10 pt-8 space-x-8 border-b border-white/5">
           {['Strategy', 'Risk', 'Scenarios', 'Red Team'].map((tab) => (
             <button
               key={tab}
               onClick={() => setTerminalTab(tab)}
-              className={`pb-4 text-[11px] font-black uppercase transition-all ${terminalTab === tab ? 'text-[#F8FAFF] border-b-2 border-purple-400 drop-shadow-[0_0_12px_rgba(168,85,247,0.35)]' : 'text-slate-500 hover:text-slate-200'
-                }`}
+              className={`pb-4 text-[11px] font-black uppercase transition-all ${
+                terminalTab === tab
+                  ? 'text-[#F8FAFF] border-b-2 border-purple-400 drop-shadow-[0_0_12px_rgba(168,85,247,0.35)]'
+                  : 'text-slate-500 hover:text-slate-200'
+              }`}
             >
               {tab}
             </button>
@@ -142,131 +221,158 @@ function DecisionConsole({
         </div>
 
         <div className="p-6 sm:p-10">
-          <div className="mb-10 flex items-center justify-between border-b border-white/5 pb-6">
+
+          {/* Header row */}
+          <div className="mb-8 flex items-center justify-between border-b border-white/5 pb-6">
             <div className="flex items-center space-x-3">
               <div className="w-2 h-2 rounded-full border border-purple-300 bg-purple-500/40 shadow-[0_0_16px_rgba(168,85,247,0.8)]" />
               <span className="text-[9px] font-black uppercase text-slate-300">
-                Primary Simulation Interface
+                {hasThread ? 'Decision Thread Active' : 'Primary Simulation Interface'}
               </span>
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="hidden sm:flex items-center space-x-2 text-[8px] font-mono text-slate-500 uppercase">
-                <span>Input Telemetry: Active</span>
-              </div>
-              <div className="w-1 h-3 bg-white/5 rounded-full" />
-              <div className="hidden sm:flex items-center space-x-2 text-[8px] font-mono text-slate-500 uppercase">
-                <span>Encrypted: AES-256</span>
-              </div>
-            </div>
+            {hasThread && (
+              <button
+                onClick={onReset}
+                className="flex items-center space-x-2 text-[9px] font-black uppercase text-slate-500 hover:text-slate-200 transition-colors group"
+              >
+                <RotateCcw className="w-3 h-3 group-hover:rotate-180 transition-transform duration-300" />
+                <span>New Decision</span>
+              </button>
+            )}
           </div>
 
-          <div className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-4">
-            {decisionSteps.map((step, index) => {
-              const stepNumber = index + 1;
-              const StepIcon = step.icon;
-              const isComplete = workflowStep > stepNumber;
-              const isCurrent = workflowStep === stepNumber || (!workflowStep && stepNumber === 1);
-
-              return (
-                <div
-                  key={step.label}
-                  className={`rounded-xl border p-4 transition-all ${
-                    isComplete
-                      ? 'border-emerald-500/30 bg-emerald-500/[0.04]'
-                      : isCurrent
-                        ? 'border-purple-500/40 bg-purple-500/[0.05]'
-                        : 'border-white/5 bg-white/[0.015]'
-                  }`}
-                >
-                  <div className="mb-3 flex items-center justify-between">
-                    <StepIcon className={`h-4 w-4 ${isCurrent || isComplete ? 'text-[#F8FAFF]' : 'text-slate-500'}`} />
-                    <span className="font-mono text-[9px] text-slate-500">0{stepNumber}</span>
+          {/* Empty state: workflow steps */}
+          {!hasThread && !loading && (
+            <div className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-4">
+              {decisionSteps.map((step, index) => {
+                const StepIcon = step.icon;
+                return (
+                  <div
+                    key={step.label}
+                    className="rounded-xl border border-white/5 bg-white/[0.015] p-4"
+                  >
+                    <div className="mb-3 flex items-center justify-between">
+                      <StepIcon className="h-4 w-4 text-slate-500" />
+                      <span className="font-mono text-[9px] text-slate-500">0{index + 1}</span>
+                    </div>
+                    <div className="text-[10px] font-black uppercase text-[#F8FAFF]">{step.label}</div>
+                    <p className="mt-2 text-[10px] leading-relaxed text-slate-400">{step.description}</p>
                   </div>
-                  <div className="text-[10px] font-black uppercase text-[#F8FAFF]">{step.label}</div>
-                  <p className="mt-2 text-[10px] leading-relaxed text-slate-400">{step.description}</p>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
 
-          <textarea
-            value={problem}
-            onChange={(e) => {
-              setProblem(e.target.value);
-              if (error) setError(null);
-            }}
-            placeholder="What decision must survive reality?"
-            className="w-full h-32 sm:h-48 bg-transparent text-xl sm:text-2xl lg:text-3xl text-[#F8FAFF] placeholder-slate-600 focus:outline-none resize-none font-medium leading-relaxed px-0 border-none selection:bg-purple-500/30"
-          />
+          {/* Thread area */}
+          {hasThread && (
+            <div className="mb-6 max-h-[540px] overflow-y-auto space-y-6 pr-1 scroll-smooth">
+              {thread.map((turn, i) => {
+                const isLatestAssistant =
+                  turn.role === 'assistant' &&
+                  i === thread.length - 1;
+                return turn.role === 'user'
+                  ? <UserTurn key={turn.id} content={turn.content} />
+                  : <AssistantTurn key={turn.id} turn={turn} isLatest={isLatestAssistant} />;
+              })}
+              {loading && <ThinkingBubble />}
+              <div ref={threadEndRef} />
+            </div>
+          )}
 
-          <div className="mt-12 flex flex-col space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-[9px] font-black text-slate-400 uppercase">
-                Baseline Scenarios
-              </span>
-              <div className="text-slate-500 text-[8px] font-mono uppercase">
-                Payload: {problem.length} / 5000 bytes
+          {/* Input textarea */}
+          {!hasThread && !loading ? (
+            /* Empty state — large textarea */
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={(e) => { setInput(e.target.value); if (error) setError(null); }}
+              placeholder="What decision must survive reality?"
+              className="w-full h-32 sm:h-48 bg-transparent text-xl sm:text-2xl lg:text-3xl text-[#F8FAFF] placeholder-slate-600 focus:outline-none resize-none font-medium leading-relaxed px-0 border-none selection:bg-purple-500/30"
+            />
+          ) : hasThread && !loading ? (
+            /* Thread state — compact follow-up input */
+            <div className="border border-white/[0.08] bg-white/[0.02] rounded-2xl px-5 py-4 mt-2">
+              <textarea
+                ref={inputRef}
+                value={input}
+                onChange={(e) => { setInput(e.target.value); if (error) setError(null); }}
+                onKeyDown={handleKeyDown}
+                placeholder="Ask a follow-up or explore another angle… (Enter to send)"
+                rows={2}
+                className="w-full bg-transparent text-sm text-[#F8FAFF] placeholder-slate-600 focus:outline-none resize-none font-medium leading-relaxed border-none selection:bg-purple-500/30"
+              />
+            </div>
+          ) : null}
+
+          {/* Quick scenarios — only in empty state */}
+          {!hasThread && !loading && (
+            <div className="mt-10 flex flex-col space-y-4">
+              <span className="text-[9px] font-black text-slate-400 uppercase">Baseline Scenarios</span>
+              <div className="flex flex-wrap gap-2">
+                {quickScenarios.map((s) => (
+                  <button
+                    key={s.label}
+                    onClick={() => { setInput(s.text); handleSubmit(s.text); }}
+                    disabled={loading}
+                    className="flex items-center space-x-3 text-[9px] border px-4 py-2 rounded-xl transition-all duration-300 font-bold uppercase disabled:opacity-50 bg-white/[0.03] hover:bg-white/[0.06] border-white/10 text-slate-300 hover:text-[#F8FAFF]"
+                  >
+                    <Play className="h-3 w-3" />
+                    <span>{s.label}</span>
+                    <span className="opacity-40">{s.text}</span>
+                  </button>
+                ))}
               </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {quickScenarios.map((sample) => (
-                <button
-                  key={sample.label}
-                  onClick={() => {
-                    setSelectedScenario(sample.label);
-                    setProblem(sample.text);
-                    handleSolve(sample.text, true);
-                  }}
-                  disabled={loading}
-                  className={`flex items-center space-x-3 text-[9px] border px-4 py-2 rounded-xl transition-all duration-300 font-bold uppercase disabled:opacity-50 ${
-                    selectedScenario === sample.label
-                      ? 'bg-purple-500/15 border-purple-400/40 text-[#F8FAFF] shadow-[0_0_24px_rgba(168,85,247,0.12)]'
-                      : 'bg-white/[0.03] hover:bg-white/[0.06] border-white/10 text-slate-300 hover:text-[#F8FAFF]'
-                  }`}
-                >
-                  <Play className="h-3 w-3" />
-                  <span>{sample.label}</span>
-                  <span>{sample.text}</span>
-                </button>
-              ))}
-            </div>
-          </div>
+          )}
 
-          <div className="mt-12 pt-8 border-t border-white/[0.03]">
-            <button
-              onClick={() => handleSolve()}
-              disabled={loading || problem.trim().length === 0}
-              className="group relative w-full overflow-hidden rounded-2xl p-[1px] transition-all hover:scale-[1.005] active:scale-[0.995] disabled:opacity-30 shadow-2xl"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-purple-500/50 via-white/15 to-purple-500/50" />
-              <div className="relative flex h-20 w-full items-center justify-center rounded-[15px] bg-[#0A0F1F] transition-all group-hover:bg-[#101936]">
-                {loading ? (
-                  <div className="flex items-center space-x-6 text-white">
-                    <SolveOSSymbol active className="loading-core-mark" />
-                    <span className="text-[10px] font-black uppercase">
-                      Processing Dialectic Simulation
-                    </span>
-                  </div>
-                ) : (
-                  <div className="flex items-center space-x-4 text-white">
-                    <span className="text-base font-black uppercase group-hover:text-purple-300 transition-colors">
+          {/* Submit / Send button */}
+          <div className="mt-8 pt-6 border-t border-white/[0.03]">
+            {!hasThread ? (
+              /* Primary CTA */
+              <button
+                onClick={() => handleSubmit()}
+                disabled={loading || input.trim().length === 0}
+                className="group relative w-full overflow-hidden rounded-2xl p-[1px] transition-all hover:scale-[1.005] active:scale-[0.995] disabled:opacity-30 shadow-2xl"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-500/50 via-white/15 to-purple-500/50" />
+                <div className="relative flex h-20 w-full items-center justify-center rounded-[15px] bg-[#0A0F1F] transition-all group-hover:bg-[#101936]">
+                  {loading ? (
+                    <div className="flex items-center space-x-6 text-white">
+                      <SolveOSSymbol active className="loading-core-mark" />
+                      <span className="text-[10px] font-black uppercase">Processing Dialectic Simulation</span>
+                    </div>
+                  ) : (
+                    <span className="text-base font-black uppercase text-white group-hover:text-purple-300 transition-colors">
                       PRESSURE TEST DECISION →
                     </span>
-                  </div>
-                )}
+                  )}
+                </div>
+              </button>
+            ) : (
+              /* Thread send button */
+              <button
+                onClick={() => handleSubmit()}
+                disabled={loading || input.trim().length === 0}
+                className="group flex items-center justify-center space-x-3 w-full h-12 rounded-2xl border border-purple-500/30 bg-purple-500/[0.06] hover:bg-purple-500/[0.12] disabled:opacity-30 transition-all"
+              >
+                <Send className="w-4 h-4 text-purple-300" />
+                <span className="text-[11px] font-black uppercase text-purple-200">Send</span>
+              </button>
+            )}
+
+            {!hasThread && (
+              <div className="mt-4 flex items-center justify-center space-x-4 opacity-20">
+                <div className="h-[1px] flex-1 bg-white" />
+                <span className="text-[8px] font-black uppercase">Active Decision Core v2.0</span>
+                <div className="h-[1px] flex-1 bg-white" />
               </div>
-            </button>
-            <div className="mt-4 flex items-center justify-center space-x-4 opacity-20">
-              <div className="h-[1px] flex-1 bg-white" />
-              <span className="text-[8px] font-black uppercase">Active Decision Core v2.0</span>
-              <div className="h-[1px] flex-1 bg-white" />
-            </div>
+            )}
           </div>
         </div>
 
         {error && (
-          <div className="m-6 p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-2xl text-xs font-bold uppercase tracking-wider flex items-center">
-            <AlertTriangle className="w-4 h-4 mr-3" />
+          <div className="mx-6 mb-6 p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-2xl text-xs font-bold uppercase tracking-wider flex items-center">
+            <AlertTriangle className="w-4 h-4 mr-3 flex-shrink-0" />
             {error}
           </div>
         )}

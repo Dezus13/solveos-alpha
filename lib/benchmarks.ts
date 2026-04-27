@@ -252,15 +252,18 @@ function deriveTopInsights(
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export function computeNetworkIntelligence(history: DecisionMemoryEntry[]): NetworkIntelligence {
-  const domainBenchmarks = computeDomainBenchmarks(history);
-  const calibrationBuckets = computeCalibrationBuckets(history);
-  const predictionImprovement = computePredictionImprovement(history);
-  const networkScore = computeNetworkScore(history, calibrationBuckets);
-  const topInsights = deriveTopInsights(domainBenchmarks, calibrationBuckets, predictionImprovement);
-  const volumeTrend = computeVolumeTrend(history);
-  const accuracyTrend = computeAccuracyTrend(history);
+  // Demo entries are seed data and must not influence analytics
+  const real = history.filter(e => !e.blueprint.isDemo);
 
-  const withOutcomes = history.filter(e => e.outcome);
+  const domainBenchmarks = computeDomainBenchmarks(real);
+  const calibrationBuckets = computeCalibrationBuckets(real);
+  const predictionImprovement = computePredictionImprovement(real);
+  const networkScore = computeNetworkScore(real, calibrationBuckets);
+  const topInsights = deriveTopInsights(domainBenchmarks, calibrationBuckets, predictionImprovement);
+  const volumeTrend = computeVolumeTrend(real);
+  const accuracyTrend = computeAccuracyTrend(real);
+
+  const withOutcomes = real.filter(e => e.outcome);
   const bucketsWithData = calibrationBuckets.filter(b => b.avgActual >= 0);
   const calibrationDrift =
     bucketsWithData.length > 0
@@ -268,7 +271,7 @@ export function computeNetworkIntelligence(history: DecisionMemoryEntry[]): Netw
       : 0;
 
   return {
-    totalDecisions: history.length,
+    totalDecisions: real.length,
     totalOutcomes: withOutcomes.length,
     networkScore,
     domainBenchmarks,
@@ -284,28 +287,32 @@ export function computeNetworkIntelligence(history: DecisionMemoryEntry[]): Netw
 /**
  * Calibrate a raw confidence score against historical outcome data.
  * Returns the adjusted score and metadata about calibration confidence.
+ * Requires at least 2 real (non-demo) outcome samples to apply any adjustment.
  */
 export function calibrateScore(
   rawScore: number,
   history: DecisionMemoryEntry[],
   domain?: string
 ): CalibrationResult {
+  const real = history.filter(e => !e.blueprint.isDemo);
+
   // Prefer domain-specific calibration; fall back to global bucket calibration
   const domainEntries = domain
-    ? history.filter(e => e.outcome && (e.context?.domain || inferDomain(e.tags)) === domain)
+    ? real.filter(e => e.outcome && (e.context?.domain || inferDomain(e.tags)) === domain)
     : [];
 
   const bucketIdx = bucketFor(rawScore);
   const [lo, hi] = BUCKETS[bucketIdx];
-  const globalBucketEntries = history.filter(
+  const globalBucketEntries = real.filter(
     e => e.outcome && e.blueprint.score >= lo && e.blueprint.score < hi
   );
 
   // Use domain entries if enough, otherwise fall back to global bucket
   const entries = domainEntries.length >= 3 ? domainEntries : globalBucketEntries;
 
-  if (entries.length === 0) {
-    return { calibratedScore: rawScore, rawScore, offset: 0, sampleSize: 0, confidence: 'none' };
+  // Single-sample adjustments are noise — require at least 2 real outcomes
+  if (entries.length < 2) {
+    return { calibratedScore: rawScore, rawScore, offset: 0, sampleSize: entries.length, confidence: 'none' };
   }
 
   const avgActual = avg(entries.map(e => e.outcome!.scoreAccuracy));
@@ -318,7 +325,7 @@ export function calibrateScore(
     rawScore,
     offset,
     sampleSize: entries.length,
-    confidence: entries.length >= 5 ? 'high' : entries.length >= 2 ? 'medium' : 'low',
+    confidence: entries.length >= 5 ? 'high' : entries.length >= 3 ? 'medium' : 'low',
   };
 }
 
@@ -330,7 +337,8 @@ export function buildCalibrationContext(
   history: DecisionMemoryEntry[],
   domain?: string
 ): string {
-  const buckets = computeCalibrationBuckets(history);
+  const real = history.filter(e => !e.blueprint.isDemo);
+  const buckets = computeCalibrationBuckets(real);
   const bucketsWithData = buckets.filter(b => b.sampleCount >= 2);
   if (bucketsWithData.length === 0) return '';
 
@@ -344,7 +352,7 @@ export function buildCalibrationContext(
   });
 
   if (domain) {
-    const domainEntries = history.filter(e => e.outcome && (e.context?.domain || '') === domain);
+    const domainEntries = real.filter(e => e.outcome && (e.context?.domain || '') === domain);
     if (domainEntries.length >= 2) {
       const domainOffset = Math.round(
         avg(domainEntries.map(e => e.outcome!.scoreAccuracy - e.blueprint.score))

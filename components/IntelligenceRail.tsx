@@ -144,12 +144,8 @@ function IntelligenceRail({ snapshot }: IntelligenceRailProps) {
 
       {/* Kernel Footer */}
       <div className="mt-auto px-6 pb-4">
-        <div className="flex items-center justify-between opacity-20">
+        <div className="flex items-center justify-end opacity-20">
           <Activity className="w-3.5 h-3.5 text-slate-500" />
-          <div className="text-[8px] font-mono text-slate-500 uppercase text-right">
-             SolveOS_Kernel_v2.2.4_Stable<br />
-             Telemetry_Pulse: 84ms
-          </div>
         </div>
       </div>
     </aside>

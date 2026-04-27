@@ -97,16 +97,19 @@ CRITICAL: You MUST provide your entire analysis in ${language}.
 Output your analysis in a few punchy paragraphs.`;
 }
 
-export function buildSynthesizerPrompt(problem: string, strategist: string, skeptic: string, operator: string, language: string = 'English', memoryContext?: string): string {
+export function buildSynthesizerPrompt(problem: string, strategist: string, skeptic: string, operator: string, language: string = 'English', memoryContext?: string, conversationContext?: string): string {
   const memorySection = memoryContext
     ? `\n\nSTRATEGIC MEMORY (reference when scoring and writing recommendations):\n${memoryContext}`
+    : '';
+  const threadSection = conversationContext
+    ? `\n\nPRIOR DECISION THREAD (this is a follow-up — compound your analysis on prior context, do not repeat what was already resolved):\n${conversationContext}`
     : '';
   return `You are the SYNTHESIZER in the SolveOS War Room.
 You have heard from the Strategist, the Skeptic, and the Operator regarding: "${problem}"
 
 Strategist: ${strategist}
 Skeptic: ${skeptic}
-Operator: ${operator}${memorySection}
+Operator: ${operator}${memorySection}${threadSection}
 
 Your goal is to provide a final, structured Decision Blueprint.
 

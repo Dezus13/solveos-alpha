@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Navbar from '@/components/Navbar';
 import DecisionConsole from '@/components/DecisionConsole';
 import type { IntelligenceSnapshot } from '@/components/IntelligenceRail';
-import type { DecisionBlueprint } from '@/lib/types';
+import type { ConversationTurn, DecisionBlueprint, SolveRequest } from '@/lib/types';
 
 import en from '@/locales/en/common.json';
 
@@ -13,15 +13,15 @@ type LocaleDictionary = Record<string, Record<string, string>>;
 
 const initialLocales: LocaleDictionary = {
   auto: en,
-  English: en
+  English: en,
 };
 
 const localeLoaders: Record<string, () => Promise<Record<string, string>>> = {
-  Russian: () => import('@/locales/ru/common.json').then((module) => module.default),
-  Arabic: () => import('@/locales/ar/common.json').then((module) => module.default),
-  German: () => import('@/locales/de/common.json').then((module) => module.default),
-  Spanish: () => import('@/locales/es/common.json').then((module) => module.default),
-  Chinese: () => import('@/locales/zh/common.json').then((module) => module.default)
+  Russian: () => import('@/locales/ru/common.json').then((m) => m.default),
+  Arabic: () => import('@/locales/ar/common.json').then((m) => m.default),
+  German: () => import('@/locales/de/common.json').then((m) => m.default),
+  Spanish: () => import('@/locales/es/common.json').then((m) => m.default),
+  Chinese: () => import('@/locales/zh/common.json').then((m) => m.default),
 };
 
 const RailSkeleton = () => (
@@ -47,15 +47,15 @@ const ResultsSkeleton = () => (
 );
 
 const IntelligenceRail = dynamic(() => import('@/components/IntelligenceRail'), {
-  loading: () => <RailSkeleton />
+  loading: () => <RailSkeleton />,
 });
 
 const SettingsModal = dynamic(() => import('@/components/SettingsModal'), {
-  loading: () => null
+  loading: () => null,
 });
 
 const SimulationResults = dynamic(() => import('@/components/SimulationResults'), {
-  loading: () => <ResultsSkeleton />
+  loading: () => <ResultsSkeleton />,
 });
 
 const idleSnapshot: IntelligenceSnapshot = {
@@ -64,12 +64,15 @@ const idleSnapshot: IntelligenceSnapshot = {
   downsideRisk: 0,
   blackSwanExposure: 0,
   recommendedPath: 'Run a simulation to unlock the recommended path.',
-  verdict: 'Awaiting decision input.'
+  verdict: 'Awaiting decision input.',
 };
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
-function buildIntelligenceSnapshot(blueprint: DecisionBlueprint | null, status: IntelligenceSnapshot['status']): IntelligenceSnapshot {
+function buildIntelligenceSnapshot(
+  blueprint: DecisionBlueprint | null,
+  status: IntelligenceSnapshot['status'],
+): IntelligenceSnapshot {
   if (!blueprint) {
     return status === 'running'
       ? {
@@ -78,15 +81,24 @@ function buildIntelligenceSnapshot(blueprint: DecisionBlueprint | null, status: 
           downsideRisk: 34,
           blackSwanExposure: 28,
           recommendedPath: 'Running scenario branches...',
-          verdict: 'Simulation is testing the obvious move against harder futures.'
+          verdict: 'Simulation is testing the obvious move against harder futures.',
         }
       : idleSnapshot;
   }
 
   const score = clamp(Number(blueprint.score) || 68, 0, 100);
   const downsideRisk = clamp(100 - score + 12, 8, 82);
-  const blackSwanExposure = clamp(Math.round((downsideRisk + (blueprint.paths?.bold?.cons?.length || 1) * 9) / 2), 6, 76);
-  const pathName = score >= 82 ? 'Bold path with staged safeguards' : score >= 58 ? 'Balanced path with explicit kill criteria' : 'Safe path until evidence improves';
+  const blackSwanExposure = clamp(
+    Math.round((downsideRisk + (blueprint.paths?.bold?.cons?.length || 1) * 9) / 2),
+    6,
+    76,
+  );
+  const pathName =
+    score >= 82
+      ? 'Bold path with staged safeguards'
+      : score >= 58
+        ? 'Balanced path with explicit kill criteria'
+        : 'Safe path until evidence improves';
 
   return {
     status,
@@ -94,94 +106,163 @@ function buildIntelligenceSnapshot(blueprint: DecisionBlueprint | null, status: 
     downsideRisk,
     blackSwanExposure,
     recommendedPath: pathName,
-    verdict: blueprint.recommendation || 'Proceed only after validating the core assumption.'
+    verdict: blueprint.recommendation || 'Proceed only after validating the core assumption.',
   };
 }
 
 export default function HomeExperience() {
-  const [submittedProblem, setSubmittedProblem] = useState('');
-  const [language, setLanguage] = useState('auto');
+  const [thread, setThread] = useState<ConversationTurn[]>([]);
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<DecisionBlueprint | null>(null);
-  const [showBoard, setShowBoard] = useState(false);
+  const [language, setLanguage] = useState('auto');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [intelligence, setIntelligence] = useState<IntelligenceSnapshot>(idleSnapshot);
   const [locales, setLocales] = useState<LocaleDictionary>(initialLocales);
-  const [memoryScore, setMemoryScore] = useState<number>(0);
-  const [networkScore, setNetworkScore] = useState<number>(0);
+  const [memoryScore, setMemoryScore] = useState(0);
+  const [networkScore, setNetworkScore] = useState(0);
   const [calibratedScore, setCalibratedScore] = useState<number | undefined>(undefined);
   const [calibrationOffset, setCalibrationOffset] = useState<number | undefined>(undefined);
+  const [calibrationSampleSize, setCalibrationSampleSize] = useState<number | undefined>(undefined);
+  const [latestDecisionId, setLatestDecisionId] = useState<string | undefined>(undefined);
 
-  const currentLang = result?.language || language;
+  // Keep a stable ref to thread so handleSubmit always sees the latest value
+  const threadRef = useRef<ConversationTurn[]>([]);
+  useEffect(() => { threadRef.current = thread; }, [thread]);
+
+  const latestBlueprint = useMemo(() => {
+    for (let i = thread.length - 1; i >= 0; i--) {
+      if (thread[i].role === 'assistant' && thread[i].blueprint) return thread[i].blueprint!;
+    }
+    return null;
+  }, [thread]);
+
+  const latestUserMessage = useMemo(() => {
+    for (let i = thread.length - 1; i >= 0; i--) {
+      if (thread[i].role === 'user') return thread[i].content;
+    }
+    return '';
+  }, [thread]);
+
+  const currentLang = latestBlueprint?.language || language;
   const t = locales[currentLang as string] || locales.English;
 
-  const ensureLocale = useCallback(async (nextLanguage: string) => {
-    if (nextLanguage === 'auto' || locales[nextLanguage]) return;
+  const ensureLocale = useCallback(
+    async (next: string) => {
+      if (next === 'auto' || locales[next]) return;
+      const loader = localeLoaders[next];
+      if (!loader) return;
+      const dict = await loader();
+      setLocales((prev) => (prev[next] ? prev : { ...prev, [next]: dict }));
+    },
+    [locales],
+  );
 
-    const loadLocale = localeLoaders[nextLanguage];
-    if (!loadLocale) return;
+  const handleLanguageChange = useCallback(
+    async (next: string) => {
+      await ensureLocale(next);
+      setLanguage(next);
+    },
+    [ensureLocale],
+  );
 
-    const dictionary = await loadLocale();
-    setLocales((currentLocales) => currentLocales[nextLanguage]
-      ? currentLocales
-      : { ...currentLocales, [nextLanguage]: dictionary }
-    );
-  }, [locales]);
-
-  const handleLanguageChange = useCallback(async (nextLanguage: string) => {
-    await ensureLocale(nextLanguage);
-    setLanguage(nextLanguage);
-  }, [ensureLocale]);
-
-  const onSimulationStart = useCallback(() => {
-    setIntelligence(buildIntelligenceSnapshot(null, 'running'));
-    void import('@/components/SimulationResults');
-    void import('@/components/DecisionBlueprint');
-    void import('@/components/AgentEngine');
-  }, []);
-
-  const onSimulationError = useCallback(() => {
+  const handleReset = useCallback(() => {
+    setThread([]);
     setIntelligence(idleSnapshot);
+    setMemoryScore(0);
+    setNetworkScore(0);
+    setCalibratedScore(undefined);
+    setCalibrationOffset(undefined);
+    setCalibrationSampleSize(undefined);
+    setLatestDecisionId(undefined);
   }, []);
 
-  const onResetResult = useCallback(() => {
-    setResult(null);
-    setShowBoard(false);
-  }, []);
+  const handleSubmit = useCallback(
+    async (message: string) => {
+      // Preload heavy chunks
+      void import('@/components/SimulationResults');
+      void import('@/components/DecisionBlueprint');
+      void import('@/components/AgentEngine');
 
-  const onSimulationResult = useCallback((
-    blueprint: DecisionBlueprint,
-    problem: string,
-    autoBoard: boolean,
-    incomingMemoryScore?: number,
-    incomingNetworkScore?: number,
-    incomingCalibratedScore?: number,
-    incomingCalibrationOffset?: number,
-  ) => {
-    if (blueprint.language) {
-      void ensureLocale(blueprint.language);
-    }
+      const userTurn: ConversationTurn = {
+        id: crypto.randomUUID(),
+        role: 'user',
+        content: message,
+        timestamp: Date.now(),
+      };
 
-    setSubmittedProblem(problem);
-    setResult(blueprint);
-    const snap = buildIntelligenceSnapshot(blueprint, 'complete');
-    if (typeof incomingMemoryScore === 'number') {
-      snap.memoryScore = incomingMemoryScore;
-      setMemoryScore(incomingMemoryScore);
-    }
-    if (typeof incomingNetworkScore === 'number') setNetworkScore(incomingNetworkScore);
-    if (typeof incomingCalibratedScore === 'number') setCalibratedScore(incomingCalibratedScore);
-    if (typeof incomingCalibrationOffset === 'number') setCalibrationOffset(incomingCalibrationOffset);
-    setIntelligence(snap);
-    setShowBoard(autoBoard);
-  }, [ensureLocale]);
+      setThread((prev) => [...prev, userTurn]);
+      setLoading(true);
+      setIntelligence(buildIntelligenceSnapshot(null, 'running'));
+
+      try {
+        const body: SolveRequest = {
+          problem: message,
+          language,
+          conversationHistory: threadRef.current.map((t) => ({
+            role: t.role,
+            content: t.role === 'assistant' ? (t.blueprint?.recommendation || t.content) : t.content,
+          })),
+        };
+
+        const response = await fetch('/api/solve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Failed to generate solution');
+
+        const blueprint = data.result as DecisionBlueprint;
+        if (typeof data.decisionId === 'string') setLatestDecisionId(data.decisionId);
+        if (blueprint.language) void ensureLocale(blueprint.language);
+
+        const assistantTurn: ConversationTurn = {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: blueprint.recommendation,
+          blueprint,
+          timestamp: Date.now(),
+        };
+
+        setThread((prev) => [...prev, assistantTurn]);
+
+        const snap = buildIntelligenceSnapshot(blueprint, 'complete');
+        if (typeof data.memoryScore === 'number') {
+          snap.memoryScore = data.memoryScore;
+          setMemoryScore(data.memoryScore);
+        }
+        if (typeof data.networkScore === 'number') setNetworkScore(data.networkScore);
+        if (typeof data.calibratedScore === 'number') setCalibratedScore(data.calibratedScore);
+        if (typeof data.calibrationOffset === 'number') setCalibrationOffset(data.calibrationOffset);
+        if (typeof data.calibrationSampleSize === 'number') setCalibrationSampleSize(data.calibrationSampleSize);
+        setIntelligence(snap);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
+        const errorTurn: ConversationTurn = {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: message,
+          isError: true,
+          timestamp: Date.now(),
+        };
+        setThread((prev) => [...prev, errorTurn]);
+        setIntelligence(idleSnapshot);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [language, ensureLocale],
+  );
 
   const handleOpenSettings = useCallback(() => {
     void import('@/components/SettingsModal');
     setSettingsOpen(true);
   }, []);
 
-  const resultKey = useMemo(() => `${submittedProblem}-${result?.recommendation || ''}`, [result?.recommendation, submittedProblem]);
+  const resultKey = useMemo(
+    () => `${latestUserMessage}-${latestBlueprint?.recommendation || ''}`,
+    [latestBlueprint?.recommendation, latestUserMessage],
+  );
 
   return (
     <>
@@ -192,41 +273,51 @@ export default function HomeExperience() {
           {[
             { name: t.agent_strategist, color: 'text-emerald-500', glow: 'bg-emerald-500' },
             { name: t.agent_skeptic, color: 'text-rose-500', glow: 'bg-rose-500' },
-            { name: t.agent_operator, color: 'text-blue-500', glow: 'bg-blue-500' }
+            { name: t.agent_operator, color: 'text-blue-500', glow: 'bg-blue-500' },
           ].map((agent, i) => (
             <div key={i} className="flex items-center space-x-3 group">
-              <div className={`w-1.5 h-1.5 rounded-full ${agent.glow} ${loading ? 'opacity-100 shadow-[0_0_10px_rgba(168,85,247,0.35)]' : 'opacity-40 shadow-[0_0_10px_rgba(255,255,255,0.1)]'} transition-all group-hover:opacity-100 group-hover:scale-125`} />
-              <span className={`text-[10px] font-black uppercase ${agent.color} ${loading ? 'opacity-100' : 'opacity-75'} transition-all group-hover:opacity-100`}>{agent.name}</span>
+              <div
+                className={`w-1.5 h-1.5 rounded-full ${agent.glow} ${
+                  loading
+                    ? 'opacity-100 shadow-[0_0_10px_rgba(168,85,247,0.35)]'
+                    : 'opacity-40 shadow-[0_0_10px_rgba(255,255,255,0.1)]'
+                } transition-all group-hover:opacity-100 group-hover:scale-125`}
+              />
+              <span
+                className={`text-[10px] font-black uppercase ${agent.color} ${
+                  loading ? 'opacity-100' : 'opacity-75'
+                } transition-all group-hover:opacity-100`}
+              >
+                {agent.name}
+              </span>
             </div>
           ))}
         </div>
 
         <div className="w-full flex items-start">
           <DecisionConsole
-            language={language}
+            thread={thread}
             loading={loading}
-            onLoadingChange={setLoading}
-            onResetResult={onResetResult}
-            onResult={onSimulationResult}
-            onSimulationError={onSimulationError}
-            onSimulationStart={onSimulationStart}
+            onSubmit={handleSubmit}
+            onReset={handleReset}
           />
-
           <IntelligenceRail snapshot={intelligence} />
         </div>
 
-        {result && (
+        {latestBlueprint && (
           <SimulationResults
             key={resultKey}
-            result={result}
+            result={latestBlueprint}
             intelligence={intelligence}
-            submittedProblem={submittedProblem}
-            initialShowBoard={showBoard}
+            submittedProblem={latestUserMessage}
+            initialShowBoard={false}
             t={t}
             memoryScore={memoryScore}
             networkScore={networkScore}
             calibratedScore={calibratedScore}
             calibrationOffset={calibrationOffset}
+            calibrationSampleSize={calibrationSampleSize}
+            decisionId={latestDecisionId}
           />
         )}
       </div>

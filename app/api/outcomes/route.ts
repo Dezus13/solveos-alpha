@@ -1,50 +1,65 @@
 import { NextResponse } from 'next/server';
-import { recordOutcome, getDecisionHistory } from '@/lib/memory';
+import { recordOutcome, getDecisionHistory, scheduleReview } from '@/lib/memory';
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { decisionId, outcome } = body;
 
-    if (!decisionId || !outcome) {
+    if (!decisionId || typeof decisionId !== 'string') {
+      return NextResponse.json({ error: 'decisionId required' }, { status: 400 });
+    }
+
+    // ── Schedule a delayed review (outcome is "Too Early / Unknown") ───────────
+    if (body.pendingReview) {
+      const reviewType = body.pendingReview.reviewType;
+      if (reviewType !== '7day' && reviewType !== '30day') {
+        return NextResponse.json(
+          { error: 'reviewType must be "7day" or "30day"' },
+          { status: 400 }
+        );
+      }
+      const result = await scheduleReview(decisionId, reviewType);
+      if (!result.ok) {
+        const status = result.reason === 'not_found' ? 404 : 409;
+        const error =
+          result.reason === 'not_found'
+            ? 'Decision not found'
+            : 'Outcome already recorded for this decision';
+        return NextResponse.json({ error }, { status });
+      }
+      return NextResponse.json({ success: true, scheduled: true });
+    }
+
+    // ── Record an actual outcome ───────────────────────────────────────────────
+    if (!outcome || !outcome.actualOutcome || outcome.scoreAccuracy === undefined) {
       return NextResponse.json(
-        { error: 'decisionId and outcome required' },
+        { error: 'outcome with actualOutcome and scoreAccuracy required' },
         { status: 400 }
       );
     }
 
-    if (!outcome.actualOutcome || outcome.scoreAccuracy === undefined) {
-      return NextResponse.json(
-        { error: 'actualOutcome and scoreAccuracy required' },
-        { status: 400 }
-      );
-    }
-
-    const updated = await recordOutcome(decisionId, {
+    const result = await recordOutcome(decisionId, {
       actualOutcome: outcome.actualOutcome,
       scoreAccuracy: outcome.scoreAccuracy,
-      lessons: outcome.lessons || [],
-      recommendations: outcome.recommendations || [],
+      lessons: Array.isArray(outcome.lessons) ? outcome.lessons : [],
+      recommendations: Array.isArray(outcome.recommendations) ? outcome.recommendations : [],
     });
 
-    if (!updated) {
-      return NextResponse.json(
-        { error: 'Decision not found' },
-        { status: 404 }
-      );
+    if (!result.ok) {
+      const status = result.reason === 'not_found' ? 404 : 409;
+      const error =
+        result.reason === 'not_found'
+          ? 'Decision not found'
+          : 'Outcome already logged for this decision';
+      return NextResponse.json({ error }, { status });
     }
 
-    return NextResponse.json({
-      success: true,
-      decision: updated,
-    });
+    return NextResponse.json({ success: true, decision: result.entry });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('API /api/outcomes error:', error);
-    return NextResponse.json(
-      { error: message },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -53,46 +68,34 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const decisionId = searchParams.get('id');
 
+    const history = await getDecisionHistory();
+
     if (decisionId) {
-      // Get specific decision outcome
-      const history = await getDecisionHistory();
       const decision = history.find(e => e.id === decisionId);
-
       if (!decision) {
-        return NextResponse.json(
-          { error: 'Decision not found' },
-          { status: 404 }
-        );
+        return NextResponse.json({ error: 'Decision not found' }, { status: 404 });
       }
-
       return NextResponse.json({
-        decision: decision.id,
-        outcome: decision.outcome || null,
+        decisionId: decision.id,
+        outcome: decision.outcome ?? null,
+        pendingReview: decision.pendingReview ?? null,
         timestamp: decision.timestamp,
       });
-    } else {
-      // Get all outcomes
-      const history = await getDecisionHistory();
-      const outcomes = history
-        .filter(e => !!e.outcome)
-        .map(e => ({
-          decisionId: e.id,
-          outcome: e.outcome,
-          originalScore: e.blueprint.score,
-          problem: e.problem,
-        }));
-
-      return NextResponse.json({
-        outcomes,
-        count: outcomes.length,
-      });
     }
+
+    const outcomes = history
+      .filter(e => !!e.outcome && !e.blueprint.isDemo)
+      .map(e => ({
+        decisionId: e.id,
+        outcome: e.outcome,
+        originalScore: e.blueprint.score,
+        problem: e.problem,
+      }));
+
+    return NextResponse.json({ outcomes, count: outcomes.length });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('API /api/outcomes error:', error);
-    return NextResponse.json(
-      { error: message },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

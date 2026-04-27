@@ -4,7 +4,6 @@ import type { DecisionBlueprint } from '../lib/types';
 
 interface DecisionBlueprintProps {
   data: DecisionBlueprint;
-  debugMode?: boolean;
   t: Record<string, string>;
 }
 
@@ -22,12 +21,7 @@ export default function DecisionBlueprint({ data, t }: DecisionBlueprintProps) {
           </h2>
           <div className="flex items-center space-x-3">
             <span className="text-[10px] font-bold text-neutral-600 uppercase tracking-widest">{t.synthesized_strategic_breakdown || 'Synthesized strategic breakdown'}</span>
-            {data?.isDemo && (
-              <span className="px-2 py-0.5 bg-white/[0.03] border border-white/10 rounded-full text-[9px] uppercase tracking-tighter text-neutral-400 font-bold">
-                {t.demo_mode}
-              </span>
-            )}
-          </div>
+            </div>
         </div>
         <div className="flex items-center space-x-6">
            <div className="flex flex-col items-end">
@@ -215,21 +209,6 @@ export default function DecisionBlueprint({ data, t }: DecisionBlueprintProps) {
         </div>
       </div>
 
-      {/* Raw Output (Strictly for Developers in Local Dev) */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="pt-8 opacity-20 hover:opacity-100 transition-opacity">
-          <details className="group border border-white/5 bg-neutral-950 rounded-2xl p-4 cursor-pointer">
-            <summary className="text-neutral-600 text-xs font-mono focus:outline-none user-select-none">
-               [DEV_ONLY] RAW_JSON_PAYLOAD
-            </summary>
-            <div className="mt-4 pt-4 border-t border-white/5">
-               <div className="prose prose-invert max-w-none text-[10px] text-neutral-500 font-mono whitespace-pre-wrap">
-                 {JSON.stringify(data, null, 2)}
-               </div>
-            </div>
-          </details>
-        </div>
-      )}
 
     </div>
   );

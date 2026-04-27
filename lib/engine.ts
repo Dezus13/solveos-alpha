@@ -13,7 +13,8 @@ import { getMockBlueprint } from './mocks';
 interface AgentState {
   problem: string;
   language: string;
-  memoryContext: string; // injected from decision history
+  memoryContext: string;
+  conversationContext: string; // injected from prior conversation thread
   strategistAnalysis: string;
   skepticAnalysis: string;
   operatorAnalysis: string;
@@ -209,7 +210,8 @@ async function synthesizerNode(state: AgentState): Promise<Partial<AgentState>> 
         state.skepticAnalysis,
         state.operatorAnalysis,
         state.language,
-        state.memoryContext || undefined
+        state.memoryContext || undefined,
+        state.conversationContext || undefined
       )
     }],
     temperature: 0.5,
@@ -239,6 +241,7 @@ const workflow = new StateGraph<AgentState>({
     problem: { value: (_a, b) => b, default: () => '' },
     language: { value: (_a, b) => b, default: () => 'English' },
     memoryContext: { value: (_a, b) => b, default: () => '' },
+    conversationContext: { value: (_a, b) => b, default: () => '' },
     strategistAnalysis: { value: (_a, b) => b, default: () => '' },
     skepticAnalysis: { value: (_a, b) => b, default: () => '' },
     operatorAnalysis: { value: (_a, b) => b, default: () => '' },
@@ -262,7 +265,8 @@ export const engine = workflow.compile();
 export async function solveDecision(
   problem: string,
   overrideLanguage?: string,
-  memoryContext?: string
+  memoryContext?: string,
+  conversationContext?: string
 ): Promise<DecisionBlueprint> {
   try {
     const startLanguage = (overrideLanguage && overrideLanguage !== 'auto') ? overrideLanguage : 'English';
@@ -271,6 +275,7 @@ export async function solveDecision(
       problem,
       language: startLanguage,
       memoryContext: memoryContext || '',
+      conversationContext: conversationContext || '',
       strategistAnalysis: '',
       skepticAnalysis: '',
       operatorAnalysis: '',

@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { Crown, Gauge, Sparkles, Activity } from 'lucide-react';
 import type { DecisionBlueprint } from '@/lib/types';
 import type { IntelligenceSnapshot } from '@/components/IntelligenceRail';
+import OutcomeLogger from '@/components/OutcomeLogger';
 
 const ResultSkeleton = ({ label }: { label: string }) => (
   <div className="w-full max-w-5xl mt-8 rounded-3xl border border-white/10 bg-[#0B1020]/60 p-8">
@@ -45,6 +46,8 @@ interface SimulationResultsProps {
   networkScore?: number;
   calibratedScore?: number;
   calibrationOffset?: number;
+  calibrationSampleSize?: number;
+  decisionId?: string;
 }
 
 type TabId = 'blueprint' | 'warroom' | 'debate' | 'action' | 'memory' | 'enterprise';
@@ -59,6 +62,8 @@ function SimulationResults({
   networkScore,
   calibratedScore,
   calibrationOffset,
+  calibrationSampleSize,
+  decisionId,
 }: SimulationResultsProps) {
   const [activeTab, setActiveTab] = useState<TabId>('blueprint');
   const [showBoard, setShowBoard] = useState(initialShowBoard);
@@ -93,14 +98,15 @@ function SimulationResults({
               <span className="text-[10px] font-black uppercase text-slate-400">Decision Verdict</span>
               {hasCalibration && (
                 <span
-                  className={`ml-2 text-[8px] font-black uppercase px-2 py-0.5 rounded-full border ${
+                  className={`ml-2 inline-flex items-center gap-1 text-[8px] font-black uppercase px-2 py-0.5 rounded-full border ${
                     calibrationOffset! < 0
                       ? 'text-amber-400 bg-amber-500/10 border-amber-500/20'
                       : 'text-blue-400 bg-blue-500/10 border-blue-500/20'
                   }`}
+                  title={`Confidence adjusted ${calibrationOffset! > 0 ? 'up' : 'down'} ${Math.abs(calibrationOffset!)} points from ${calibrationSampleSize ?? '?'} historical outcome${calibrationSampleSize !== 1 ? 's' : ''}`}
                 >
-                  <Activity className="inline w-2.5 h-2.5 mr-1" />
-                  Calibrated: {calibratedScore} ({calibrationOffset! > 0 ? '+' : ''}{calibrationOffset})
+                  <Activity className="w-2.5 h-2.5" />
+                  Adjusted from {calibrationSampleSize ?? '?'} outcome{calibrationSampleSize !== 1 ? 's' : ''} · {calibratedScore} ({calibrationOffset! > 0 ? '+' : ''}{calibrationOffset})
                 </span>
               )}
             </div>
@@ -116,6 +122,14 @@ function SimulationResults({
             ))}
           </div>
         </div>
+
+        {decisionId && (
+          <OutcomeLogger
+            key={decisionId}
+            decisionId={decisionId}
+            blueprintScore={result.score}
+          />
+        )}
       </div>
 
       <div className="w-full flex flex-col items-center mt-12">

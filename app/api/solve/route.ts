@@ -26,6 +26,14 @@ export async function POST(req: Request) {
     const problem = body.problem.trim();
     const domain = body.context?.domain;
 
+    // Format conversation history into a context string for the synthesizer
+    let conversationContext = '';
+    if (body.conversationHistory && body.conversationHistory.length > 0) {
+      conversationContext = body.conversationHistory
+        .map((t, i) => `${i % 2 === 0 ? 'User' : 'Prior analysis'}: ${t.content}`)
+        .join('\n');
+    }
+
     // Read history once — used for both memory intelligence and calibration
     const history = await getDecisionHistory();
 
@@ -52,7 +60,7 @@ export async function POST(req: Request) {
     const fullContext = [memoryContext, calibrationNote].filter(Boolean).join('\n\n');
 
     // Run the multi-agent engine
-    const blueprint = await solveDecision(problem, body.language, fullContext);
+    const blueprint = await solveDecision(problem, body.language, fullContext, conversationContext);
 
     // Calibrate the raw confidence score against historical outcomes
     // Re-read history after potential updates — but use the pre-run snapshot for calibration
@@ -68,6 +76,8 @@ export async function POST(req: Request) {
       networkScore,
       calibratedScore: calibration.calibratedScore,
       calibrationOffset: calibration.offset,
+      calibrationSampleSize: calibration.sampleSize,
+      calibrationConfidence: calibration.confidence,
     };
 
     return NextResponse.json(response);

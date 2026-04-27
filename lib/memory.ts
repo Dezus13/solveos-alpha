@@ -1,16 +1,46 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { DecisionMemoryEntry, DecisionOutcome, DecisionContext, MemoryGraph, MemoryIntelligence } from './types';
+import { DecisionMemoryEntry, DecisionOutcome, DecisionContext, MemoryGraph, MemoryIntelligence, PendingReview } from './types';
 import { buildMemoryGraph, getMemoryIntelligenceFromHistory } from './memory-graph';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const MEMORY_FILE = path.join(DATA_DIR, 'decisions.json');
+const TMP_FILE = MEMORY_FILE + '.tmp';
 
 async function ensureDataDir() {
+  await fs.mkdir(DATA_DIR, { recursive: true });
+}
+
+/**
+ * Atomic write: write to a .tmp file, then rename — prevents mid-write corruption.
+ */
+async function writeHistory(history: DecisionMemoryEntry[]): Promise<void> {
+  const serialised = JSON.stringify(history, null, 2);
+  await fs.writeFile(TMP_FILE, serialised, 'utf-8');
+  await fs.rename(TMP_FILE, MEMORY_FILE);
+}
+
+/**
+ * Read and parse history. If the file is missing, returns [].
+ * If the file is corrupt (bad JSON or unexpected shape), renames it to .corrupt and returns [].
+ */
+async function readHistory(): Promise<DecisionMemoryEntry[]> {
+  let raw: string;
   try {
-    await fs.access(DATA_DIR);
+    raw = await fs.readFile(MEMORY_FILE, 'utf-8');
   } catch {
-    await fs.mkdir(DATA_DIR, { recursive: true });
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) throw new Error('not an array');
+    return parsed as DecisionMemoryEntry[];
+  } catch {
+    const corruptPath = MEMORY_FILE + '.corrupt.' + Date.now();
+    await fs.rename(MEMORY_FILE, corruptPath).catch(() => undefined);
+    console.error(`[memory] decisions.json was corrupt — backed up to ${corruptPath}`);
+    return [];
   }
 }
 
@@ -21,16 +51,7 @@ export async function saveDecision(
   entry: Omit<DecisionMemoryEntry, 'id' | 'timestamp' | 'tags' | 'similarity'>
 ) {
   await ensureDataDir();
-  
-  let history: DecisionMemoryEntry[] = [];
-  try {
-    const data = await fs.readFile(MEMORY_FILE, 'utf-8');
-    history = JSON.parse(data);
-  } catch {
-    // File doesn't exist yet
-  }
-
-  // Extract tags from problem and context for categorization
+  const history = await readHistory();
   const tags = extractTags(entry.problem, entry.context);
 
   const newEntry: DecisionMemoryEntry = {
@@ -40,54 +61,99 @@ export async function saveDecision(
     tags,
   };
 
-  history.unshift(newEntry); // Newest first
-  
-  await fs.writeFile(MEMORY_FILE, JSON.stringify(history, null, 2));
+  history.unshift(newEntry);
+  await writeHistory(history);
   return newEntry;
 }
 
 /**
- * Record outcome for a past decision (learning mechanism)
+ * Record outcome for a past decision (learning mechanism).
+ * Returns:
+ *   { ok: true, entry }   — outcome saved
+ *   { ok: false, reason } — 'not_found' | 'already_logged'
  */
 export async function recordOutcome(
   decisionId: string,
   outcome: Omit<DecisionOutcome, 'decisionId' | 'timestamp'>
-) {
+): Promise<{ ok: true; entry: DecisionMemoryEntry } | { ok: false; reason: 'not_found' | 'already_logged' }> {
   await ensureDataDir();
-  
-  let history: DecisionMemoryEntry[] = [];
-  try {
-    const data = await fs.readFile(MEMORY_FILE, 'utf-8');
-    history = JSON.parse(data);
-  } catch {
-    return null;
-  }
+  const history = await readHistory();
 
   const entry = history.find(e => e.id === decisionId);
-  if (!entry) {
-    return null;
-  }
+  if (!entry) return { ok: false, reason: 'not_found' };
+  if (entry.outcome) return { ok: false, reason: 'already_logged' };
 
   entry.outcome = {
     ...outcome,
     decisionId,
     timestamp: new Date().toISOString(),
   };
+  // Clear any pending review now that the outcome is logged
+  delete entry.pendingReview;
 
-  await fs.writeFile(MEMORY_FILE, JSON.stringify(history, null, 2));
-  return entry;
+  await writeHistory(history);
+  return { ok: true, entry };
+}
+
+/**
+ * Schedule a delayed outcome review for a decision (used when outcome is "unknown").
+ * Returns null if: decision not found, or outcome already recorded.
+ * Idempotent: re-scheduling replaces the existing pendingReview (allowed reschedule).
+ */
+export async function scheduleReview(
+  decisionId: string,
+  reviewType: PendingReview['reviewType']
+): Promise<{ ok: true; entry: DecisionMemoryEntry } | { ok: false; reason: 'not_found' | 'already_logged' }> {
+  await ensureDataDir();
+  const history = await readHistory();
+
+  const entry = history.find(e => e.id === decisionId);
+  if (!entry) return { ok: false, reason: 'not_found' };
+  // Cannot schedule a review after outcome is already recorded
+  if (entry.outcome) return { ok: false, reason: 'already_logged' };
+
+  const daysOut = reviewType === '7day' ? 7 : 30;
+  entry.pendingReview = {
+    reviewType,
+    scheduledFor: new Date(Date.now() + daysOut * 86_400_000).toISOString(),
+    createdAt: new Date().toISOString(),
+  };
+
+  await writeHistory(history);
+  return { ok: true, entry };
+}
+
+/**
+ * Get decisions whose scheduled review is due (past scheduledFor) and not yet expired.
+ * Reviews are surfaced for up to 90 days after their scheduled date, then silently
+ * dropped from the queue (the record remains, the user can still log from history).
+ */
+export async function getDueReviews(): Promise<DecisionMemoryEntry[]> {
+  const history = await getDecisionHistory();
+  const now = new Date().toISOString();
+  const expiryDate = new Date(Date.now() - 90 * 86_400_000).toISOString();
+  return history.filter(
+    e =>
+      e.pendingReview &&
+      !e.outcome &&
+      e.pendingReview.scheduledFor <= now &&
+      e.pendingReview.scheduledFor >= expiryDate
+  );
+}
+
+/**
+ * Get all decisions with a pending review (due or not yet due, no outcome yet).
+ */
+export async function getPendingReviews(): Promise<DecisionMemoryEntry[]> {
+  const history = await getDecisionHistory();
+  return history.filter(e => e.pendingReview && !e.outcome);
 }
 
 /**
  * Get full decision history
  */
 export async function getDecisionHistory(): Promise<DecisionMemoryEntry[]> {
-  try {
-    const data = await fs.readFile(MEMORY_FILE, 'utf-8');
-    return JSON.parse(data);
-  } catch {
-    return [];
-  }
+  return readHistory();
 }
 
 /**
