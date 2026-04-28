@@ -118,7 +118,8 @@ function AgentEngine({ problem, initialSolution }: AgentEngineProps) {
   const [showVerdict, setShowVerdict] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
-  const lang = (initialSolution.language as string) || 'English';
+  const safeSolution = initialSolution || {};
+  const lang = (safeSolution.language as string) || 'English';
   const lt = DIALECTIC_LOCALES[lang] || DIALECTIC_LOCALES.English;
 
   // Simulation timeline
@@ -139,7 +140,7 @@ function AgentEngine({ problem, initialSolution }: AgentEngineProps) {
     {
       agent: lt.strategist,
       role: lt.role_initial,
-      content: lt.proposal_content(String(initialSolution.recommendation)),
+      content: lt.proposal_content(String(safeSolution.recommendation || 'No recommendation available yet.')),
       icon: <Brain className="w-5 h-5 text-emerald-400" />,
       color: 'emerald'
     },

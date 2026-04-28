@@ -142,7 +142,7 @@ export default function HomeExperience() {
     return '';
   }, [thread]);
 
-  const currentLang = latestBlueprint?.language || language;
+  const currentLang = latestBlueprint?.language || language || 'en';
   const t = locales[currentLang as string] || locales.English;
 
   const ensureLocale = useCallback(
@@ -196,7 +196,7 @@ export default function HomeExperience() {
       try {
         const body: SolveRequest = {
           problem: message,
-          language,
+          language: language || 'en',
           conversationHistory: threadRef.current.map((t) => ({
             role: t.role,
             content: t.role === 'assistant' ? (t.blueprint?.recommendation || t.content) : t.content,
@@ -212,14 +212,16 @@ export default function HomeExperience() {
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Failed to generate solution');
 
-        const blueprint = data.result as DecisionBlueprint;
+        const blueprint = data?.result as DecisionBlueprint | undefined;
+        if (!blueprint) throw new Error(data?.error || 'Decision engine returned no result.');
+        blueprint.language = blueprint.language || 'English';
         if (typeof data.decisionId === 'string') setLatestDecisionId(data.decisionId);
         if (blueprint.language) void ensureLocale(blueprint.language);
 
         const assistantTurn: ConversationTurn = {
           id: crypto.randomUUID(),
           role: 'assistant',
-          content: blueprint.recommendation,
+          content: blueprint.recommendation || 'Decision analysis completed.',
           blueprint,
           timestamp: Date.now(),
         };

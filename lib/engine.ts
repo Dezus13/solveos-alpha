@@ -23,6 +23,20 @@ interface AgentState {
 
 const openai = new OpenAI();
 
+function normalizeLanguage(language?: string): string {
+  const value = typeof language === 'string' ? language.trim() : '';
+  const lower = value.toLowerCase();
+
+  if (!value || lower === 'auto' || lower === 'en' || lower === 'english') return 'English';
+  if (lower === 'ru' || lower === 'russian') return 'Russian';
+  if (lower === 'de' || lower === 'german') return 'German';
+  if (lower === 'es' || lower === 'spanish') return 'Spanish';
+  if (lower === 'ar' || lower === 'arabic') return 'Arabic';
+  if (lower === 'zh' || lower === 'chinese') return 'Chinese';
+
+  return value;
+}
+
 /**
  * Calculate council metrics from agent analyses
  * Measures confidence, agreement, feasibility, and debate intensity
@@ -152,8 +166,9 @@ function calculateRiskMap(score: number, skepticAgreement: number): { opportunit
 
 // Node functions
 async function detectionNode(state: AgentState): Promise<Partial<AgentState>> {
-  if (state.language && state.language !== 'English') {
-    return { language: state.language };
+  const currentLanguage = normalizeLanguage(state.language);
+  if (currentLanguage && currentLanguage !== 'English') {
+    return { language: currentLanguage };
   }
 
   const response = await openai.chat.completions.create({
@@ -167,49 +182,53 @@ async function detectionNode(state: AgentState): Promise<Partial<AgentState>> {
     }],
     temperature: 0,
   });
-  const language = response.choices[0]?.message?.content?.trim() || 'English';
+  const language = normalizeLanguage(response.choices[0]?.message?.content?.trim());
   return { language };
 }
 
 async function strategistNode(state: AgentState): Promise<Partial<AgentState>> {
+  const language = normalizeLanguage(state.language);
   const response = await openai.chat.completions.create({
     model: 'gpt-4o',
-    messages: [{ role: 'user', content: buildStrategistPrompt(state.problem, state.language, state.memoryContext || undefined) }],
+    messages: [{ role: 'user', content: buildStrategistPrompt(state.problem || '', language, state.memoryContext || undefined) }],
     temperature: 0.7,
   });
   return { strategistAnalysis: response.choices[0]?.message?.content || '' };
 }
 
 async function skepticNode(state: AgentState): Promise<Partial<AgentState>> {
+  const language = normalizeLanguage(state.language);
   const response = await openai.chat.completions.create({
     model: 'gpt-4o',
-    messages: [{ role: 'user', content: buildSkepticPrompt(state.problem, state.strategistAnalysis, state.language) }],
+    messages: [{ role: 'user', content: buildSkepticPrompt(state.problem || '', state.strategistAnalysis || '', language) }],
     temperature: 0.7,
   });
   return { skepticAnalysis: response.choices[0]?.message?.content || '' };
 }
 
 async function operatorNode(state: AgentState): Promise<Partial<AgentState>> {
+  const language = normalizeLanguage(state.language);
   const response = await openai.chat.completions.create({
     model: 'gpt-4o',
-    messages: [{ role: 'user', content: buildOperatorPrompt(state.problem, state.strategistAnalysis, state.skepticAnalysis, state.language) }],
+    messages: [{ role: 'user', content: buildOperatorPrompt(state.problem || '', state.strategistAnalysis || '', state.skepticAnalysis || '', language) }],
     temperature: 0.7,
   });
   return { operatorAnalysis: response.choices[0]?.message?.content || '' };
 }
 
 async function synthesizerNode(state: AgentState): Promise<Partial<AgentState>> {
+  const language = normalizeLanguage(state.language);
   const response = await openai.chat.completions.create({
     model: 'gpt-4o',
     response_format: { type: 'json_object' },
     messages: [{
       role: 'user',
       content: buildSynthesizerPrompt(
-        state.problem,
-        state.strategistAnalysis,
-        state.skepticAnalysis,
-        state.operatorAnalysis,
-        state.language,
+        state.problem || '',
+        state.strategistAnalysis || '',
+        state.skepticAnalysis || '',
+        state.operatorAnalysis || '',
+        language,
         state.memoryContext || undefined,
         state.conversationContext || undefined
       )
@@ -219,7 +238,7 @@ async function synthesizerNode(state: AgentState): Promise<Partial<AgentState>> 
   
   const rawContent = response.choices[0]?.message?.content || '{}';
   const blueprint = JSON.parse(rawContent);
-  blueprint.language = state.language;
+  blueprint.language = language;
   
   // Add enterprise features
   const council = calculateCouncilMetrics(
@@ -229,6 +248,7 @@ async function synthesizerNode(state: AgentState): Promise<Partial<AgentState>> 
   );
   
   blueprint.council = council;
+  blueprint.score = Math.min(100, Math.max(0, Number(blueprint.score) || 68));
   blueprint.scenarioBranches = generateScenarioBranches(blueprint.score);
   blueprint.riskMap = calculateRiskMap(blueprint.score, council.skepticAgreement);
   
@@ -269,10 +289,11 @@ export async function solveDecision(
   conversationContext?: string
 ): Promise<DecisionBlueprint> {
   try {
-    const startLanguage = (overrideLanguage && overrideLanguage !== 'auto') ? overrideLanguage : 'English';
+    const startLanguage = normalizeLanguage(overrideLanguage || 'en');
+    const safeProblem = typeof problem === 'string' ? problem : '';
 
     const result = await engine.invoke({
-      problem,
+      problem: safeProblem,
       language: startLanguage,
       memoryContext: memoryContext || '',
       conversationContext: conversationContext || '',
@@ -282,8 +303,8 @@ export async function solveDecision(
       finalBlueprint: null
     }) as unknown as AgentState;
 
-    if (overrideLanguage && overrideLanguage !== 'auto' && result.finalBlueprint) {
-      result.finalBlueprint.language = overrideLanguage;
+    if (result.finalBlueprint) {
+      result.finalBlueprint.language = normalizeLanguage(result.finalBlueprint.language || startLanguage);
     }
     
     if (!result.finalBlueprint) {
@@ -299,7 +320,8 @@ export async function solveDecision(
       console.warn('OPENAI QUOTA EXCEEDED: Engaging Demo Simulation Mode.');
     }
     
-    const finalLanguage = (overrideLanguage && overrideLanguage !== 'auto') ? overrideLanguage : 'English';
-    return getMockBlueprint(problem, finalLanguage);
+    const finalLanguage = normalizeLanguage(overrideLanguage || 'en');
+    const safeProblem = typeof problem === 'string' ? problem : '';
+    return getMockBlueprint(safeProblem, finalLanguage);
   }
 }
