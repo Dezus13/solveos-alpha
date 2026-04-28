@@ -184,7 +184,7 @@ export default function HomeExperience() {
   }, []);
 
   const handleSubmit = useCallback(
-    async (message: string) => {
+    async (message: string, mode = 'Strategy') => {
       // Preload heavy chunks
       void import('@/components/SimulationResults');
       void import('@/components/DecisionBlueprint');
@@ -206,6 +206,7 @@ export default function HomeExperience() {
         const body: SolveRequest = {
           problem: message,
           language: requestLanguage,
+          mode: mode === 'Risk' || mode === 'Scenarios' || mode === 'Red Team' ? mode : 'Strategy',
           conversationHistory: threadRef.current.map((t) => ({
             role: t.role,
             content: t.role === 'assistant' ? (t.blueprint?.recommendation || t.content) : t.content,

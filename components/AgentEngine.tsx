@@ -119,8 +119,30 @@ function AgentEngine({ problem, initialSolution }: AgentEngineProps) {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   const safeSolution = initialSolution || {};
+  const warRoomDebate = safeSolution.warRoomDebate as
+    | {
+        strategist?: string;
+        skeptic?: string;
+        operator?: string;
+        redTeam?: string;
+        finalSynthesis?: {
+          survivesDebate?: string;
+          breaks?: string;
+          recommendedMoveAfterDebate?: string;
+        };
+      }
+    | undefined;
   const lang = (safeSolution.language as string) || 'English';
   const lt = DIALECTIC_LOCALES[lang] || DIALECTIC_LOCALES.English;
+  const finalSynthesis = warRoomDebate?.finalSynthesis;
+  const confidenceScore = typeof safeSolution.confidenceScore === 'number'
+    ? safeSolution.confidenceScore
+    : typeof safeSolution.score === 'number'
+      ? safeSolution.score
+      : 87;
+  const riskScore = typeof (safeSolution.riskMap as { risk?: unknown } | undefined)?.risk === 'number'
+    ? (safeSolution.riskMap as { risk: number }).risk
+    : Math.max(12, 100 - confidenceScore);
 
   // Simulation timeline
   useEffect(() => {
@@ -140,21 +162,21 @@ function AgentEngine({ problem, initialSolution }: AgentEngineProps) {
     {
       agent: lt.strategist,
       role: lt.role_initial,
-      content: lt.proposal_content(String(safeSolution.recommendation || 'No recommendation available yet.')),
+      content: warRoomDebate?.strategist || lt.proposal_content(String(safeSolution.recommendation || 'No recommendation available yet.')),
       icon: <Brain className="w-5 h-5 text-emerald-400" />,
       color: 'emerald'
     },
     {
       agent: lt.skeptic,
       role: lt.role_attack,
-      content: lt.attack_content,
+      content: warRoomDebate?.skeptic || lt.attack_content,
       icon: <AlertTriangle className="w-5 h-5 text-rose-500" />,
       color: 'rose'
     },
     {
-      agent: lt.strategist,
-      role: lt.role_revision,
-      content: lt.revision_content,
+      agent: 'Red Team',
+      role: 'Assumption Attack',
+      content: warRoomDebate?.redTeam || lt.revision_content,
       icon: <ShieldCheck className="w-5 h-5 text-purple-400" />,
       color: 'purple',
       isRevision: true
@@ -162,11 +184,11 @@ function AgentEngine({ problem, initialSolution }: AgentEngineProps) {
     {
       agent: lt.operator,
       role: lt.role_execution,
-      content: lt.execution_content,
+      content: warRoomDebate?.operator || lt.execution_content,
       icon: <Settings className="w-5 h-5 text-blue-400" />,
       color: 'blue'
     }
-  ], [safeSolution.recommendation, lt]);
+  ], [safeSolution.recommendation, warRoomDebate, lt]);
 
   return (
     <div className="w-full max-w-5xl mt-12 flex flex-col space-y-10 relative pb-32">
@@ -188,7 +210,7 @@ function AgentEngine({ problem, initialSolution }: AgentEngineProps) {
           <div className="flex flex-col items-center">
             <span className="text-[9px] text-neutral-600 uppercase tracking-widest mb-2 font-black">{lt.confidence}</span>
             <div className="text-3xl font-black text-white tracking-tighter">
-              {showVerdict ? 87 : (step + 1) * 20}%
+              {showVerdict ? confidenceScore : Math.min(confidenceScore, (step + 1) * 20)}%
             </div>
           </div>
 
@@ -200,7 +222,7 @@ function AgentEngine({ problem, initialSolution }: AgentEngineProps) {
                 <div
                   key={idx}
                   style={{
-                    opacity: idx <= (step === 1 ? 7 : step === 2 ? 5 : 3) ? 1 : 0.1,
+                    opacity: idx <= (showVerdict ? Math.ceil(riskScore / 12.5) : step === 1 ? 7 : step === 2 ? 5 : 3) ? 1 : 0.1,
                     backgroundColor: idx <= 3 ? '#10b981' : idx <= 5 ? '#f59e0b' : '#ef4444'
                   }}
                   className="w-1.5 h-6 rounded-full transition-opacity duration-300"
@@ -293,8 +315,19 @@ function AgentEngine({ problem, initialSolution }: AgentEngineProps) {
                   </div>
 
                   <p className="text-neutral-200 text-xl font-light leading-relaxed max-w-2xl mx-auto md:mx-0">
-                    {lt.verdict_content}
+                    {finalSynthesis?.recommendedMoveAfterDebate || String(safeSolution.recommendation || lt.verdict_content)}
                   </p>
+
+                  <div className="grid grid-cols-1 gap-3 text-left sm:grid-cols-2">
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
+                      <div className="mb-2 text-[9px] font-black uppercase tracking-widest text-emerald-300">What Survives Debate</div>
+                      <p className="text-xs leading-relaxed text-neutral-300">{finalSynthesis?.survivesDebate || 'The reversible next move survives because it creates evidence without forcing full commitment.'}</p>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
+                      <div className="mb-2 text-[9px] font-black uppercase tracking-widest text-rose-300">What Breaks</div>
+                      <p className="text-xs leading-relaxed text-neutral-300">{finalSynthesis?.breaks || 'The weakest assumption breaks if early signal does not match the level of commitment.'}</p>
+                    </div>
+                  </div>
                   
                   <div className="pt-6 flex flex-col sm:flex-row items-center justify-center md:justify-start gap-4">
                     <button 
@@ -333,7 +366,7 @@ function AgentEngine({ problem, initialSolution }: AgentEngineProps) {
           onClose={() => setIsShareModalOpen(false)}
           problem={problem}
           recommendation="Initiate 'Thin-Layer' Pivot with 14-day validation Sprint."
-          confidence={87}
+          confidence={confidenceScore}
         />
       )}
     </div>

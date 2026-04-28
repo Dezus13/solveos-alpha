@@ -17,6 +17,9 @@ export default function DecisionBlueprint({ data, t }: DecisionBlueprintProps) {
   const signed = (value: number) => value > 0 ? `+${value}` : String(value);
   const evidence = drivers?.evidence || [];
   const hasEvidence = evidence.length > 0;
+  const executionPlan = data?.recommendation?.startsWith('Operator Plan')
+    ? data?.executionPlan || []
+    : [];
   const outcomeLabel = (outcome: string) => {
     const first = outcome.split(':')[0]?.trim() || outcome;
     return first.length > 36 ? `${first.slice(0, 36)}...` : first;
@@ -270,6 +273,32 @@ export default function DecisionBlueprint({ data, t }: DecisionBlueprintProps) {
         {/* Card 5: Action Plan */}
         <div className="bg-neutral-900/40 backdrop-blur-md border border-white/10 rounded-3xl p-5 md:p-8 hover:bg-neutral-900/60 transition-colors">
            <h3 className="text-xl font-medium text-white mb-6 flex items-center"><CheckCircle className="w-5 h-5 mr-3 text-amber-400" /> {t.action_plan}</h3>
+           {executionPlan.length === 4 ? (
+             <div className="space-y-3">
+               {executionPlan.map((week) => (
+                 <div key={week.week} className="rounded-2xl border border-white/5 bg-white/[0.04] p-4">
+                   <div className="mb-3 flex items-center justify-between">
+                     <div className="text-[10px] font-black uppercase tracking-widest text-amber-300">{week.week}</div>
+                     <div className="text-[8px] font-black uppercase tracking-widest text-neutral-600">Go / No-Go</div>
+                   </div>
+                   <div className="grid gap-3 text-xs leading-relaxed text-neutral-400">
+                     {[
+                       ['Objective', week.objective],
+                       ['Experiment', week.experiment],
+                       ['Metric', week.metric],
+                       ['Kill criteria', week.killCriteria],
+                       ['Threshold', week.goNoGoThreshold],
+                     ].map(([label, value]) => (
+                       <div key={label} className="grid grid-cols-[92px_1fr] gap-3">
+                         <span className="font-black uppercase tracking-widest text-neutral-600">{label}</span>
+                         <span>{value}</span>
+                       </div>
+                     ))}
+                   </div>
+                 </div>
+               ))}
+             </div>
+           ) : (
            <div className="space-y-4 relative before:absolute before:inset-0 before:ml-2.5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-white/10 before:to-transparent">
               <div className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
                  <div className="flex items-center justify-center w-6 h-6 rounded-full border border-white/20 bg-neutral-900 text-white shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2">
@@ -307,6 +336,7 @@ export default function DecisionBlueprint({ data, t }: DecisionBlueprintProps) {
                  </div>
               </div>
            </div>
+           )}
         </div>
       </div>
 

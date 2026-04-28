@@ -122,6 +122,7 @@ export interface ConversationTurn {
 export interface SolveRequest {
   problem: string;
   language?: string;
+  mode?: 'Strategy' | 'Risk' | 'Scenarios' | 'Red Team';
   context?: DecisionContext;
   conversationHistory?: Array<{ role: 'user' | 'assistant'; content: string }>;
 }
@@ -176,6 +177,27 @@ export interface SecondOrderEffect {
   hiddenLongTermEffect: string;
 }
 
+export interface WarRoomDebate {
+  strategist: string;
+  skeptic: string;
+  operator: string;
+  redTeam: string;
+  finalSynthesis: {
+    survivesDebate: string;
+    breaks: string;
+    recommendedMoveAfterDebate: string;
+  };
+}
+
+export interface ExecutionPlanWeek {
+  week: string;
+  objective: string;
+  experiment: string;
+  metric: string;
+  killCriteria: string;
+  goNoGoThreshold: string;
+}
+
 export interface DecisionBlueprint {
   score: number;
   recommendation: string;
@@ -194,6 +216,8 @@ export interface DecisionBlueprint {
   counterfactualPaths?: CounterfactualPath[];
   preMortemRisks?: PreMortemRisk[];
   secondOrderEffects?: SecondOrderEffect[];
+  warRoomDebate?: WarRoomDebate;
+  executionPlan?: ExecutionPlanWeek[];
   confidenceScore?: number;
   outcomeLessonPrompt?: string;
   diagnosis: {

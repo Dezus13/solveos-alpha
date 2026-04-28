@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { saveDecision, getDecisionHistory } from '@/lib/memory';
 import { getMemoryIntelligenceFromHistory } from '@/lib/memory-graph';
 import { computeNetworkIntelligence, calibrateScore, buildCalibrationContext } from '@/lib/benchmarks';
-import type { CouncilMetrics, CounterfactualPath, DecisionBlueprint, DecisionContext, PreMortemRisk, ScenarioBranch, SecondOrderEffect, SolveRequest, SolveResponse } from '@/lib/types';
+import { isPlanModeRequest, semanticVerdictForQuestion, shouldRejectDecisionOutput, detectVerdictLoop, buildForceDiversityInstruction, semanticVerdictExcluding, extractVerdictClass, buildIntentInstruction, enforceIntentRouting } from '@/lib/semantic-guards';
+import type { CouncilMetrics, CounterfactualPath, DecisionBlueprint, DecisionContext, ExecutionPlanWeek, PreMortemRisk, ScenarioBranch, SecondOrderEffect, SolveRequest, SolveResponse, WarRoomDebate } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,6 +29,12 @@ function readConversationContext(body: Partial<SolveRequest> | undefined): strin
     .filter((turn) => isRecord(turn) && typeof turn.content === 'string')
     .map((turn, i) => `${i % 2 === 0 ? 'User' : 'Prior analysis'}: ${(turn as { content: string }).content}`)
     .join('\n');
+}
+
+function readMode(body: Partial<SolveRequest> | undefined): NonNullable<SolveRequest['mode']> {
+  return body?.mode === 'Risk' || body?.mode === 'Scenarios' || body?.mode === 'Red Team'
+    ? body.mode
+    : 'Strategy';
 }
 
 function clampScore(value: unknown, fallback = 68): number {
@@ -97,7 +104,66 @@ function defaultScenarioBranches(score: number): ScenarioBranch[] {
   ];
 }
 
-function normalizeBlueprint(value: unknown, problem: string, language: string): DecisionBlueprint {
+function defaultWarRoomDebate(args: {
+  strategistBiggestUpside: string;
+  strategistLeverageMove: string;
+  skepticHiddenFlaw: string;
+  skepticWhatCouldBreak: string;
+  operatorNextSteps: string[];
+  redTeamCritique: string;
+  recommendation: string;
+}): WarRoomDebate {
+  return {
+    strategist: `Go aggressively only where the upside is explicit: ${args.strategistBiggestUpside} The leverage move is ${args.strategistLeverageMove}`,
+    skeptic: `This fails if the hidden flaw is real: ${args.skepticHiddenFlaw} The first break point is ${args.skepticWhatCouldBreak}`,
+    operator: `Make the next move reversible: ${args.operatorNextSteps[0] || 'Define one test, one owner, and one stop rule.'}`,
+    redTeam: `Attack the premise: ${args.redTeamCritique}`,
+    finalSynthesis: {
+      survivesDebate: args.strategistLeverageMove,
+      breaks: args.skepticWhatCouldBreak,
+      recommendedMoveAfterDebate: args.recommendation,
+    },
+  };
+}
+
+function defaultExecutionPlan(operatorNextSteps: string[]): ExecutionPlanWeek[] {
+  return [
+    {
+      week: 'Week 1',
+      objective: 'Define the test boundary and the one assumption being validated.',
+      experiment: operatorNextSteps[0] || 'Recruit a small target cohort and run the smallest useful test.',
+      metric: 'Qualified participants, activation, and first useful signal.',
+      killCriteria: 'No qualified users, unclear owner, or no measurable behavior by the end of the week.',
+      goNoGoThreshold: 'Go if at least 5 qualified users complete the test setup and one metric can be tracked.',
+    },
+    {
+      week: 'Week 2',
+      objective: 'Run the experiment with real users or real operating constraints.',
+      experiment: operatorNextSteps[1] || 'Expose the cohort to the offer, workflow, or prototype and record behavior.',
+      metric: 'Activation rate, completion rate, time-to-value, and qualitative friction.',
+      killCriteria: 'Users do not engage, cannot explain the value, or require manual rescue to complete the flow.',
+      goNoGoThreshold: 'Go if 40% or more complete the core action and can name the value without prompting.',
+    },
+    {
+      week: 'Week 3',
+      objective: 'Stress-test retention, willingness to pay, or repeat behavior.',
+      experiment: operatorNextSteps[2] || 'Ask users to repeat the behavior, pay, invite, or commit to a next step.',
+      metric: 'Repeat usage, conversion intent, willingness to pay, referral, or retained engagement.',
+      killCriteria: 'Interest drops after novelty, users avoid commitment, or the cost to support them is too high.',
+      goNoGoThreshold: 'Go if retained usage or commitment clears the pre-set success metric.',
+    },
+    {
+      week: 'Week 4',
+      objective: 'Decide scale, redesign, delay, or kill based on evidence.',
+      experiment: 'Compare results against thresholds and make the go / no-go decision.',
+      metric: 'Evidence strength, risk reduction, resource cost, and confidence delta.',
+      killCriteria: 'Core assumption remains unproven or the next phase requires disproportionate resources.',
+      goNoGoThreshold: 'Go only if the evidence supports the next commitment without weakening runway or focus.',
+    },
+  ];
+}
+
+function normalizeBlueprint(value: unknown, problem: string, language: string, mode = 'Strategy'): DecisionBlueprint {
   const blueprint = isRecord(value) ? value : {};
   const strategistView = isRecord(blueprint.strategistView) ? blueprint.strategistView : {};
   const skepticView = isRecord(blueprint.skepticView) ? blueprint.skepticView : {};
@@ -153,6 +219,38 @@ function normalizeBlueprint(value: unknown, problem: string, language: string): 
   const redTeamCritique = safeText(blueprint.redTeamCritique, 'The strongest attack is that the decision may scale risk faster than learning.');
   const economistView = safeText(blueprint.economistView, 'The opportunity cost is capital, attention, and time that cannot be reused if the bet is wrong.');
   const outcomeLessonPrompt = safeText(blueprint.outcomeLessonPrompt, 'What happened after execution, and which assumption was most wrong?');
+  const riskScore = clampScore(riskMap.risk, 100 - score);
+  const recommendation = safeText(blueprint.recommendation, semanticVerdictForQuestion(problem, mode));
+  const outputText = JSON.stringify({ ...blueprint, recommendation });
+  const shouldReplaceRecommendation = shouldRejectDecisionOutput(problem, outputText);
+  const planMode = isPlanModeRequest(problem);
+  const finalRecommendation = planMode
+    ? 'Operator Plan: 30-day experiment design with weekly go / no-go thresholds.'
+    : shouldReplaceRecommendation ? semanticVerdictForQuestion(problem, mode) : recommendation;
+  const warRoomDebate = isRecord(blueprint.warRoomDebate) ? blueprint.warRoomDebate : {};
+  const finalSynthesis = isRecord(warRoomDebate.finalSynthesis) ? warRoomDebate.finalSynthesis : {};
+  const debateDefaults = defaultWarRoomDebate({
+    strategistBiggestUpside,
+    strategistLeverageMove,
+    skepticHiddenFlaw,
+    skepticWhatCouldBreak,
+    operatorNextSteps,
+    redTeamCritique,
+    recommendation: finalRecommendation,
+  });
+  const executionPlan = Array.isArray(blueprint.executionPlan)
+    ? blueprint.executionPlan.filter(isRecord).map((week, index): ExecutionPlanWeek => {
+        const fallback = defaultExecutionPlan(operatorNextSteps)[index] || defaultExecutionPlan(operatorNextSteps)[3];
+        return {
+          week: safeText(week.week, fallback.week),
+          objective: safeText(week.objective, fallback.objective),
+          experiment: safeText(week.experiment, fallback.experiment),
+          metric: safeText(week.metric, fallback.metric),
+          killCriteria: safeText(week.killCriteria, fallback.killCriteria),
+          goNoGoThreshold: safeText(week.goNoGoThreshold, fallback.goNoGoThreshold),
+        };
+      }).slice(0, 4)
+    : [];
 
   return {
     score,
@@ -230,7 +328,19 @@ function normalizeBlueprint(value: unknown, problem: string, language: string): 
     ],
     confidenceScore,
     outcomeLessonPrompt,
-    recommendation: safeText(blueprint.recommendation, 'Proceed with staged validation before committing fully.'),
+    recommendation: finalRecommendation,
+    warRoomDebate: {
+      strategist: safeText(warRoomDebate.strategist, debateDefaults.strategist),
+      skeptic: safeText(warRoomDebate.skeptic, debateDefaults.skeptic),
+      operator: safeText(warRoomDebate.operator, debateDefaults.operator),
+      redTeam: safeText(warRoomDebate.redTeam, debateDefaults.redTeam),
+      finalSynthesis: {
+        survivesDebate: safeText(finalSynthesis.survivesDebate, debateDefaults.finalSynthesis.survivesDebate),
+        breaks: safeText(finalSynthesis.breaks, debateDefaults.finalSynthesis.breaks),
+        recommendedMoveAfterDebate: safeText(finalSynthesis.recommendedMoveAfterDebate, debateDefaults.finalSynthesis.recommendedMoveAfterDebate),
+      },
+    },
+    executionPlan: executionPlan.length === 4 ? executionPlan : defaultExecutionPlan(operatorNextSteps),
     diagnosis: {
       coreProblem: safeText(diagnosis.coreProblem, hiddenPain || problem),
       blindSpots: safeText(diagnosis.blindSpots, skepticHiddenFlaw),
@@ -264,7 +374,7 @@ function normalizeBlueprint(value: unknown, problem: string, language: string): 
     },
     riskMap: {
       opportunity: clampScore(riskMap.opportunity, score),
-      risk: clampScore(riskMap.risk, 100 - score),
+      risk: riskScore,
     },
     scenarioBranches: Array.isArray(blueprint.scenarioBranches)
       ? blueprint.scenarioBranches.filter(isRecord).map((branch, index) => ({
@@ -286,6 +396,7 @@ export async function POST(req: Request) {
     const body = isRecord(parsedBody) ? parsedBody as Partial<SolveRequest> : {};
     const problem = typeof body.problem === 'string' ? body.problem.trim() : '';
     const language = readLanguage(body);
+    const mode = readMode(body);
     const context = readContext(body);
 
     if (!problem) {
@@ -303,7 +414,17 @@ export async function POST(req: Request) {
     }
 
     const history = await getDecisionHistory().catch(() => []);
-    const conversationContext = readConversationContext(body);
+    const rawConversationContext = readConversationContext(body);
+    const conversationHistoryForGuard = Array.isArray(body?.conversationHistory)
+      ? (body.conversationHistory as Array<{ role: string; content: string }>)
+      : [];
+    const bannedVerdict = detectVerdictLoop(conversationHistoryForGuard);
+    const diversityInstruction = bannedVerdict ? buildForceDiversityInstruction(bannedVerdict) : '';
+    const intentInstruction = buildIntentInstruction(problem, conversationHistoryForGuard);
+    const conversationContext = [rawConversationContext, diversityInstruction, intentInstruction]
+      .filter(Boolean)
+      .join('\n\n')
+      .trim();
     const domain = context?.domain;
     let memoryContext = '';
     let memoryScore = 0;
@@ -324,8 +445,14 @@ export async function POST(req: Request) {
 
     const fullContext = [memoryContext, calibrationNote].filter(Boolean).join('\n\n');
     const { solveDecision } = await import('@/lib/engine');
-    const rawBlueprint = await solveDecision(problem, language, fullContext, conversationContext);
-    const blueprint = normalizeBlueprint(rawBlueprint, problem, language);
+    const rawBlueprint = await solveDecision(problem, language, fullContext, conversationContext, mode);
+    const blueprint = normalizeBlueprint(rawBlueprint, problem, language, mode);
+
+    if (bannedVerdict && extractVerdictClass(blueprint.recommendation) === bannedVerdict) {
+      blueprint.recommendation = semanticVerdictExcluding(problem, mode, bannedVerdict);
+    }
+    const intentOverride = enforceIntentRouting(problem, mode, blueprint.recommendation);
+    if (intentOverride) blueprint.recommendation = intentOverride;
     const calibration = calibrateScore(blueprint.score, history, domain, problem, context);
     const riskPenalty =
       calibration.offset !== 0 && blueprint.riskMap && blueprint.riskMap.risk > 60

@@ -1,4 +1,5 @@
 import { DecisionBlueprint } from './types';
+import { semanticVerdictForQuestion } from './semantic-guards';
 
 export const MOCK_RESPONSES: Record<string, Record<string, DecisionBlueprint>> = {
   English: {
@@ -6,7 +7,7 @@ export const MOCK_RESPONSES: Record<string, Record<string, DecisionBlueprint>> =
       score: 78,
       isDemo: true,
       language: 'English',
-      recommendation: "Proceed with a measured, phased approach. The opportunity is real, but execution complexity requires careful management.",
+      recommendation: "Reversible Experiment: prove the riskiest assumption with a narrow test before committing reputation, capital, or team focus.",
       diagnosis: {
         coreProblem: "Strategic expansion into unproven territory.",
         blindSpots: "Overestimating internal velocity and underestimating competitive response.",
@@ -103,7 +104,7 @@ export const MOCK_RESPONSES: Record<string, Record<string, DecisionBlueprint>> =
       score: 78,
       isDemo: true,
       language: 'Russian',
-      recommendation: "Рекомендуется поэтапный запуск с контролируемым риском. Потенциал рынка подтвержден, однако операционная сложность требует жесткого управления этапами реализации.",
+      recommendation: "Сначала запустите обратимый эксперимент: проверьте самый рискованный тезис до того, как ставить под удар капитал, репутацию или фокус команды.",
       diagnosis: {
         coreProblem: "Стратегическая экспансия в невалидированный сегмент с высоким порогом входа.",
         blindSpots: "Критическая переоценка операционной скорости и недооценка агрессивности конкурентного ответа.",
@@ -147,7 +148,7 @@ export const MOCK_RESPONSES: Record<string, Record<string, DecisionBlueprint>> =
       score: 78,
       isDemo: true,
       language: 'German',
-      recommendation: "Gehen Sie mit einem gemessenen, phasenweisen Ansatz vor. Die Chance ist real, aber die Komplexität der Ausführung erfordert sorgfältiges Management.",
+      recommendation: "Führen Sie zuerst ein reversibles Experiment durch: Beweisen Sie die riskanteste Annahme, bevor Sie Kapital, Ruf oder Teamfokus binden.",
       diagnosis: {
         coreProblem: "Strategische Expansion in unbewiesene Gebiete.",
         blindSpots: "Überschätzung der internen Geschwindigkeit und Unterschätzung der Wettbewerbsreaktion.",
@@ -191,7 +192,7 @@ export const MOCK_RESPONSES: Record<string, Record<string, DecisionBlueprint>> =
       score: 78,
       isDemo: true,
       language: 'Spanish',
-      recommendation: "Proceda con un enfoque medido y gradual. La oportunidad es real, pero la complejidad de la ejecución requiere una gestión cuidadosa.",
+      recommendation: "Ejecute primero un experimento reversible: valide la suposición más arriesgada antes de comprometer reputación, capital o foco del equipo.",
       diagnosis: {
         coreProblem: "Expansión estratégica en territorio no probado.",
         blindSpots: "Sobreestimar la velocidad interna y subestimar la respuesta de la competencia.",
@@ -235,7 +236,7 @@ export const MOCK_RESPONSES: Record<string, Record<string, DecisionBlueprint>> =
       score: 78,
       isDemo: true,
       language: 'Arabic',
-      recommendation: "المضي قدماً بنهج مدروس ومرحلي. الفرصة حقيقية، لكن تعقيد التنفيذ يتطلب إدارة دقيقة.",
+      recommendation: "ابدأ بتجربة قابلة للعكس: اختبر الفرضية الأكثر خطورة قبل رهن السمعة أو رأس المال أو تركيز الفريق.",
       diagnosis: {
         coreProblem: "التوسع الاستراتيجي في منطقة غير مثبتة.",
         blindSpots: "المبالغة في تقدير السرعة الداخلية والتقليل من استجابة المنافسين.",
@@ -279,7 +280,7 @@ export const MOCK_RESPONSES: Record<string, Record<string, DecisionBlueprint>> =
       score: 78,
       isDemo: true,
       language: 'Chinese',
-      recommendation: "采取慎重、分阶段的方法。机会是真实的，但执行的复杂性需要仔细管理。",
+      recommendation: "先运行可逆实验：在投入声誉、资本或团队注意力之前，验证风险最高的假设。",
       diagnosis: {
         coreProblem: "向未经验证的领域进行战略扩张。",
         blindSpots: "高估内部速度，低估竞争对手的反应。",
@@ -320,17 +321,176 @@ export const MOCK_RESPONSES: Record<string, Record<string, DecisionBlueprint>> =
   }
 };
 
-export function getMockBlueprint(problem: string, language: string = 'English'): DecisionBlueprint {
+export function getMockBlueprint(problem: string, language: string = 'English', mode: string = 'Strategy'): DecisionBlueprint {
   // Ensure we use a supported language for the mock, fallback to English
   const langKey = MOCK_RESPONSES[language] ? language : 'English';
   const dataset = MOCK_RESPONSES[langKey];
+  const blueprint = JSON.parse(JSON.stringify(dataset.default)) as DecisionBlueprint;
   
   const p = problem.toLowerCase();
-  // We could add more specific keyword matching per language if needed
-  if (p.includes('cto') || p.includes('директор') || p.includes('technischer')) {
-    // For simplicity, returning localized default or a specific localized mock if we built them
-    return dataset.default; 
+
+  const setVariant = (variant: {
+    coreProblem: string;
+    blindSpots: string;
+    keyRisks: string;
+    safe: string;
+    balanced: string;
+    bold: string;
+    perspective: string;
+    hiddenOpportunity: string;
+    uncomfortableTruth: string;
+    today: string;
+    thisWeek: string;
+    thirtyDays: string;
+  }) => {
+    blueprint.diagnosis = {
+      coreProblem: variant.coreProblem,
+      blindSpots: variant.blindSpots,
+      keyRisks: variant.keyRisks,
+    };
+    blueprint.paths = {
+      safe: {
+        description: variant.safe,
+        pros: ['Preserves option value', 'Limits irreversible damage'],
+        cons: ['Slower emotional closure', 'Requires disciplined evidence review'],
+      },
+      balanced: {
+        description: variant.balanced,
+        pros: ['Creates signal quickly', 'Keeps the team focused'],
+        cons: ['Still requires uncomfortable tradeoffs'],
+      },
+      bold: {
+        description: variant.bold,
+        pros: ['Decisive and clarifying', 'Stops drift'],
+        cons: ['Can destroy recoverable upside', 'Hard to reverse if the premise is wrong'],
+      },
+    };
+    blueprint.contrarianInsight = {
+      perspective: variant.perspective,
+      hiddenOpportunity: variant.hiddenOpportunity,
+      uncomfortableTruth: variant.uncomfortableTruth,
+    };
+    blueprint.futureSimulation = {
+      threeMonths: variant.thisWeek,
+      twelveMonths: variant.thirtyDays,
+    };
+    blueprint.actionPlan = {
+      today: variant.today,
+      thisWeek: variant.thisWeek,
+      thirtyDays: variant.thirtyDays,
+    };
+  };
+
+  if (p.includes('quit my job') || p.includes('leave my job') || p.includes('resign')) {
+    blueprint.score = 52;
+    blueprint.recommendation = semanticVerdictForQuestion(problem, mode);
+    setVariant({
+      coreProblem: 'The real decision is whether the opportunity is strong enough to justify giving up employment income and runway.',
+      blindSpots: 'Underpricing salary security, benefits, hiring-market risk, and the time it takes for a new path to become financially real.',
+      keyRisks: 'Quitting too early can compress runway, increase stress, and force worse decisions before the upside has evidence.',
+      safe: 'Keep the job while testing the next path nights, weekends, or through a negotiated reduced-load arrangement.',
+      balanced: 'Set a runway threshold, proof milestone, and resignation date only after external signal is real.',
+      bold: 'Quit only if savings, demand, and execution capacity make the downside survivable.',
+      perspective: 'The emotional desire to leave may be valid, but employment risk is still a capital allocation decision.',
+      hiddenOpportunity: 'A staged exit can preserve runway while building proof that the new direction deserves full-time focus.',
+      uncomfortableTruth: 'If the plan cannot survive a 30-day proof window while employed, quitting will not magically fix it.',
+      today: 'Calculate personal runway, monthly burn, and the minimum proof required before resignation.',
+      thisWeek: 'Run one external validation test while keeping employment income intact.',
+      thirtyDays: 'Quit only if runway and demand clear the threshold; otherwise redesign the exit plan.',
+    });
+  } else if (p.includes('kill the company') || p.includes('kill company')) {
+    blueprint.score = 18;
+    blueprint.recommendation = 'Kill The Idea: killing the company is not a strategy; run a restructure, sale, or shutdown-options review before destroying remaining option value.';
+    setVariant({
+      coreProblem: 'The real decision is whether the company is unsalvageable or just out of operating discipline.',
+      blindSpots: 'Treating panic as strategy and ignoring sale, restructure, pause, or narrow-focus alternatives.',
+      keyRisks: 'Immediate shutdown can destroy customer trust, employee obligations, investor relationships, and remaining IP value.',
+      safe: 'Open a 72-hour options review covering runway, liabilities, customer commitments, and acquisition interest.',
+      balanced: 'Cut scope to survival mode while testing whether one segment still produces credible demand.',
+      bold: 'Liquidate only after legal, financial, customer, and team obligations are mapped.',
+      perspective: 'The bravest move may be refusing a dramatic ending until the facts prove there is no recoverable asset.',
+      hiddenOpportunity: 'A narrow sale, pivot, or asset transfer may preserve more value than a clean kill.',
+      uncomfortableTruth: 'If the company is failing, speed matters; but emotional speed is not fiduciary judgment.',
+      today: 'List obligations, runway, active users, liabilities, and assets before making a kill decision.',
+      thisWeek: 'Run a board-level survival review with three options: restructure, sell, or orderly wind-down.',
+      thirtyDays: 'Execute the chosen path with legal closure, customer communication, and team transition covered.',
+    });
+  } else if (p.includes('delay launch 2 years') || p.includes('delay the launch 2 years') || p.includes('delay for 2 years')) {
+    blueprint.score = 31;
+    blueprint.recommendation = 'Kill The Idea: a two-year delay kills learning, morale, and market timing without proving the product is safer.';
+    setVariant({
+      coreProblem: 'The decision is confusing quality control with avoidance of market contact.',
+      blindSpots: 'A long delay feels safe but removes the only evidence that can make the product better.',
+      keyRisks: 'The team loses urgency, competitors learn faster, and assumptions age before they are tested.',
+      safe: 'Delay only the public launch while running private proof with a small, demanding cohort.',
+      balanced: 'Launch a controlled beta in 30-60 days with explicit trust, retention, and failure thresholds.',
+      bold: 'Launch publicly only if reliability and support readiness clear hard minimum bars.',
+      perspective: 'The dangerous move is not launching imperfectly; it is waiting so long that the market changes without you.',
+      hiddenOpportunity: 'A narrow beta can build evidence, testimonials, and product discipline without public blast radius.',
+      uncomfortableTruth: 'Two years of private building can become a very expensive way to avoid rejection.',
+      today: 'Replace the two-year delay with launch-readiness gates.',
+      thisWeek: 'Recruit a small beta cohort and define what would stop wider release.',
+      thirtyDays: 'Ship the smallest credible beta and review trust, retention, and support load.',
+    });
+  } else if (p.includes('do nothing') || p.includes('what if i do nothing')) {
+    blueprint.score = 24;
+    blueprint.recommendation = semanticVerdictForQuestion(problem, mode);
+    setVariant({
+      coreProblem: 'The decision is whether inaction is risk control or just unowned drift.',
+      blindSpots: 'Doing nothing still spends time, morale, attention, and market opportunity.',
+      keyRisks: 'Ambiguity compounds, competitors move, and the team learns nothing from the current uncertainty.',
+      safe: 'Take one low-cost action that preserves optionality and creates evidence.',
+      balanced: 'Run a short diagnostic sprint that forces a decision by a fixed date.',
+      bold: 'Make the hard call now if the cost of waiting is clearly higher than the cost of being wrong.',
+      perspective: 'Inaction is not neutral; it is a decision with no owner and no learning loop.',
+      hiddenOpportunity: 'A tiny move can expose whether the fear is real or inflated.',
+      uncomfortableTruth: 'If no one owns the next move, the system will default to decay.',
+      today: 'Name the smallest action that creates new information within 48 hours.',
+      thisWeek: 'Set a decision deadline and define the evidence required.',
+      thirtyDays: 'Either commit, stop, or redesign the decision with fresh signal.',
+    });
+  } else if (p.includes('shut down') || p.includes('shutdown') || p.includes('close the product')) {
+    blueprint.score = 41;
+    blueprint.recommendation = semanticVerdictForQuestion(problem, mode);
+    setVariant({
+      coreProblem: 'The decision is whether SolveOS is fundamentally dead or temporarily failing its proof points.',
+      blindSpots: 'A shutdown can confuse weak packaging, weak onboarding, or weak distribution with no market need.',
+      keyRisks: 'Killing too early destroys learning, brand equity, and any narrow segment that still has pull.',
+      safe: 'Freeze expansion and stop nonessential work while preserving users, data, and product access.',
+      balanced: 'Run a 14-day salvage test with kill criteria tied to activation, retention, and willingness to pay.',
+      bold: 'Shut down only if the salvage test fails and no narrow segment shows pull.',
+      perspective: 'The question is not whether to be optimistic; it is whether the evidence is clean enough to justify death.',
+      hiddenOpportunity: 'A smaller wedge may survive even if the broad product narrative fails.',
+      uncomfortableTruth: 'If no segment cares after a focused salvage test, shutdown becomes discipline, not defeat.',
+      today: 'Define shutdown criteria and freeze all feature sprawl.',
+      thisWeek: 'Test one narrow user segment with direct interviews and usage targets.',
+      thirtyDays: 'Either commit to the surviving wedge or execute an orderly shutdown.',
+    });
+  } else if (p.includes('public') || p.includes('5000') || p.includes('launch') || p.includes('ship')) {
+    blueprint.score = 74;
+    blueprint.recommendation = 'Reversible Experiment: expose the decision to a controlled cohort before you risk reputation, support load, or trust at full scale.';
+  } else if (p.includes('quit') || p.includes('fire') || p.includes('shut down') || p.includes('stop')) {
+    blueprint.score = 46;
+    blueprint.recommendation = 'Delay: the move may be right, but the evidence is not strong enough to justify an irreversible break yet.';
+  } else if (p.includes('go all in') || p.includes('all-in') || p.includes('all in')) {
+    blueprint.score = 86;
+    blueprint.recommendation = semanticVerdictForQuestion(problem, mode);
+  } else if (p.includes('fraud') || p.includes('illegal') || p.includes('debt')) {
+    blueprint.score = 28;
+    blueprint.recommendation = 'Kill The Idea: the downside is asymmetric and the decision can damage options you cannot easily recover.';
+  } else if (p.includes('hire') || p.includes('fundraise') || p.includes('enterprise') || p.includes('partnership')) {
+    blueprint.score = 82;
+    blueprint.recommendation = 'Full Commit: the timing advantage is meaningful, but lock the first move to a narrow owner, metric, and review date.';
+  } else {
+    blueprint.score = 63;
+    blueprint.recommendation = semanticVerdictForQuestion(problem, mode);
   }
   
-  return dataset.default;
+  blueprint.confidenceScore = blueprint.score;
+  if (blueprint.riskMap) {
+    blueprint.riskMap.opportunity = blueprint.score;
+    blueprint.riskMap.risk = Math.max(18, 100 - blueprint.score);
+  }
+
+  return blueprint;
 }

@@ -4,10 +4,12 @@ import {
   buildStrategistPrompt, 
   buildSkepticPrompt, 
   buildOperatorPrompt, 
-  buildSynthesizerPrompt 
+  buildSynthesizerPrompt,
+  buildModeSystemPrompt,
 } from './prompts';
 import { DecisionBlueprint, CouncilMetrics, ScenarioBranch } from './types';
 import { getMockBlueprint } from './mocks';
+import { semanticVerdictForQuestion, shouldRejectDecisionOutput } from './semantic-guards';
 
 // Define the state shape
 interface AgentState {
@@ -15,10 +17,24 @@ interface AgentState {
   language: string;
   memoryContext: string;
   conversationContext: string; // injected from prior conversation thread
+  mode: string;
   strategistAnalysis: string;
   skepticAnalysis: string;
   operatorAnalysis: string;
   finalBlueprint: DecisionBlueprint | null;
+}
+
+function logPrompt(label: string, prompt: string): void {
+  if (process.env.NODE_ENV !== 'development') return;
+  console.info(`[SolveOS prompt:${label}]`, prompt);
+}
+
+function blueprintOutputText(value: unknown): string {
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return '';
+  }
 }
 
 let openaiClient: OpenAI | null = null;
@@ -198,56 +214,98 @@ async function detectionNode(state: AgentState): Promise<Partial<AgentState>> {
 
 async function strategistNode(state: AgentState): Promise<Partial<AgentState>> {
   const language = normalizeLanguage(state.language);
+  const systemPrompt = buildModeSystemPrompt(state.mode);
+  const userPrompt = buildStrategistPrompt(state.problem || '', language, state.memoryContext || undefined);
+  logPrompt(`strategist:${state.mode}`, `${systemPrompt}\n\n${userPrompt}`);
   const response = await getOpenAIClient().chat.completions.create({
     model: 'gpt-4o',
-    messages: [{ role: 'user', content: buildStrategistPrompt(state.problem || '', language, state.memoryContext || undefined) }],
-    temperature: 0.7,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ],
+    temperature: 0.9,
+    top_p: 0.95,
   });
   return { strategistAnalysis: response.choices[0]?.message?.content || '' };
 }
 
 async function skepticNode(state: AgentState): Promise<Partial<AgentState>> {
   const language = normalizeLanguage(state.language);
+  const systemPrompt = buildModeSystemPrompt(state.mode);
+  const userPrompt = buildSkepticPrompt(state.problem || '', state.strategistAnalysis || '', language);
+  logPrompt(`skeptic:${state.mode}`, `${systemPrompt}\n\n${userPrompt}`);
   const response = await getOpenAIClient().chat.completions.create({
     model: 'gpt-4o',
-    messages: [{ role: 'user', content: buildSkepticPrompt(state.problem || '', state.strategistAnalysis || '', language) }],
-    temperature: 0.7,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ],
+    temperature: 0.9,
+    top_p: 0.95,
   });
   return { skepticAnalysis: response.choices[0]?.message?.content || '' };
 }
 
 async function operatorNode(state: AgentState): Promise<Partial<AgentState>> {
   const language = normalizeLanguage(state.language);
+  const systemPrompt = buildModeSystemPrompt(state.mode);
+  const userPrompt = buildOperatorPrompt(state.problem || '', state.strategistAnalysis || '', state.skepticAnalysis || '', language);
+  logPrompt(`operator:${state.mode}`, `${systemPrompt}\n\n${userPrompt}`);
   const response = await getOpenAIClient().chat.completions.create({
     model: 'gpt-4o',
-    messages: [{ role: 'user', content: buildOperatorPrompt(state.problem || '', state.strategistAnalysis || '', state.skepticAnalysis || '', language) }],
-    temperature: 0.7,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ],
+    temperature: 0.85,
+    top_p: 0.95,
   });
   return { operatorAnalysis: response.choices[0]?.message?.content || '' };
 }
 
 async function synthesizerNode(state: AgentState): Promise<Partial<AgentState>> {
   const language = normalizeLanguage(state.language);
-  const response = await getOpenAIClient().chat.completions.create({
-    model: 'gpt-4o',
-    response_format: { type: 'json_object' },
-    messages: [{
-      role: 'user',
-      content: buildSynthesizerPrompt(
-        state.problem || '',
-        state.strategistAnalysis || '',
-        state.skepticAnalysis || '',
-        state.operatorAnalysis || '',
-        language,
-        state.memoryContext || undefined,
-        state.conversationContext || undefined
-      )
-    }],
-    temperature: 0.5,
-  });
-  
-  const rawContent = response.choices[0]?.message?.content || '{}';
-  const blueprint = JSON.parse(rawContent);
+  const systemPrompt = buildModeSystemPrompt(state.mode);
+  const basePrompt = buildSynthesizerPrompt(
+    state.problem || '',
+    state.strategistAnalysis || '',
+    state.skepticAnalysis || '',
+    state.operatorAnalysis || '',
+    language,
+    state.memoryContext || undefined,
+    state.conversationContext || undefined,
+    state.mode || 'Strategy'
+  );
+
+  const createBlueprint = async (prompt: string) => {
+    logPrompt(`synthesizer:${state.mode}`, `${systemPrompt}\n\n${prompt}`);
+    const response = await getOpenAIClient().chat.completions.create({
+      model: 'gpt-4o',
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: prompt },
+      ],
+      temperature: 0.8,
+      top_p: 0.95,
+    });
+
+    return JSON.parse(response.choices[0]?.message?.content || '{}');
+  };
+
+  let blueprint = await createBlueprint(basePrompt);
+  if (shouldRejectDecisionOutput(state.problem || '', blueprintOutputText(blueprint))) {
+    blueprint = await createBlueprint(`${basePrompt}
+
+REGENERATE ONCE:
+The prior JSON was rejected because it was generic or contradicted the user's question.
+The new recommendation must be derived from the exact decision question.
+The recommendation must start with exactly one verdict class: Full Commit, Reversible Experiment, Delay, or Kill The Idea.
+If the question mentions quitting a job, discuss employment and runway risk.
+If the question mentions shutting down a product, discuss shutting down or winding down the product.
+Never output the old repeated generic verdict or any "measured/phased/balanced" compromise language.`);
+  }
+
   blueprint.language = language;
   
   // Add enterprise features
@@ -258,7 +316,11 @@ async function synthesizerNode(state: AgentState): Promise<Partial<AgentState>> 
   );
   
   blueprint.council = council;
-  blueprint.score = Math.min(100, Math.max(0, Number(blueprint.score) || 68));
+  blueprint.score = Math.min(100, Math.max(0, Number(blueprint.confidenceScore ?? blueprint.score) || 68));
+  blueprint.confidenceScore = blueprint.score;
+  if (shouldRejectDecisionOutput(state.problem || '', blueprintOutputText(blueprint))) {
+    blueprint.recommendation = semanticVerdictForQuestion(state.problem || '', state.mode);
+  }
   blueprint.scenarioBranches = generateScenarioBranches(blueprint.score);
   blueprint.riskMap = calculateRiskMap(blueprint.score, council.skepticAgreement);
   
@@ -274,6 +336,7 @@ function buildWorkflow() {
       language: { value: (_a, b) => b, default: () => 'English' },
       memoryContext: { value: (_a, b) => b, default: () => '' },
       conversationContext: { value: (_a, b) => b, default: () => '' },
+      mode: { value: (_a, b) => b, default: () => 'Strategy' },
       strategistAnalysis: { value: (_a, b) => b, default: () => '' },
       skepticAnalysis: { value: (_a, b) => b, default: () => '' },
       operatorAnalysis: { value: (_a, b) => b, default: () => '' },
@@ -302,7 +365,8 @@ export async function solveDecision(
   problem: string,
   overrideLanguage?: string,
   memoryContext?: string,
-  conversationContext?: string
+  conversationContext?: string,
+  mode: string = 'Strategy'
 ): Promise<DecisionBlueprint> {
   try {
     const startLanguage = normalizeLanguage(overrideLanguage || 'en');
@@ -313,6 +377,7 @@ export async function solveDecision(
       language: startLanguage,
       memoryContext: memoryContext || '',
       conversationContext: conversationContext || '',
+      mode,
       strategistAnalysis: '',
       skepticAnalysis: '',
       operatorAnalysis: '',
@@ -338,6 +403,6 @@ export async function solveDecision(
     
     const finalLanguage = normalizeLanguage(overrideLanguage || 'en');
     const safeProblem = typeof problem === 'string' ? problem : '';
-    return getMockBlueprint(safeProblem, finalLanguage);
+    return getMockBlueprint(safeProblem, finalLanguage, mode);
   }
 }

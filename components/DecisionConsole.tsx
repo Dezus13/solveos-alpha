@@ -159,7 +159,7 @@ const quickScenarios = [
 interface DecisionConsoleProps {
   thread: ConversationTurn[];
   loading: boolean;
-  onSubmit: (message: string) => void;
+  onSubmit: (message: string, mode?: string) => void;
   onReset: () => void;
 }
 
@@ -234,8 +234,8 @@ function DecisionConsole({ thread, loading, onSubmit, onReset }: DecisionConsole
       stakes: '',
       horizon: '',
     });
-    onSubmit(text);
-  }, [buildDecisionPrompt, hasThread, input, onSubmit]);
+    onSubmit(text, terminalTab);
+  }, [buildDecisionPrompt, hasThread, input, onSubmit, terminalTab]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
