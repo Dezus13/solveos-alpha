@@ -75,6 +75,19 @@ function SimulationResults({
   ], [intelligence.blackSwanExposure, intelligence.downsideRisk, intelligence.successProbability]);
 
   const counterfactualPaths = useMemo(() => {
+    if (result.counterfactualPaths && result.counterfactualPaths.length > 0) {
+      return result.counterfactualPaths.map((path, index) => ({
+        label: `${index + 1}. ${path.name}`,
+        probability: path.probability,
+        impact: Math.min(10, Math.max(1, Math.round(path.impact || 6))),
+        confidence: Math.min(100, Math.max(0, Math.round(path.confidence || result.score || 68))),
+        points: [
+          { label: index === 1 ? 'Reduced risk' : index === 2 ? 'Probable downside' : 'Likely upside', value: path.reducedRisk || path.probableDownside || path.likelyUpside },
+          { label: index === 1 ? 'Opportunity cost' : index === 2 ? 'Hidden risk accumulation' : 'Key failure mode', value: path.opportunityCost || path.hiddenRiskAccumulation || path.keyFailureMode },
+        ],
+      }));
+    }
+
     const score = Math.round(result.score || 0);
     const downside = Math.round(intelligence.downsideRisk || 0);
     const blackSwan = Math.round(intelligence.blackSwanExposure || 0);
@@ -122,73 +135,91 @@ function SimulationResults({
     ];
   }, [intelligence.blackSwanExposure, intelligence.downsideRisk, result]);
 
-  const preMortemFailureMap = useMemo(() => [
-    {
-      label: '1. Execution Failure',
-      trigger: result.actionPlan?.thisWeek || result.paths?.balanced?.cons?.[0],
-      warning: result.actionPlan?.today || 'Key owner, budget, or timeline remains undefined.',
-      mitigation: result.actionPlan?.thirtyDays || 'Convert the decision into a short operating sprint with clear owners.',
-    },
-    {
-      label: '2. Market Assumption Failure',
-      trigger: result.diagnosis?.blindSpots || result.paths?.bold?.cons?.[0],
-      warning: result.contrarianInsight?.perspective || 'Customer demand, timing, or willingness to pay does not match the model.',
-      mitigation: result.paths?.safe?.description || 'Validate the riskiest assumption before scaling commitment.',
-    },
-    {
-      label: '3. Hidden Second-Order Risk',
-      trigger: result.contrarianInsight?.uncomfortableTruth || result.diagnosis?.keyRisks,
-      warning: result.futureSimulation?.threeMonths || 'A secondary dependency starts compounding after the first move.',
-      mitigation: result.contrarianInsight?.hiddenOpportunity || 'Create a kill-switch and review cadence before the risk compounds.',
-    },
-  ], [result]);
+  const preMortemFailureMap = useMemo(() => (
+    result.preMortemRisks && result.preMortemRisks.length > 0
+      ? result.preMortemRisks.map((risk, index) => ({
+          label: `${index + 1}. ${risk.mode}`,
+          trigger: risk.riskTrigger,
+          warning: risk.earlyWarningSignal,
+          mitigation: risk.mitigationMove,
+        }))
+      : [
+          {
+            label: '1. Execution Failure',
+            trigger: result.actionPlan?.thisWeek || result.paths?.balanced?.cons?.[0],
+            warning: result.actionPlan?.today || 'Key owner, budget, or timeline remains undefined.',
+            mitigation: result.actionPlan?.thirtyDays || 'Convert the decision into a short operating sprint with clear owners.',
+          },
+          {
+            label: '2. Market Assumption Failure',
+            trigger: result.diagnosis?.blindSpots || result.paths?.bold?.cons?.[0],
+            warning: result.contrarianInsight?.perspective || 'Customer demand, timing, or willingness to pay does not match the model.',
+            mitigation: result.paths?.safe?.description || 'Validate the riskiest assumption before scaling commitment.',
+          },
+          {
+            label: '3. Hidden Second-Order Risk',
+            trigger: result.contrarianInsight?.uncomfortableTruth || result.diagnosis?.keyRisks,
+            warning: result.futureSimulation?.threeMonths || 'A secondary dependency starts compounding after the first move.',
+            mitigation: result.contrarianInsight?.hiddenOpportunity || 'Create a kill-switch and review cadence before the risk compounds.',
+          },
+        ]
+  ), [result]);
 
-  const secondOrderEffects = useMemo(() => [
-    {
-      label: 'Hiring now',
-      immediate: result.paths?.bold?.pros?.[0] || 'Faster growth',
-      downstream: result.paths?.bold?.cons?.[0] || 'Burn increases',
-      longTerm: result.futureSimulation?.twelveMonths || 'Financing pressure',
-    },
-    {
-      label: 'Delay hiring',
-      immediate: result.paths?.safe?.pros?.[0] || 'Lower burn',
-      downstream: result.paths?.safe?.cons?.[0] || 'Slower growth',
-      longTerm: result.contrarianInsight?.hiddenOpportunity || 'Possible missed market window',
-    },
-  ], [result]);
+  const secondOrderEffects = useMemo(() => (
+    result.secondOrderEffects && result.secondOrderEffects.length > 0
+      ? result.secondOrderEffects.map((effect) => ({
+          label: effect.scenario,
+          immediate: effect.immediateEffect,
+          downstream: effect.downstreamConsequence,
+          longTerm: effect.hiddenLongTermEffect,
+        }))
+      : [
+          {
+            label: 'Hiring now',
+            immediate: result.paths?.bold?.pros?.[0] || 'Faster growth',
+            downstream: result.paths?.bold?.cons?.[0] || 'Burn increases',
+            longTerm: result.futureSimulation?.twelveMonths || 'Financing pressure',
+          },
+          {
+            label: 'Delay hiring',
+            immediate: result.paths?.safe?.pros?.[0] || 'Lower burn',
+            downstream: result.paths?.safe?.cons?.[0] || 'Slower growth',
+            longTerm: result.contrarianInsight?.hiddenOpportunity || 'Possible missed market window',
+          },
+        ]
+  ), [result]);
 
   const advisorCouncil = useMemo(() => [
     {
       label: 'Strategist',
       points: [
-        { label: 'Biggest upside', value: result.paths?.bold?.pros?.[0] || result.contrarianInsight?.hiddenOpportunity },
-        { label: 'Leverage move', value: result.paths?.bold?.description || result.actionPlan?.thirtyDays },
+        { label: 'Biggest upside', value: result.strategistView?.biggestUpside || result.paths?.bold?.pros?.[0] || result.contrarianInsight?.hiddenOpportunity },
+        { label: 'Leverage move', value: result.strategistView?.leverageMove || result.paths?.bold?.description || result.actionPlan?.thirtyDays },
       ],
     },
     {
       label: 'Skeptic',
       points: [
-        { label: 'Hidden flaw', value: result.diagnosis?.blindSpots || result.contrarianInsight?.uncomfortableTruth },
-        { label: 'What could break', value: result.diagnosis?.keyRisks || result.paths?.bold?.cons?.[0] },
+        { label: 'Hidden flaw', value: result.skepticView?.hiddenFlaw || result.diagnosis?.blindSpots || result.contrarianInsight?.uncomfortableTruth },
+        { label: 'What could break', value: result.skepticView?.whatCouldBreak || result.diagnosis?.keyRisks || result.paths?.bold?.cons?.[0] },
       ],
     },
     {
       label: 'Operator',
       points: [
-        { label: 'Execution next steps', value: result.actionPlan?.today || result.actionPlan?.thisWeek },
+        { label: 'Execution next steps', value: result.operatorNextSteps?.join(' ') || result.actionPlan?.today || result.actionPlan?.thisWeek },
       ],
     },
     {
       label: 'Red Team',
       points: [
-        { label: 'Strongest attack', value: result.contrarianInsight?.perspective || result.paths?.balanced?.cons?.[0] },
+        { label: 'Strongest attack', value: result.redTeamCritique || result.contrarianInsight?.perspective || result.paths?.balanced?.cons?.[0] },
       ],
     },
     {
       label: 'Economist',
       points: [
-        { label: 'Resource / timing / opportunity cost', value: result.paths?.safe?.cons?.[0] || result.futureSimulation?.twelveMonths },
+        { label: 'Resource / timing / opportunity cost', value: result.economistView || result.paths?.safe?.cons?.[0] || result.futureSimulation?.twelveMonths },
       ],
     },
   ], [result]);
@@ -215,7 +246,7 @@ function SimulationResults({
   ], [result]);
 
   const decisionConfidence = useMemo(() => {
-    const strategicUpside = Math.round(intelligence.successProbability || result.score || 0);
+    const strategicUpside = Math.round(result.confidenceScore || intelligence.successProbability || result.score || 0);
     const riskExposure = Math.round(100 - Math.min(100, intelligence.downsideRisk || 0));
     const reversibility = Math.round(
       result.paths?.safe?.pros?.length
@@ -225,7 +256,7 @@ function SimulationResults({
     const evidenceStrength = Math.round(
       result.confidenceDrivers?.sampleSize
         ? Math.min(95, 55 + result.confidenceDrivers.sampleSize * 8)
-        : result.score || 0
+        : result.confidenceScore || result.score || 0
     );
     const score = Math.round(
       strategicUpside * 0.35 +
@@ -235,7 +266,7 @@ function SimulationResults({
     );
 
     return {
-      score: Math.min(100, Math.max(0, score)),
+      score: Math.min(100, Math.max(0, Math.round(result.confidenceScore || score))),
       factors: [
         { label: 'Strategic Upside', value: strategicUpside },
         { label: 'Risk Exposure', value: 100 - riskExposure },
@@ -334,7 +365,7 @@ function SimulationResults({
               </div>
               <div className="mt-3 rounded-lg border border-white/5 bg-[#0B1020]/45 px-3 py-2">
                 <div className="text-[8px] font-bold uppercase text-slate-600">Key lesson learned</div>
-                <div className="mt-1 text-xs text-slate-400">Save lesson to decision memory</div>
+                <div className="mt-1 text-xs text-slate-400">{result.outcomeLessonPrompt || 'Save lesson to decision memory'}</div>
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 {['+ Strategy worked', '+ Risk missed', '+ Assumption wrong'].map((tag) => (

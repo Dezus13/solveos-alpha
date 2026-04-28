@@ -1,41 +1,17 @@
-import fs from 'fs/promises';
-import { existsSync } from 'fs';
-import path from 'path';
 import { DecisionMemoryEntry, DecisionOutcome, DecisionContext, MemoryGraph, MemoryIntelligence, PendingReview } from './types';
 import { buildMemoryGraph, getMemoryIntelligenceFromHistory } from './memory-graph';
 
-function findProjectRoot(startDir: string): string {
-  let dir = startDir;
-  while (true) {
-    if (existsSync(path.join(dir, 'package.json'))) {
-      return dir;
-    }
-
-    const parent = path.dirname(dir);
-    if (parent === dir) return process.cwd();
-    dir = parent;
-  }
-}
-
-const PROJECT_ROOT = findProjectRoot(process.cwd());
-const DATA_DIR = path.join(PROJECT_ROOT, 'data');
-const MEMORY_FILE = path.join(DATA_DIR, 'decisions.json');
-const TMP_FILE = MEMORY_FILE + '.tmp';
 const REVIEW_EXPIRY_DAYS = 90;
 
+let memoryStore: DecisionMemoryEntry[] = [];
 let memoryWriteQueue: Promise<void> = Promise.resolve();
 
-async function ensureDataDir() {
-  await fs.mkdir(DATA_DIR, { recursive: true });
+function cloneEntry(entry: DecisionMemoryEntry): DecisionMemoryEntry {
+  return JSON.parse(JSON.stringify(entry)) as DecisionMemoryEntry;
 }
 
-/**
- * Atomic write: write to a .tmp file, then rename — prevents mid-write corruption.
- */
 async function writeHistory(history: DecisionMemoryEntry[]): Promise<void> {
-  const serialised = JSON.stringify(history, null, 2);
-  await fs.writeFile(TMP_FILE, serialised, 'utf-8');
-  await fs.rename(TMP_FILE, MEMORY_FILE);
+  memoryStore = history.map(cloneEntry);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -150,48 +126,17 @@ async function withMemoryWrite<T>(mutate: (history: DecisionMemoryEntry[]) => Pr
   }
 }
 
-/**
- * Read and parse history. If the file is missing, returns [].
- * If the file is corrupt (bad JSON or unexpected shape), renames it to .corrupt and returns [].
- */
 async function readHistory(): Promise<DecisionMemoryEntry[]> {
-  let raw: string;
-  try {
-    raw = await fs.readFile(MEMORY_FILE, 'utf-8');
-  } catch {
-    return [];
-  }
-
-  try {
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) throw new Error('not an array');
-    const normalized = parsed
-      .map(normalizeHistoryEntry)
-      .filter((entry): entry is DecisionMemoryEntry => entry !== null);
-    if (parsed.length > 0 && normalized.length === 0) {
-      throw new Error('no valid decision entries');
-    }
-    if (normalized.length !== parsed.length) {
-      console.warn(
-        `[memory] ignored ${parsed.length - normalized.length} invalid decision entr${parsed.length - normalized.length === 1 ? 'y' : 'ies'} from decisions.json`
-      );
-    }
-    return normalized;
-  } catch {
-    const corruptPath = MEMORY_FILE + '.corrupt.' + Date.now();
-    await fs.rename(MEMORY_FILE, corruptPath).catch(() => undefined);
-    console.error(`[memory] decisions.json was corrupt — backed up to ${corruptPath}`);
-    return [];
-  }
+  return memoryStore.map(cloneEntry);
 }
 
 /**
- * Save a decision to persistent memory
+ * Save a decision to process-local memory.
+ * Serverless deployments may discard this between invocations.
  */
 export async function saveDecision(
   entry: Omit<DecisionMemoryEntry, 'id' | 'timestamp' | 'tags' | 'similarity'>
 ) {
-  await ensureDataDir();
   return withMemoryWrite(async history => {
     const tags = extractTags(entry.problem, entry.context);
 
@@ -222,7 +167,6 @@ export async function recordOutcome(
   decisionId: string,
   outcome: Omit<DecisionOutcome, 'decisionId' | 'timestamp'>
 ): Promise<{ ok: true; entry: DecisionMemoryEntry } | { ok: false; reason: 'not_found' | 'already_logged' | 'invalid_outcome' }> {
-  await ensureDataDir();
   return withMemoryWrite(async history => {
     const entry = history.find(e => e.id === decisionId);
     if (!entry) return { ok: false, reason: 'not_found' };
@@ -260,7 +204,6 @@ export async function scheduleReview(
   decisionId: string,
   reviewType: PendingReview['reviewType']
 ): Promise<{ ok: true; entry: DecisionMemoryEntry } | { ok: false; reason: 'not_found' | 'already_logged' | 'review_conflict' }> {
-  await ensureDataDir();
   return withMemoryWrite(async history => {
     const entry = history.find(e => e.id === decisionId);
     if (!entry) return { ok: false, reason: 'not_found' };
@@ -393,7 +336,7 @@ export async function findSimilarDecisions(
 }
 
 /**
- * Build the full memory graph from persisted decisions
+ * Build the full memory graph from process-local decisions
  */
 export async function getMemoryGraph(): Promise<MemoryGraph> {
   const history = await getDecisionHistory();

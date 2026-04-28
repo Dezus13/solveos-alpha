@@ -149,9 +149,53 @@ export interface CouncilMetrics {
   resolutionPath: string;
 }
 
+export interface CounterfactualPath {
+  name: string;
+  probability: 'Low' | 'Medium' | 'High';
+  impact: number;
+  confidence: number;
+  likelyUpside?: string;
+  keyFailureMode?: string;
+  reducedRisk?: string;
+  opportunityCost?: string;
+  probableDownside?: string;
+  hiddenRiskAccumulation?: string;
+}
+
+export interface PreMortemRisk {
+  mode: string;
+  riskTrigger: string;
+  earlyWarningSignal: string;
+  mitigationMove: string;
+}
+
+export interface SecondOrderEffect {
+  scenario: string;
+  immediateEffect: string;
+  downstreamConsequence: string;
+  hiddenLongTermEffect: string;
+}
+
 export interface DecisionBlueprint {
   score: number;
   recommendation: string;
+  hiddenPain?: string;
+  strategistView?: {
+    biggestUpside: string;
+    leverageMove: string;
+  };
+  skepticView?: {
+    hiddenFlaw: string;
+    whatCouldBreak: string;
+  };
+  operatorNextSteps?: string[];
+  redTeamCritique?: string;
+  economistView?: string;
+  counterfactualPaths?: CounterfactualPath[];
+  preMortemRisks?: PreMortemRisk[];
+  secondOrderEffects?: SecondOrderEffect[];
+  confidenceScore?: number;
+  outcomeLessonPrompt?: string;
   diagnosis: {
     coreProblem: string;
     blindSpots: string;

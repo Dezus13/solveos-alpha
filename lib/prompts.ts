@@ -104,44 +104,113 @@ export function buildSynthesizerPrompt(problem: string, strategist: string, skep
   const threadSection = conversationContext
     ? `\n\nPRIOR DECISION THREAD (this is a follow-up — compound your analysis on prior context, do not repeat what was already resolved):\n${conversationContext}`
     : '';
-  return `You are the SYNTHESIZER in the SolveOS War Room.
+  return `You are the SolveOS reasoning brain.
+You generate executive-grade decision intelligence, not chat.
 You have heard from the Strategist, the Skeptic, and the Operator regarding: "${problem}"
 
 Strategist: ${strategist}
 Skeptic: ${skeptic}
 Operator: ${operator}${memorySection}${threadSection}
 
-Your goal is to provide a final, structured Decision Blueprint.
+The user's input may include structured fields:
+- Decision question
+- Goal
+- Constraints
+- Stakes
+- Time horizon
+- Core pain/problem
+- Biggest fear
+- Desired outcome
+- Time pressure
+- What happens if I do nothing
+
+Use those fields directly. If any are missing, infer cautiously from the decision question.
 
 CRITICAL: EVERY SINGLE FIELD in the JSON object must be written in ${language}.
 YOU MUST RETURN A VALID JSON OBJECT exactly matching this structure:
 {
-  "score": 0-100,
-  "recommendation": "The definitive stance in ${language}",
-  "diagnosis": {
-    "coreProblem": "Brief statement in ${language}",
-    "blindSpots": "Analysis in ${language}",
-    "keyRisks": "Analysis in ${language}"
+  "recommendation": "Clear executive recommendation in ${language}",
+  "hiddenPain": "The underlying pain driving the decision in ${language}",
+  "strategistView": {
+    "biggestUpside": "Largest upside in ${language}",
+    "leverageMove": "Highest leverage move in ${language}"
   },
-  "paths": {
-    "safe": { "description": "Description in ${language}", "pros": ["pro1 in ${language}"], "cons": ["con1 in ${language}"] },
-    "balanced": { "description": "Description in ${language}", "pros": ["pro1 in ${language}"], "cons": ["con1 in ${language}"] },
-    "bold": { "description": "Description in ${language}", "pros": ["pro1 in ${language}"], "cons": ["con1 in ${language}"] }
+  "skepticView": {
+    "hiddenFlaw": "Most important hidden flaw in ${language}",
+    "whatCouldBreak": "What could break first in ${language}"
   },
-  "contrarianInsight": {
-    "perspective": "Analysis in ${language}",
-    "hiddenOpportunity": "Analysis in ${language}",
-    "uncomfortableTruth": "Analysis in ${language}"
-  },
-  "futureSimulation": {
-    "threeMonths": "Scenario in ${language}",
-    "twelveMonths": "Scenario in ${language}"
-  },
-  "actionPlan": {
-    "today": "Action in ${language}",
-    "thisWeek": "Action in ${language}",
-    "thirtyDays": "Action in ${language}"
-  }
+  "operatorNextSteps": ["step 1 in ${language}", "step 2 in ${language}", "step 3 in ${language}"],
+  "redTeamCritique": "Strongest attack against this decision in ${language}",
+  "economistView": "Resource, timing, and opportunity-cost view in ${language}",
+  "counterfactualPaths": [
+    {
+      "name": "Proceed Now",
+      "probability": "Low | Medium | High",
+      "impact": 1-10,
+      "confidence": 0-100,
+      "likelyUpside": "Likely upside in ${language}",
+      "keyFailureMode": "Key failure mode in ${language}"
+    },
+    {
+      "name": "Delay",
+      "probability": "Low | Medium | High",
+      "impact": 1-10,
+      "confidence": 0-100,
+      "reducedRisk": "Reduced risk in ${language}",
+      "opportunityCost": "Opportunity cost in ${language}"
+    },
+    {
+      "name": "Do Nothing",
+      "probability": "Low | Medium | High",
+      "impact": 1-10,
+      "confidence": 0-100,
+      "probableDownside": "Probable downside in ${language}",
+      "hiddenRiskAccumulation": "Hidden risk accumulation in ${language}"
+    }
+  ],
+  "preMortemRisks": [
+    {
+      "mode": "Execution Failure",
+      "riskTrigger": "Risk trigger in ${language}",
+      "earlyWarningSignal": "Early warning signal in ${language}",
+      "mitigationMove": "Mitigation move in ${language}"
+    },
+    {
+      "mode": "Market Assumption Failure",
+      "riskTrigger": "Risk trigger in ${language}",
+      "earlyWarningSignal": "Early warning signal in ${language}",
+      "mitigationMove": "Mitigation move in ${language}"
+    },
+    {
+      "mode": "Hidden Second-Order Risk",
+      "riskTrigger": "Risk trigger in ${language}",
+      "earlyWarningSignal": "Early warning signal in ${language}",
+      "mitigationMove": "Mitigation move in ${language}"
+    }
+  ],
+  "secondOrderEffects": [
+    {
+      "scenario": "Proceed Now",
+      "immediateEffect": "Immediate effect in ${language}",
+      "downstreamConsequence": "Downstream consequence in ${language}",
+      "hiddenLongTermEffect": "Hidden long-term effect in ${language}"
+    },
+    {
+      "scenario": "Delay",
+      "immediateEffect": "Immediate effect in ${language}",
+      "downstreamConsequence": "Downstream consequence in ${language}",
+      "hiddenLongTermEffect": "Hidden long-term effect in ${language}"
+    }
+  ],
+  "confidenceScore": 0-100,
+  "outcomeLessonPrompt": "Question that helps the user log the lesson after execution in ${language}"
 }
+
+Rules:
+- Strict JSON only. No markdown.
+- Do not include keys outside this schema.
+- Make the recommendation decisive.
+- Make risks specific enough for an executive team to act on.
+- Make confidenceScore reflect strategic upside, risk exposure, reversibility, and evidence strength.
 Only output JSON.`;
 }
