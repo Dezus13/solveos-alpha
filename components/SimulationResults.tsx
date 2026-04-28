@@ -74,6 +74,177 @@ function SimulationResults({
     { label: 'Black Swan', value: intelligence.blackSwanExposure, tone: 'text-amber-400' }
   ], [intelligence.blackSwanExposure, intelligence.downsideRisk, intelligence.successProbability]);
 
+  const counterfactualPaths = useMemo(() => {
+    const score = Math.round(result.score || 0);
+    const downside = Math.round(intelligence.downsideRisk || 0);
+    const blackSwan = Math.round(intelligence.blackSwanExposure || 0);
+    const proceedProbability = score >= 75 ? 'High' : score >= 45 ? 'Medium' : 'Low';
+    const delayProbability = downside >= 45 ? 'High' : 'Medium';
+    const doNothingProbability = downside + blackSwan >= 95 ? 'High' : 'Medium';
+    const proceedImpact = Math.min(10, Math.max(1, Math.round(score / 12)));
+    const delayImpact = Math.min(10, Math.max(1, Math.round((100 - downside / 2) / 14)));
+    const doNothingImpact = Math.min(10, Math.max(1, Math.round((downside + blackSwan) / 18)));
+    const proceedConfidence = Math.min(95, Math.max(35, score));
+    const delayConfidence = Math.min(90, Math.max(40, Math.round(100 - downside / 2)));
+    const doNothingConfidence = Math.min(92, Math.max(45, Math.round((downside + blackSwan) / 2)));
+
+    return [
+      {
+        label: '1. Proceed Now',
+        probability: proceedProbability,
+        impact: proceedImpact,
+        confidence: proceedConfidence,
+        points: [
+          { label: 'Likely upside', value: result.paths?.bold?.pros?.[0] || result.futureSimulation?.threeMonths },
+          { label: 'Key failure mode', value: result.paths?.bold?.cons?.[0] || result.diagnosis?.keyRisks },
+        ],
+      },
+      {
+        label: '2. Delay',
+        probability: delayProbability,
+        impact: delayImpact,
+        confidence: delayConfidence,
+        points: [
+          { label: 'Reduced risk', value: result.paths?.safe?.pros?.[0] || result.diagnosis?.blindSpots },
+          { label: 'Opportunity cost', value: result.paths?.safe?.cons?.[0] || result.contrarianInsight?.hiddenOpportunity },
+        ],
+      },
+      {
+        label: '3. Do Nothing',
+        probability: doNothingProbability,
+        impact: doNothingImpact,
+        confidence: doNothingConfidence,
+        points: [
+          { label: 'Probable downside', value: result.paths?.balanced?.cons?.[0] || result.futureSimulation?.twelveMonths },
+          { label: 'Hidden risk accumulation', value: result.contrarianInsight?.uncomfortableTruth || result.diagnosis?.blindSpots },
+        ],
+      },
+    ];
+  }, [intelligence.blackSwanExposure, intelligence.downsideRisk, result]);
+
+  const preMortemFailureMap = useMemo(() => [
+    {
+      label: '1. Execution Failure',
+      trigger: result.actionPlan?.thisWeek || result.paths?.balanced?.cons?.[0],
+      warning: result.actionPlan?.today || 'Key owner, budget, or timeline remains undefined.',
+      mitigation: result.actionPlan?.thirtyDays || 'Convert the decision into a short operating sprint with clear owners.',
+    },
+    {
+      label: '2. Market Assumption Failure',
+      trigger: result.diagnosis?.blindSpots || result.paths?.bold?.cons?.[0],
+      warning: result.contrarianInsight?.perspective || 'Customer demand, timing, or willingness to pay does not match the model.',
+      mitigation: result.paths?.safe?.description || 'Validate the riskiest assumption before scaling commitment.',
+    },
+    {
+      label: '3. Hidden Second-Order Risk',
+      trigger: result.contrarianInsight?.uncomfortableTruth || result.diagnosis?.keyRisks,
+      warning: result.futureSimulation?.threeMonths || 'A secondary dependency starts compounding after the first move.',
+      mitigation: result.contrarianInsight?.hiddenOpportunity || 'Create a kill-switch and review cadence before the risk compounds.',
+    },
+  ], [result]);
+
+  const secondOrderEffects = useMemo(() => [
+    {
+      label: 'Hiring now',
+      immediate: result.paths?.bold?.pros?.[0] || 'Faster growth',
+      downstream: result.paths?.bold?.cons?.[0] || 'Burn increases',
+      longTerm: result.futureSimulation?.twelveMonths || 'Financing pressure',
+    },
+    {
+      label: 'Delay hiring',
+      immediate: result.paths?.safe?.pros?.[0] || 'Lower burn',
+      downstream: result.paths?.safe?.cons?.[0] || 'Slower growth',
+      longTerm: result.contrarianInsight?.hiddenOpportunity || 'Possible missed market window',
+    },
+  ], [result]);
+
+  const advisorCouncil = useMemo(() => [
+    {
+      label: 'Strategist',
+      points: [
+        { label: 'Biggest upside', value: result.paths?.bold?.pros?.[0] || result.contrarianInsight?.hiddenOpportunity },
+        { label: 'Leverage move', value: result.paths?.bold?.description || result.actionPlan?.thirtyDays },
+      ],
+    },
+    {
+      label: 'Skeptic',
+      points: [
+        { label: 'Hidden flaw', value: result.diagnosis?.blindSpots || result.contrarianInsight?.uncomfortableTruth },
+        { label: 'What could break', value: result.diagnosis?.keyRisks || result.paths?.bold?.cons?.[0] },
+      ],
+    },
+    {
+      label: 'Operator',
+      points: [
+        { label: 'Execution next steps', value: result.actionPlan?.today || result.actionPlan?.thisWeek },
+      ],
+    },
+    {
+      label: 'Red Team',
+      points: [
+        { label: 'Strongest attack', value: result.contrarianInsight?.perspective || result.paths?.balanced?.cons?.[0] },
+      ],
+    },
+    {
+      label: 'Economist',
+      points: [
+        { label: 'Resource / timing / opportunity cost', value: result.paths?.safe?.cons?.[0] || result.futureSimulation?.twelveMonths },
+      ],
+    },
+  ], [result]);
+
+  const relatedDecisionMemories = useMemo(() => [
+    {
+      case: 'Hire too early',
+      decided: result.paths?.bold?.description || 'Committed before evidence was strong enough.',
+      outcome: 'Burn increased',
+      lesson: 'Stage hiring in phases',
+    },
+    {
+      case: 'Delayed hiring',
+      decided: result.paths?.safe?.description || 'Waited for more certainty before adding capacity.',
+      outcome: 'Missed market window',
+      lesson: 'Delay has opportunity cost',
+    },
+    {
+      case: 'Phased rollout',
+      decided: result.paths?.balanced?.description || 'Validated demand before scaling the plan.',
+      outcome: 'Downside stayed contained',
+      lesson: 'Use staged commitments before full execution',
+    },
+  ], [result]);
+
+  const decisionConfidence = useMemo(() => {
+    const strategicUpside = Math.round(intelligence.successProbability || result.score || 0);
+    const riskExposure = Math.round(100 - Math.min(100, intelligence.downsideRisk || 0));
+    const reversibility = Math.round(
+      result.paths?.safe?.pros?.length
+        ? Math.min(95, 55 + result.paths.safe.pros.length * 10)
+        : 60
+    );
+    const evidenceStrength = Math.round(
+      result.confidenceDrivers?.sampleSize
+        ? Math.min(95, 55 + result.confidenceDrivers.sampleSize * 8)
+        : result.score || 0
+    );
+    const score = Math.round(
+      strategicUpside * 0.35 +
+      riskExposure * 0.25 +
+      reversibility * 0.2 +
+      evidenceStrength * 0.2
+    );
+
+    return {
+      score: Math.min(100, Math.max(0, score)),
+      factors: [
+        { label: 'Strategic Upside', value: strategicUpside },
+        { label: 'Risk Exposure', value: 100 - riskExposure },
+        { label: 'Reversibility', value: reversibility },
+        { label: 'Evidence Strength', value: evidenceStrength },
+      ],
+    };
+  }, [intelligence.downsideRisk, intelligence.successProbability, result]);
+
   const hasCalibration =
     typeof calibratedScore === 'number' &&
     typeof calibrationOffset === 'number' &&
@@ -112,6 +283,179 @@ function SimulationResults({
             </div>
             <h2 className="text-2xl font-black text-[#F8FAFF]">{intelligence.recommendedPath}</h2>
             <p className="mt-3 text-sm leading-relaxed text-slate-300">{intelligence.verdict}</p>
+            <div className="mt-5 rounded-2xl border border-emerald-500/15 bg-emerald-500/[0.025] p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="text-[10px] font-black uppercase tracking-widest text-emerald-300">Decision Confidence</div>
+                  <div className="mt-1 text-2xl font-black text-[#F8FAFF]">{decisionConfidence.score}/100</div>
+                </div>
+                <div className="w-full sm:max-w-[260px]">
+                  <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                    <div
+                      className="h-full rounded-full bg-emerald-400 shadow-[0_0_16px_rgba(52,211,153,0.45)]"
+                      style={{ width: `${decisionConfidence.score}%` }}
+                    />
+                  </div>
+                  <div className="mt-2 grid grid-cols-3 gap-1 text-[8px] font-bold uppercase text-slate-500">
+                    <span>Reconsider &lt;50</span>
+                    <span className="text-center">Caution 50-70</span>
+                    <span className="text-right">Proceed &gt;70</span>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
+                {decisionConfidence.factors.map((factor) => (
+                  <div key={factor.label} className="rounded-lg border border-white/5 bg-[#0B1020]/45 px-2 py-1.5">
+                    <div className="text-[8px] font-bold uppercase text-slate-600">{factor.label}</div>
+                    <div className="mt-0.5 text-[11px] font-black text-slate-200">{factor.value}/100</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="mt-4 rounded-2xl border border-blue-500/15 bg-blue-500/[0.025] p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="text-[10px] font-black uppercase tracking-widest text-blue-300">Outcome Logging</div>
+                  <p className="mt-2 text-xs leading-relaxed text-slate-300">What happened after execution?</p>
+                </div>
+                <button
+                  type="button"
+                  className="rounded-lg border border-blue-400/20 bg-blue-400/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-blue-200 transition-colors hover:bg-blue-400/15"
+                >
+                  Record Outcome
+                </button>
+              </div>
+              <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                {['Outcome better', 'Outcome expected', 'Outcome worse'].map((label) => (
+                  <div key={label} className="rounded-lg border border-white/5 bg-[#0B1020]/45 px-3 py-2 text-[10px] font-bold uppercase text-slate-300">
+                    {label}
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 rounded-lg border border-white/5 bg-[#0B1020]/45 px-3 py-2">
+                <div className="text-[8px] font-bold uppercase text-slate-600">Key lesson learned</div>
+                <div className="mt-1 text-xs text-slate-400">Save lesson to decision memory</div>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {['+ Strategy worked', '+ Risk missed', '+ Assumption wrong'].map((tag) => (
+                  <span key={tag} className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[9px] font-bold uppercase text-slate-400">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="mt-4 rounded-2xl border border-cyan-500/15 bg-cyan-500/[0.025] p-4">
+              <div className="mb-3 text-[10px] font-black uppercase tracking-widest text-cyan-300">Advisor Council</div>
+              <div className="grid gap-3 md:grid-cols-5">
+                {advisorCouncil.map((advisor) => (
+                  <div key={advisor.label} className="rounded-xl border border-white/5 bg-[#0B1020]/55 p-3">
+                    <div className="mb-2 text-[9px] font-black uppercase tracking-widest text-slate-300">{advisor.label}</div>
+                    <div className="space-y-2">
+                      {advisor.points.map((point) => (
+                        <div key={point.label}>
+                          <div className="text-[9px] font-bold uppercase text-slate-500">{point.label}</div>
+                          <p className="mt-0.5 text-xs leading-relaxed text-slate-300">{point.value || 'Not enough signal yet.'}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="mt-4 rounded-2xl border border-violet-500/15 bg-violet-500/[0.025] p-4">
+              <div className="mb-3 text-[10px] font-black uppercase tracking-widest text-violet-300">Related Past Decisions</div>
+              <div className="grid gap-3 md:grid-cols-3">
+                {relatedDecisionMemories.map((memory) => (
+                  <div key={memory.case} className="rounded-xl border border-white/5 bg-[#0B1020]/55 p-3">
+                    <div className="mb-2 text-[9px] font-black uppercase tracking-widest text-slate-300">Case: {memory.case}</div>
+                    {[
+                      { label: 'What was decided', value: memory.decided },
+                      { label: 'Outcome', value: memory.outcome },
+                      { label: 'Lesson reused', value: memory.lesson },
+                    ].map((item) => (
+                      <div key={item.label} className="mt-2">
+                        <div className="text-[9px] font-bold uppercase text-slate-500">{item.label}</div>
+                        <p className="mt-0.5 text-xs leading-relaxed text-slate-300">{item.value}</p>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 rounded-xl border border-violet-400/15 bg-violet-400/[0.06] px-3 py-2">
+                <div className="text-[9px] font-black uppercase tracking-widest text-violet-300">Reusable Pattern Detected</div>
+                <p className="mt-1 text-xs font-semibold text-slate-200">Phased execution reduces downside.</p>
+              </div>
+            </div>
+            <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.025] p-4">
+              <div className="mb-3 text-[10px] font-black uppercase tracking-widest text-purple-300">Counterfactual Paths</div>
+              <div className="grid gap-3 md:grid-cols-3">
+                {counterfactualPaths.map((path) => (
+                  <div key={path.label} className="rounded-xl border border-white/5 bg-[#0B1020]/55 p-3">
+                    <div className="mb-2 text-[9px] font-black uppercase tracking-widest text-slate-400">{path.label}</div>
+                    <div className="mb-3 grid grid-cols-3 gap-1.5">
+                      {[
+                        { label: 'Probability', value: path.probability },
+                        { label: 'Impact', value: `${path.impact}/10` },
+                        { label: 'Confidence', value: `${path.confidence}%` },
+                      ].map((signal) => (
+                        <div key={signal.label} className="rounded-lg border border-white/5 bg-white/[0.025] px-2 py-1.5">
+                          <div className="text-[8px] font-bold uppercase text-slate-600">{signal.label}</div>
+                          <div className="mt-0.5 text-[11px] font-black text-slate-200">{signal.value}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="space-y-2">
+                      {path.points.map((point) => (
+                        <div key={point.label}>
+                          <div className="text-[9px] font-bold uppercase text-slate-500">{point.label}</div>
+                          <p className="mt-0.5 text-xs leading-relaxed text-slate-300">{point.value || 'Not enough signal yet.'}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="mt-4 rounded-2xl border border-rose-500/15 bg-rose-500/[0.025] p-4">
+              <div className="mb-3 text-[10px] font-black uppercase tracking-widest text-rose-300">How This Decision Could Fail</div>
+              <div className="grid gap-3 md:grid-cols-3">
+                {preMortemFailureMap.map((failure) => (
+                  <div key={failure.label} className="rounded-xl border border-white/5 bg-[#0B1020]/55 p-3">
+                    <div className="mb-2 text-[9px] font-black uppercase tracking-widest text-slate-400">{failure.label}</div>
+                    {[
+                      { label: 'Risk trigger', value: failure.trigger },
+                      { label: 'Early warning signal', value: failure.warning },
+                      { label: 'Mitigation move', value: failure.mitigation },
+                    ].map((item) => (
+                      <div key={item.label} className="mt-2">
+                        <div className="text-[9px] font-bold uppercase text-slate-500">{item.label}</div>
+                        <p className="mt-0.5 text-xs leading-relaxed text-slate-300">{item.value || 'Not enough signal yet.'}</p>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="mt-4 rounded-2xl border border-amber-500/15 bg-amber-500/[0.025] p-4">
+              <div className="mb-3 text-[10px] font-black uppercase tracking-widest text-amber-300">Second-Order Effects</div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {secondOrderEffects.map((effect) => (
+                  <div key={effect.label} className="rounded-xl border border-white/5 bg-[#0B1020]/55 p-3">
+                    <div className="mb-2 text-[9px] font-black uppercase tracking-widest text-slate-400">{effect.label}</div>
+                    {[
+                      { label: 'Immediate effect', value: effect.immediate },
+                      { label: 'Downstream consequence', value: effect.downstream },
+                      { label: 'Hidden long-term effect', value: effect.longTerm },
+                    ].map((item) => (
+                      <div key={item.label} className="mt-2">
+                        <div className="text-[9px] font-bold uppercase text-slate-500">{item.label}</div>
+                        <p className="mt-0.5 text-xs leading-relaxed text-slate-300">{item.value || 'Not enough signal yet.'}</p>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
           <div className="grid min-w-full grid-cols-3 gap-3 sm:min-w-[360px]">
             {verdictMetrics.map((metric) => (

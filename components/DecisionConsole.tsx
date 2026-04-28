@@ -165,6 +165,13 @@ interface DecisionConsoleProps {
 
 function DecisionConsole({ thread, loading, onSubmit, onReset }: DecisionConsoleProps) {
   const [input, setInput] = useState('');
+  const [decisionIntake, setDecisionIntake] = useState({
+    question: '',
+    goal: '',
+    constraints: '',
+    stakes: '',
+    horizon: '',
+  });
   const [error, setError] = useState<string | null>(null);
   const [terminalTab, setTerminalTab] = useState('Strategy');
   const threadEndRef = useRef<HTMLDivElement>(null);
@@ -176,8 +183,28 @@ function DecisionConsole({ thread, loading, onSubmit, onReset }: DecisionConsole
     threadEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [thread.length, loading]);
 
+  const updateDecisionIntake = useCallback((field: keyof typeof decisionIntake, value: string) => {
+    setDecisionIntake((current) => ({ ...current, [field]: value }));
+    if (error) setError(null);
+  }, [error]);
+
+  const buildDecisionPrompt = useCallback(() => {
+    const fields = [
+      ['Decision question', decisionIntake.question],
+      ['Goal', decisionIntake.goal],
+      ['Constraints', decisionIntake.constraints],
+      ['Stakes', decisionIntake.stakes],
+      ['Time horizon', decisionIntake.horizon],
+    ];
+
+    return fields
+      .filter(([, value]) => value.trim())
+      .map(([label, value]) => `${label}: ${value.trim()}`)
+      .join('\n');
+  }, [decisionIntake]);
+
   const handleSubmit = useCallback((override?: string) => {
-    const text = (override ?? input).trim();
+    const text = (override ?? (hasThread ? input : buildDecisionPrompt())).trim();
     if (!text) { setError('Please describe your decision to enable simulation.'); return; }
     if (text.length < 20) {
       setError(`Decision details too brief (${text.length}/20 characters minimum). Provide more context about stakes, constraints, and timeline.`);
@@ -185,8 +212,15 @@ function DecisionConsole({ thread, loading, onSubmit, onReset }: DecisionConsole
     }
     setError(null);
     setInput('');
+    setDecisionIntake({
+      question: '',
+      goal: '',
+      constraints: '',
+      stakes: '',
+      horizon: '',
+    });
     onSubmit(text);
-  }, [input, onSubmit]);
+  }, [buildDecisionPrompt, hasThread, input, onSubmit]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -281,14 +315,38 @@ function DecisionConsole({ thread, loading, onSubmit, onReset }: DecisionConsole
 
           {/* Input textarea */}
           {!hasThread && !loading ? (
-            /* Empty state — large textarea */
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={(e) => { setInput(e.target.value); if (error) setError(null); }}
-              placeholder="What decision must survive reality?"
-              className="w-full h-32 sm:h-48 bg-transparent text-xl sm:text-2xl lg:text-3xl text-[#F8FAFF] placeholder-slate-600 focus:outline-none resize-none font-medium leading-relaxed px-0 border-none selection:bg-purple-500/30"
-            />
+            /* Empty state — structured decision intake */
+            <div className="space-y-3">
+              <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] px-5 py-4">
+                <label className="mb-2 block text-[9px] font-black uppercase tracking-widest text-purple-300">Decision question</label>
+                <textarea
+                  ref={inputRef}
+                  value={decisionIntake.question}
+                  onChange={(e) => updateDecisionIntake('question', e.target.value)}
+                  placeholder="Should we launch to 300 beta users next month?"
+                  rows={3}
+                  className="w-full resize-none border-none bg-transparent text-xl font-semibold leading-relaxed text-[#F8FAFF] placeholder-slate-600 selection:bg-purple-500/30 focus:outline-none sm:text-2xl"
+                />
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {[
+                  { key: 'goal', label: 'Goal', placeholder: 'Validate trust and retention' },
+                  { key: 'constraints', label: 'Constraints', placeholder: 'Small team, limited budget' },
+                  { key: 'stakes', label: 'Stakes', placeholder: 'Reputation, churn, opportunity cost' },
+                  { key: 'horizon', label: 'Time horizon', placeholder: '30-90 days' },
+                ].map((field) => (
+                  <div key={field.key} className="rounded-xl border border-white/[0.06] bg-white/[0.015] px-4 py-3">
+                    <label className="mb-2 block text-[9px] font-black uppercase tracking-widest text-slate-500">{field.label}</label>
+                    <input
+                      value={decisionIntake[field.key as keyof typeof decisionIntake]}
+                      onChange={(e) => updateDecisionIntake(field.key as keyof typeof decisionIntake, e.target.value)}
+                      placeholder={field.placeholder}
+                      className="w-full border-none bg-transparent text-sm font-medium text-[#F8FAFF] placeholder-slate-600 selection:bg-purple-500/30 focus:outline-none"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
           ) : hasThread && !loading ? (
             /* Thread state — compact follow-up input */
             <div className="border border-white/[0.08] bg-white/[0.02] rounded-2xl px-5 py-4 mt-2">
@@ -312,7 +370,10 @@ function DecisionConsole({ thread, loading, onSubmit, onReset }: DecisionConsole
                 {quickScenarios.map((s) => (
                   <button
                     key={s.label}
-                    onClick={() => { setInput(s.text); handleSubmit(s.text); }}
+                    onClick={() => {
+                      setDecisionIntake((current) => ({ ...current, question: s.text }));
+                      handleSubmit(s.text);
+                    }}
                     disabled={loading}
                     className="flex items-center space-x-3 text-[9px] border px-4 py-2 rounded-xl transition-all duration-300 font-bold uppercase disabled:opacity-50 bg-white/[0.03] hover:bg-white/[0.06] border-white/10 text-slate-300 hover:text-[#F8FAFF]"
                   >
@@ -331,7 +392,7 @@ function DecisionConsole({ thread, loading, onSubmit, onReset }: DecisionConsole
               /* Primary CTA */
               <button
                 onClick={() => handleSubmit()}
-                disabled={loading || input.trim().length === 0}
+                disabled={loading || buildDecisionPrompt().trim().length === 0}
                 className="group relative w-full overflow-hidden rounded-2xl p-[1px] transition-all hover:scale-[1.005] active:scale-[0.995] disabled:opacity-30 shadow-2xl"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-purple-500/50 via-white/15 to-purple-500/50" />
@@ -343,7 +404,7 @@ function DecisionConsole({ thread, loading, onSubmit, onReset }: DecisionConsole
                     </div>
                   ) : (
                     <span className="text-base font-black uppercase text-white group-hover:text-purple-300 transition-colors">
-                      PRESSURE TEST DECISION →
+                      RUN DECISION COPILOT →
                     </span>
                   )}
                 </div>
