@@ -1,21 +1,53 @@
 # SolveOS Specifications
 
-This directory contains the formal specifications for SolveOS. It serves as the single source of truth for product vision, technical architecture, and execution roadmap.
+This directory contains the SolveOS homework specifications. The simple teacher-facing files are at the top level of this folder, while the older detailed source specs remain in subfolders for reference.
 
-## Directory Structure
+## Teacher review files
 
-- **drafts/**: Unfinished ideas and work-in-progress specifications.
-- **accepted/**: Approved specifications that have been vetted and are ready for implementation.
-- **global/**: High-level vision, mission, and company-wide strategic goals.
-- **product/**: Detailed feature specifications and product requirements (PRDs).
-- **technical/**: Engineering designs, architecture diagrams, and system specifications.
-- **user-stories/**: Real-world scenarios and user journey maps.
-- **roadmap/**: High-level execution plans and timelines.
-- **change-requests/**: Proposals for modifications to existing accepted specifications.
+- `global-spec.md`
+- `functional-map.md`
+- `feature-spec-decision-engine.md`
+- `feature-spec-memory-graph.md`
+- `feature-spec-outcome-flywheel.md`
+- `technical-spec.md`
+- `user-stories.md`
 
-## Workflow
+## Product goal
 
-1. Create a new spec in `drafts/`.
-2. Review and iterate with the team.
-3. Once approved, move the file to the appropriate category folder (e.g., `product/`, `technical/`).
-4. Significant changes to accepted specs should be handled via `change-requests/`.
+SolveOS helps users make better high-stakes decisions by turning context, risks, and outcomes into clear decision blueprints.
+
+## Core features
+
+- Decision Engine for recommendations and risk analysis.
+- Memory Graph for saved decisions and connected lessons.
+- Outcome Flywheel for learning from real results.
+- User stories for practical founder and team scenarios.
+- Technical plan for the app architecture.
+
+## User flow
+
+1. User describes a decision.
+2. SolveOS asks for missing context.
+3. AI advisors analyze options and risks.
+4. User receives a clear Decision Blueprint.
+5. User logs the outcome later so future decisions improve.
+
+## Technical overview
+
+The current app is planned with Next.js, TypeScript, Tailwind CSS, and AI analysis through OpenAI plus future multi-agent orchestration. Memory can start with simple stored records and later move to vector search.
+
+## Roadmap / order of work
+
+1. Define the specs and user stories.
+2. Build the basic decision input and blueprint output.
+3. Add advisor logic and confidence scoring.
+4. Add memory and outcome tracking.
+5. Add sharing, exports, and team features.
+
+## Reference folders
+
+- `global/`: original vision notes.
+- `product/`: detailed feature ideas and product specs.
+- `technical/`: architecture notes.
+- `user-stories/`: original story examples.
+- `roadmap/`: original 90-day roadmap.
