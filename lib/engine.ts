@@ -21,7 +21,17 @@ interface AgentState {
   finalBlueprint: DecisionBlueprint | null;
 }
 
-const openai = new OpenAI();
+let openaiClient: OpenAI | null = null;
+
+function getOpenAIClient(): OpenAI {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error('OPENAI_API_KEY is not configured.');
+  }
+
+  openaiClient ??= new OpenAI({ apiKey });
+  return openaiClient;
+}
 
 function normalizeLanguage(language?: string): string {
   const value = typeof language === 'string' ? language.trim() : '';
@@ -171,7 +181,7 @@ async function detectionNode(state: AgentState): Promise<Partial<AgentState>> {
     return { language: currentLanguage };
   }
 
-  const response = await openai.chat.completions.create({
+  const response = await getOpenAIClient().chat.completions.create({
     model: 'gpt-4o-mini',
     messages: [{ 
       role: 'system', 
@@ -188,7 +198,7 @@ async function detectionNode(state: AgentState): Promise<Partial<AgentState>> {
 
 async function strategistNode(state: AgentState): Promise<Partial<AgentState>> {
   const language = normalizeLanguage(state.language);
-  const response = await openai.chat.completions.create({
+  const response = await getOpenAIClient().chat.completions.create({
     model: 'gpt-4o',
     messages: [{ role: 'user', content: buildStrategistPrompt(state.problem || '', language, state.memoryContext || undefined) }],
     temperature: 0.7,
@@ -198,7 +208,7 @@ async function strategistNode(state: AgentState): Promise<Partial<AgentState>> {
 
 async function skepticNode(state: AgentState): Promise<Partial<AgentState>> {
   const language = normalizeLanguage(state.language);
-  const response = await openai.chat.completions.create({
+  const response = await getOpenAIClient().chat.completions.create({
     model: 'gpt-4o',
     messages: [{ role: 'user', content: buildSkepticPrompt(state.problem || '', state.strategistAnalysis || '', language) }],
     temperature: 0.7,
@@ -208,7 +218,7 @@ async function skepticNode(state: AgentState): Promise<Partial<AgentState>> {
 
 async function operatorNode(state: AgentState): Promise<Partial<AgentState>> {
   const language = normalizeLanguage(state.language);
-  const response = await openai.chat.completions.create({
+  const response = await getOpenAIClient().chat.completions.create({
     model: 'gpt-4o',
     messages: [{ role: 'user', content: buildOperatorPrompt(state.problem || '', state.strategistAnalysis || '', state.skepticAnalysis || '', language) }],
     temperature: 0.7,
@@ -218,7 +228,7 @@ async function operatorNode(state: AgentState): Promise<Partial<AgentState>> {
 
 async function synthesizerNode(state: AgentState): Promise<Partial<AgentState>> {
   const language = normalizeLanguage(state.language);
-  const response = await openai.chat.completions.create({
+  const response = await getOpenAIClient().chat.completions.create({
     model: 'gpt-4o',
     response_format: { type: 'json_object' },
     messages: [{
@@ -255,32 +265,38 @@ async function synthesizerNode(state: AgentState): Promise<Partial<AgentState>> 
   return { finalBlueprint: blueprint };
 }
 
-// Build the graph
-const workflow = new StateGraph<AgentState>({
-  channels: {
-    problem: { value: (_a, b) => b, default: () => '' },
-    language: { value: (_a, b) => b, default: () => 'English' },
-    memoryContext: { value: (_a, b) => b, default: () => '' },
-    conversationContext: { value: (_a, b) => b, default: () => '' },
-    strategistAnalysis: { value: (_a, b) => b, default: () => '' },
-    skepticAnalysis: { value: (_a, b) => b, default: () => '' },
-    operatorAnalysis: { value: (_a, b) => b, default: () => '' },
-    finalBlueprint: { value: (_a, b) => b, default: () => null },
-  }
-})
-  .addNode('detect', detectionNode)
-  .addNode('strategist', strategistNode)
-  .addNode('skeptic', skepticNode)
-  .addNode('operator', operatorNode)
-  .addNode('synthesizer', synthesizerNode)
-  .addEdge(START, 'detect')
-  .addEdge('detect', 'strategist')
-  .addEdge('strategist', 'skeptic')
-  .addEdge('skeptic', 'operator')
-  .addEdge('operator', 'synthesizer')
-  .addEdge('synthesizer', END);
+let compiledEngine: ReturnType<ReturnType<typeof buildWorkflow>['compile']> | null = null;
 
-export const engine = workflow.compile();
+function buildWorkflow() {
+  return new StateGraph<AgentState>({
+    channels: {
+      problem: { value: (_a, b) => b, default: () => '' },
+      language: { value: (_a, b) => b, default: () => 'English' },
+      memoryContext: { value: (_a, b) => b, default: () => '' },
+      conversationContext: { value: (_a, b) => b, default: () => '' },
+      strategistAnalysis: { value: (_a, b) => b, default: () => '' },
+      skepticAnalysis: { value: (_a, b) => b, default: () => '' },
+      operatorAnalysis: { value: (_a, b) => b, default: () => '' },
+      finalBlueprint: { value: (_a, b) => b, default: () => null },
+    }
+  })
+    .addNode('detect', detectionNode)
+    .addNode('strategist', strategistNode)
+    .addNode('skeptic', skepticNode)
+    .addNode('operator', operatorNode)
+    .addNode('synthesizer', synthesizerNode)
+    .addEdge(START, 'detect')
+    .addEdge('detect', 'strategist')
+    .addEdge('strategist', 'skeptic')
+    .addEdge('skeptic', 'operator')
+    .addEdge('operator', 'synthesizer')
+    .addEdge('synthesizer', END);
+}
+
+function getEngine() {
+  compiledEngine ??= buildWorkflow().compile();
+  return compiledEngine;
+}
 
 export async function solveDecision(
   problem: string,
@@ -292,7 +308,7 @@ export async function solveDecision(
     const startLanguage = normalizeLanguage(overrideLanguage || 'en');
     const safeProblem = typeof problem === 'string' ? problem : '';
 
-    const result = await engine.invoke({
+    const result = await getEngine().invoke({
       problem: safeProblem,
       language: startLanguage,
       memoryContext: memoryContext || '',

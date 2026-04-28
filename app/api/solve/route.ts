@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
-import { solveDecision } from '@/lib/engine';
 import { saveDecision, getDecisionHistory } from '@/lib/memory';
 import { getMemoryIntelligenceFromHistory } from '@/lib/memory-graph';
 import { computeNetworkIntelligence, calibrateScore, buildCalibrationContext } from '@/lib/benchmarks';
 import type { DecisionContext, SolveRequest, SolveResponse } from '@/lib/types';
+
+export const dynamic = 'force-dynamic';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -72,6 +73,7 @@ export async function POST(req: Request) {
     }
 
     const fullContext = [memoryContext, calibrationNote].filter(Boolean).join('\n\n');
+    const { solveDecision } = await import('@/lib/engine');
     const blueprint = await solveDecision(problem, language, fullContext, conversationContext);
     const calibration = calibrateScore(blueprint.score, history, domain, problem, context);
     const riskPenalty =
