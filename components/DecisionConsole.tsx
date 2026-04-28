@@ -166,6 +166,11 @@ interface DecisionConsoleProps {
 function DecisionConsole({ thread, loading, onSubmit, onReset }: DecisionConsoleProps) {
   const [input, setInput] = useState('');
   const [decisionIntake, setDecisionIntake] = useState({
+    pain: '',
+    fear: '',
+    desiredOutcome: '',
+    timePressure: '',
+    inactionCost: '',
     question: '',
     goal: '',
     constraints: '',
@@ -190,6 +195,11 @@ function DecisionConsole({ thread, loading, onSubmit, onReset }: DecisionConsole
 
   const buildDecisionPrompt = useCallback(() => {
     const fields = [
+      ['Core pain/problem', decisionIntake.pain],
+      ['Biggest fear', decisionIntake.fear],
+      ['Desired outcome', decisionIntake.desiredOutcome],
+      ['Time pressure', decisionIntake.timePressure],
+      ['What happens if I do nothing', decisionIntake.inactionCost],
       ['Decision question', decisionIntake.question],
       ['Goal', decisionIntake.goal],
       ['Constraints', decisionIntake.constraints],
@@ -213,6 +223,11 @@ function DecisionConsole({ thread, loading, onSubmit, onReset }: DecisionConsole
     setError(null);
     setInput('');
     setDecisionIntake({
+      pain: '',
+      fear: '',
+      desiredOutcome: '',
+      timePressure: '',
+      inactionCost: '',
       question: '',
       goal: '',
       constraints: '',
@@ -317,6 +332,34 @@ function DecisionConsole({ thread, loading, onSubmit, onReset }: DecisionConsole
           {!hasThread && !loading ? (
             /* Empty state — structured decision intake */
             <div className="space-y-3">
+              <div className="rounded-2xl border border-rose-500/15 bg-rose-500/[0.025] px-5 py-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-rose-300">Pain Intake</span>
+                  <span className="font-mono text-[9px] text-slate-600">PRE-SIMULATION</span>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {[
+                    { key: 'pain', label: 'Core pain/problem', placeholder: 'Users do not fully trust the product yet' },
+                    { key: 'fear', label: 'Biggest fear', placeholder: 'We launch publicly and damage credibility' },
+                    { key: 'desiredOutcome', label: 'Desired outcome', placeholder: 'Clear proof that retention and trust are improving' },
+                    { key: 'timePressure', label: 'Time pressure', placeholder: 'Need signal before next month' },
+                    { key: 'inactionCost', label: 'What happens if I do nothing', placeholder: 'Competitors move faster and the team loses momentum' },
+                  ].map((field) => (
+                    <div
+                      key={field.key}
+                      className={field.key === 'inactionCost' ? 'md:col-span-2' : undefined}
+                    >
+                      <label className="mb-2 block text-[9px] font-black uppercase tracking-widest text-slate-500">{field.label}</label>
+                      <input
+                        value={decisionIntake[field.key as keyof typeof decisionIntake]}
+                        onChange={(e) => updateDecisionIntake(field.key as keyof typeof decisionIntake, e.target.value)}
+                        placeholder={field.placeholder}
+                        className="w-full rounded-xl border border-white/[0.06] bg-[#0B1020]/45 px-4 py-3 text-sm font-medium text-[#F8FAFF] placeholder-slate-600 selection:bg-purple-500/30 focus:outline-none"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
               <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] px-5 py-4">
                 <label className="mb-2 block text-[9px] font-black uppercase tracking-widest text-purple-300">Decision question</label>
                 <textarea
