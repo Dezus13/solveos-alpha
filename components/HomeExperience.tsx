@@ -13,6 +13,7 @@ type LocaleDictionary = Record<string, Record<string, string>>;
 
 const initialLocales: LocaleDictionary = {
   auto: en,
+  en,
   English: en,
 };
 
@@ -69,6 +70,11 @@ const idleSnapshot: IntelligenceSnapshot = {
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
+const normalizeClientLanguage = (value?: string) => {
+  const language = typeof value === 'string' && value.trim() ? value.trim() : 'en';
+  return language === 'auto' ? 'en' : language;
+};
+
 function buildIntelligenceSnapshot(
   blueprint: DecisionBlueprint | null,
   status: IntelligenceSnapshot['status'],
@@ -113,7 +119,7 @@ function buildIntelligenceSnapshot(
 export default function HomeExperience() {
   const [thread, setThread] = useState<ConversationTurn[]>([]);
   const [loading, setLoading] = useState(false);
-  const [language, setLanguage] = useState('auto');
+  const [language, setLanguage] = useState('en');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [intelligence, setIntelligence] = useState<IntelligenceSnapshot>(idleSnapshot);
   const [locales, setLocales] = useState<LocaleDictionary>(initialLocales);
@@ -142,24 +148,26 @@ export default function HomeExperience() {
     return '';
   }, [thread]);
 
-  const currentLang = latestBlueprint?.language || language || 'en';
+  const currentLang = latestBlueprint?.language || normalizeClientLanguage(language);
   const t = locales[currentLang as string] || locales.English;
 
   const ensureLocale = useCallback(
     async (next: string) => {
-      if (next === 'auto' || locales[next]) return;
+      const normalized = normalizeClientLanguage(next);
+      if (locales[normalized]) return;
       const loader = localeLoaders[next];
       if (!loader) return;
       const dict = await loader();
-      setLocales((prev) => (prev[next] ? prev : { ...prev, [next]: dict }));
+      setLocales((prev) => (prev[normalized] ? prev : { ...prev, [normalized]: dict }));
     },
     [locales],
   );
 
   const handleLanguageChange = useCallback(
     async (next: string) => {
-      await ensureLocale(next);
-      setLanguage(next);
+      const normalized = normalizeClientLanguage(next);
+      await ensureLocale(normalized);
+      setLanguage(normalized);
     },
     [ensureLocale],
   );
@@ -194,9 +202,10 @@ export default function HomeExperience() {
       setIntelligence(buildIntelligenceSnapshot(null, 'running'));
 
       try {
+        const requestLanguage = normalizeClientLanguage(language);
         const body: SolveRequest = {
           problem: message,
-          language: language || 'en',
+          language: requestLanguage,
           conversationHistory: threadRef.current.map((t) => ({
             role: t.role,
             content: t.role === 'assistant' ? (t.blueprint?.recommendation || t.content) : t.content,
@@ -206,6 +215,7 @@ export default function HomeExperience() {
         const response = await fetch('/api/solve', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          cache: 'no-store',
           body: JSON.stringify(body),
         });
 

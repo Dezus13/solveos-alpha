@@ -9,7 +9,7 @@ const ShareCard = dynamic(() => import('./ShareCard'), {
 
 interface AgentEngineProps {
   problem: string;
-  initialSolution: Record<string, unknown>;
+  initialSolution?: Record<string, unknown>;
 }
 
 interface DialecticLocale {
@@ -166,7 +166,7 @@ function AgentEngine({ problem, initialSolution }: AgentEngineProps) {
       icon: <Settings className="w-5 h-5 text-blue-400" />,
       color: 'blue'
     }
-  ], [initialSolution.recommendation, lt]);
+  ], [safeSolution.recommendation, lt]);
 
   return (
     <div className="w-full max-w-5xl mt-12 flex flex-col space-y-10 relative pb-32">
