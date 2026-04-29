@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { Shield, Zap, CheckCircle, TrendingUp, AlertOctagon, Flame, Target, BarChart3 } from 'lucide-react';
+import { Shield, Zap, CheckCircle, TrendingUp, AlertOctagon, Flame, Target, BarChart3, AlertTriangle } from 'lucide-react';
 
 import type { DecisionBlueprint, MilestoneStatus } from '../lib/types';
 
@@ -294,6 +294,62 @@ export default function DecisionBlueprint({ data, t, decisionAccuracy, calibrati
           {data?.recommendation || '...'}
         </p>
       </div>
+
+      {/* Trust Layer */}
+      {data?.trustLayer && (
+        <div className="border border-amber-500/20 bg-amber-950/10 backdrop-blur-xl rounded-3xl p-5 md:p-8 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-amber-500/50 to-transparent" />
+          <div className="flex items-center space-x-3 mb-6">
+            <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+            <h3 className="text-xs font-black uppercase tracking-widest text-amber-400">Trust Layer</h3>
+            <div className="ml-auto flex items-center space-x-2">
+              <span className="text-[9px] font-black uppercase tracking-widest text-neutral-600">Confidence</span>
+              <span className="text-sm font-black text-amber-300">{data.score}%</span>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="space-y-3">
+              <div className="text-[9px] font-black uppercase tracking-widest text-neutral-500 pb-1 border-b border-white/[0.04]">
+                Why this may be wrong
+              </div>
+              <ul className="space-y-2">
+                {data.trustLayer.whyWrong.map((reason, i) => (
+                  <li key={i} className="flex items-start space-x-2 text-xs text-neutral-400 leading-relaxed">
+                    <span className="text-amber-500 mt-0.5 flex-shrink-0 font-black">×</span>
+                    <span>{reason}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="space-y-3">
+              <div className="text-[9px] font-black uppercase tracking-widest text-neutral-500 pb-1 border-b border-white/[0.04]">
+                Evidence that would change this
+              </div>
+              <ul className="space-y-2">
+                {data.trustLayer.evidenceToChange.map((item, i) => (
+                  <li key={i} className="flex items-start space-x-2 text-xs text-neutral-400 leading-relaxed">
+                    <span className="text-blue-400 mt-0.5 flex-shrink-0 font-black">↻</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="space-y-3">
+              <div className="text-[9px] font-black uppercase tracking-widest text-neutral-500 pb-1 border-b border-white/[0.04]">
+                Test before committing
+              </div>
+              <ul className="space-y-2">
+                {data.trustLayer.testBeforeCommitting.map((test, i) => (
+                  <li key={i} className="flex items-start space-x-2 text-xs text-neutral-400 leading-relaxed">
+                    <span className="text-emerald-400 mt-0.5 flex-shrink-0 font-black">→</span>
+                    <span>{test}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Why this recommendation? (Immersion Section) */}
       <div className="bg-neutral-900/40 backdrop-blur-md border border-white/10 rounded-3xl p-6 md:p-8 hover:bg-neutral-900/60 transition-colors">

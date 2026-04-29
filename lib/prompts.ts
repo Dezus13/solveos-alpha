@@ -35,6 +35,11 @@ YOU MUST RETURN A VALID JSON OBJECT exactly matching this structure:
     "twelveMonths": "Likely scenario 12 months out"
   },
   "recommendation": "Your definitive stance on which path is the best, and why.",
+  "trustLayer": {
+    "whyWrong": ["Most likely reason this recommendation is wrong", "Second fragile assumption", "External condition that could invalidate this"],
+    "evidenceToChange": ["Specific signal that would flip this recommendation", "Data that contradicts the key assumption", "New information that would change the verdict"],
+    "testBeforeCommitting": ["Cheapest experiment to run before acting — with metric and timebox", "Specific validation reducing the biggest uncertainty", "Lowest-cost test that proves or disproves the core premise"]
+  },
   "contrarianInsight": {
     "perspective": "Provide a sharp contrarian take: what if the obvious choice is wrong?",
     "hiddenOpportunity": "Identify one hidden opportunity the user may be ignoring.",
@@ -206,22 +211,32 @@ REASONING DIVERSITY RULES:
 - Penalize generic phrases: "measured phased approach", "balanced approach", "careful management", "navigate", "it depends", "consider", "may want to", "proceed with caution".
 - Use sharp, high-conviction language. Short sentences. Concrete nouns. No motivational filler.
 
+ADVISOR-QUALITY DEPTH RULES:
+- Produce a decision memo, not a slogan.
+- Every major field must contain concrete reasoning tied to the user's exact situation.
+- Explain why the verdict wins over the next-best alternative.
+- Name the causal chain: what must be true, what could break, what signal would change the answer.
+- Prefer specifics: numbers, time boxes, owner, metric, threshold, constraint, evidence source.
+- The red-team critique must be a serious challenge, not a perfunctory caveat.
+- The operator next steps must be executable by a real person this week.
+- Avoid short generic outputs. Do not compress the answer to one-liners.
+
 CRITICAL: EVERY SINGLE FIELD in the JSON object must be written in ${language}.
 YOU MUST RETURN A VALID JSON OBJECT exactly matching this structure:
 {
-  "recommendation": "One of the four verdict classes, then a sharp reason in ${language}",
-  "hiddenPain": "The underlying pain driving the decision in ${language}",
+  "recommendation": "One of the four verdict classes, then a concrete 2-3 sentence direct answer in ${language}. Explain the decision, why now/not now, and the decisive condition.",
+  "hiddenPain": "The underlying pain driving the decision in ${language}. Be specific about the tradeoff, fear, or constraint.",
   "strategistView": {
-    "biggestUpside": "Largest upside in ${language}",
-    "leverageMove": "Highest leverage move in ${language}"
+    "biggestUpside": "Largest upside in ${language}, with the mechanism that creates it.",
+    "leverageMove": "Highest leverage move in ${language}, with a concrete action and why it compounds."
   },
   "skepticView": {
-    "hiddenFlaw": "Most important hidden flaw in ${language}",
-    "whatCouldBreak": "What could break first in ${language}"
+    "hiddenFlaw": "Most important hidden flaw in ${language}, including the assumption being overtrusted.",
+    "whatCouldBreak": "What could break first in ${language}, including the trigger and early warning signal."
   },
-  "operatorNextSteps": ["step 1 in ${language}", "step 2 in ${language}", "step 3 in ${language}"],
-  "redTeamCritique": "Strongest attack against this decision in ${language}",
-  "economistView": "Resource, timing, and opportunity-cost view in ${language}",
+  "operatorNextSteps": ["specific step 1 in ${language} with owner/timebox/metric", "specific step 2 in ${language} with owner/timebox/metric", "specific step 3 in ${language} with owner/timebox/metric"],
+  "redTeamCritique": "Strongest attack against this decision in ${language}. Make it uncomfortable and decision-changing if true.",
+  "economistView": "Resource, timing, and opportunity-cost view in ${language}. Include what this displaces and what delay costs.",
   "counterfactualPaths": [
     {
       "name": "Proceed Now",
@@ -328,7 +343,24 @@ YOU MUST RETURN A VALID JSON OBJECT exactly matching this structure:
     }
   ],
   "confidenceScore": 0-100,
-  "outcomeLessonPrompt": "Question that helps the user log the lesson after execution in ${language}"
+  "outcomeLessonPrompt": "Question that helps the user log the lesson after execution in ${language}",
+  "trustLayer": {
+    "whyWrong": [
+      "Most likely reason this recommendation is wrong in ${language} — name the fragile assumption",
+      "Second reason the recommendation may fail in ${language} — name the structural weakness",
+      "Third reason in ${language} — name the external condition that invalidates the verdict"
+    ],
+    "evidenceToChange": [
+      "Specific signal or data point that would flip this recommendation in ${language}",
+      "Evidence that contradicts the key assumption in ${language}",
+      "New information that would change the verdict class in ${language}"
+    ],
+    "testBeforeCommitting": [
+      "Concrete experiment or check to run before acting — with metric and timebox in ${language}",
+      "Specific validation that reduces the biggest uncertainty in ${language}",
+      "Lowest-cost test that proves or disproves the core premise in ${language}"
+    ]
+  }
 }
 
 Rules:
@@ -339,6 +371,9 @@ Rules:
 - Make risks specific enough for an executive team to act on.
 - Make warRoomDebate feel like advisors debating live. The four voices must disagree, not summarize each other.
 - Make confidenceScore reflect strategic upside, risk exposure, reversibility, and evidence strength.
+- trustLayer.whyWrong: name the specific fragile assumptions, not generic caveats. Each entry must be falsifiable.
+- trustLayer.evidenceToChange: name concrete signals (data, events, numbers), not vague conditions.
+- trustLayer.testBeforeCommitting: each test must be runnable within days or weeks — not another analysis.
 Only output JSON.`;
 }
 
@@ -425,7 +460,24 @@ YOU MUST RETURN A VALID JSON OBJECT exactly matching this structure:
     "thirtyDays": "30-day correction course in ${language}"
   },
   "confidenceScore": 0-100,
-  "outcomeLessonPrompt": "Question to capture the core lesson from this review in ${language}"
+  "outcomeLessonPrompt": "Question to capture the core lesson from this review in ${language}",
+  "trustLayer": {
+    "whyWrong": [
+      "Most likely reason the review assessment is incomplete or wrong in ${language}",
+      "Key information gap that makes this review uncertain in ${language}",
+      "Assumption in this review that may not hold in ${language}"
+    ],
+    "evidenceToChange": [
+      "Data or outcome that would change this review's verdict in ${language}",
+      "Evidence that would revise the milestone status significantly in ${language}",
+      "New information that would alter the lesson learned in ${language}"
+    ],
+    "testBeforeCommitting": [
+      "Check to validate the review assessment before acting on it in ${language}",
+      "Metric to gather before drawing conclusions from this review in ${language}",
+      "Specific verification step to confirm the review is accurate in ${language}"
+    ]
+  }
 }
 
 Rules:
@@ -434,5 +486,6 @@ Rules:
 - milestoneTable statuses must be realistic — if information is absent, use "unknown", not "on_track".
 - Every milestone needs a specific metric (a number, rate, or named deliverable), not vague descriptions.
 - Be honest about failures. Do not soften negative outcomes with corporate hedging.
+- trustLayer: make all entries specific to this exact decision review, not generic disclaimers.
 Only output JSON.`;
 }

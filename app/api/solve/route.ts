@@ -414,6 +414,14 @@ function normalizeBlueprint(value: unknown, problem: string, language: string, m
           description: safeText(branch.description, 'Scenario requires more evidence.'),
         }))
       : defaultScenarioBranches(score),
+    trustLayer: (() => {
+      const tl = isRecord(blueprint.trustLayer) ? blueprint.trustLayer : {};
+      const whyWrong = safeStringList(tl.whyWrong, []);
+      const evidenceToChange = safeStringList(tl.evidenceToChange, []);
+      const testBeforeCommitting = safeStringList(tl.testBeforeCommitting, []);
+      if (whyWrong.length === 0 && evidenceToChange.length === 0 && testBeforeCommitting.length === 0) return undefined;
+      return { whyWrong, evidenceToChange, testBeforeCommitting };
+    })(),
   };
 }
 

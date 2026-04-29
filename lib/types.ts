@@ -267,6 +267,11 @@ export interface DecisionBlueprint {
     sampleSize: number;
     evidence?: ConfidenceEvidence[];
   };
+  trustLayer?: {
+    whyWrong: string[];
+    evidenceToChange: string[];
+    testBeforeCommitting: string[];
+  };
 }
 
 export interface ScenarioBranch {

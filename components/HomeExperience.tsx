@@ -5,6 +5,8 @@ import dynamic from 'next/dynamic';
 import { ChevronDown, MessageSquare, Plus, Settings } from 'lucide-react';
 import DecisionConsole from '@/components/DecisionConsole';
 import SolveOSSymbol from '@/components/SolveOSSymbol';
+import { detectInputLanguage, uiCopy, type SupportedLanguage, type UiCopy } from '@/lib/i18n';
+import { defaultSettings, SETTINGS_STORAGE_KEY, type ProductSettings } from '@/lib/settings';
 import type { IntelligenceSnapshot } from '@/components/IntelligenceRail';
 import type { ConversationTurn, DecisionBlueprint, SolveRequest } from '@/lib/types';
 
@@ -76,6 +78,82 @@ const normalizeClientLanguage = (value?: string) => {
   return language === 'auto' ? 'en' : language;
 };
 
+function readableThreadTitle(message: string): string {
+  const cleaned = message
+    .replace(/\s+/g, ' ')
+    .replace(/^(should|can|could|would)\s+i\s+/i, '')
+    .replace(/^(should|can|could|would)\s+we\s+/i, '')
+    .replace(/[?.!]+$/g, '')
+    .trim();
+  if (!cleaned) return 'New decision';
+  const title = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  return title.length > 42 ? `${title.slice(0, 42)}...` : title;
+}
+
+function mergeSettings(value: unknown): ProductSettings {
+  if (!value || typeof value !== 'object') return defaultSettings;
+  const incoming = value as Partial<ProductSettings>;
+  const legacyLanguage = (incoming.language as Partial<ProductSettings['language']> & {
+    selected?: SupportedLanguage;
+    responseMode?: 'detected' | 'chosen';
+  }) || {};
+  const legacyConcrete = legacyLanguage.selected && legacyLanguage.selected !== 'auto'
+    ? legacyLanguage.selected
+    : defaultSettings.language.uiLanguage;
+  return {
+    general: { ...defaultSettings.general, ...incoming.general },
+    language: {
+      ...defaultSettings.language,
+      ...incoming.language,
+      uiLanguage: legacyLanguage.uiLanguage || legacyConcrete,
+      decisionMode: legacyLanguage.decisionMode || (legacyLanguage.responseMode === 'chosen' ? 'custom' : 'detected'),
+      customDecisionLanguage: legacyLanguage.customDecisionLanguage || legacyConcrete,
+    },
+    appearance: { ...defaultSettings.appearance, ...incoming.appearance },
+    notifications: { ...defaultSettings.notifications, ...incoming.notifications },
+    data: { ...defaultSettings.data, ...incoming.data },
+    security: { ...defaultSettings.security, ...incoming.security },
+  };
+}
+
+function buildAssistantAnswer(blueprint: DecisionBlueprint, copy: UiCopy): string {
+  const verdict = blueprint.recommendation || 'Decision analysis completed.';
+  const reasoningTree = [
+    blueprint.diagnosis?.coreProblem ? `1. Core decision: ${blueprint.diagnosis.coreProblem}` : '',
+    blueprint.strategistView?.biggestUpside ? `2. Upside case: ${blueprint.strategistView.biggestUpside}` : '',
+    blueprint.strategistView?.leverageMove ? `3. Leverage point: ${blueprint.strategistView.leverageMove}` : '',
+    blueprint.economistView ? `4. Opportunity cost: ${blueprint.economistView}` : '',
+    blueprint.contrarianInsight?.uncomfortableTruth ? `5. Hard truth: ${blueprint.contrarianInsight.uncomfortableTruth}` : '',
+  ].filter(Boolean).join('\n');
+  const riskTree = [
+    blueprint.diagnosis?.keyRisks ? `- Primary risk: ${blueprint.diagnosis.keyRisks}` : '',
+    blueprint.skepticView?.hiddenFlaw ? `- Hidden flaw: ${blueprint.skepticView.hiddenFlaw}` : '',
+    blueprint.skepticView?.whatCouldBreak ? `- First break point: ${blueprint.skepticView.whatCouldBreak}` : '',
+    blueprint.preMortemRisks?.[0]?.earlyWarningSignal ? `- Early warning signal: ${blueprint.preMortemRisks[0].earlyWarningSignal}` : '',
+  ].filter(Boolean).join('\n');
+  const nextMove = blueprint.actionPlan?.today || blueprint.operatorNextSteps?.[0] || blueprint.actionPlan?.thisWeek;
+  const nextMoveDetail = [
+    nextMove ? `Do this first: ${nextMove}` : '',
+    blueprint.actionPlan?.thisWeek ? `This week: ${blueprint.actionPlan.thisWeek}` : '',
+    blueprint.executionPlan?.[0]?.metric ? `Measure: ${blueprint.executionPlan[0].metric}` : '',
+    blueprint.executionPlan?.[0]?.goNoGoThreshold ? `Decision threshold: ${blueprint.executionPlan[0].goNoGoThreshold}` : '',
+  ].filter(Boolean).join('\n');
+  const redTeam = blueprint.redTeamCritique || blueprint.contrarianInsight?.perspective;
+  const expansion = [
+    blueprint.counterfactualPaths?.[0]?.keyFailureMode ? `Ask next for a deeper expansion on the failure mode: ${blueprint.counterfactualPaths[0].keyFailureMode}` : '',
+    blueprint.executionPlan?.length ? 'Or ask for a full 30-day execution plan with owners, metrics, and kill criteria.' : '',
+  ].filter(Boolean).join('\n');
+
+  return [
+    `${copy.verdict}\n${verdict}`,
+    reasoningTree ? `${copy.reasoningHeading}\n${reasoningTree}` : '',
+    riskTree ? `${copy.risks}\n${riskTree}` : '',
+    redTeam ? `${copy.redTeamChallenge}\n${redTeam}` : '',
+    nextMoveDetail ? `${copy.nextMove}\n${nextMoveDetail}` : '',
+    expansion ? `Deeper expansion\n${expansion}` : '',
+  ].filter(Boolean).join('\n\n');
+}
+
 function buildIntelligenceSnapshot(
   blueprint: DecisionBlueprint | null,
   status: IntelligenceSnapshot['status'],
@@ -120,7 +198,15 @@ function buildIntelligenceSnapshot(
 export default function HomeExperience() {
   const [thread, setThread] = useState<ConversationTurn[]>([]);
   const [loading, setLoading] = useState(false);
-  const [language, setLanguage] = useState('en');
+  const [settings, setSettings] = useState<ProductSettings>(() => {
+    if (typeof window === 'undefined') return defaultSettings;
+    try {
+      const stored = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
+      return stored ? mergeSettings(JSON.parse(stored)) : defaultSettings;
+    } catch {
+      return defaultSettings;
+    }
+  });
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [intelligence, setIntelligence] = useState<IntelligenceSnapshot>(idleSnapshot);
@@ -138,6 +224,13 @@ export default function HomeExperience() {
   const threadRef = useRef<ConversationTurn[]>([]);
   useEffect(() => { threadRef.current = thread; }, [thread]);
 
+  useEffect(() => {
+    window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+    document.documentElement.dataset.theme = settings.appearance.theme;
+    document.documentElement.dataset.accent = settings.appearance.accent;
+    document.documentElement.dataset.density = settings.appearance.density;
+  }, [settings]);
+
   const latestBlueprint = useMemo(() => {
     for (let i = thread.length - 1; i >= 0; i--) {
       if (thread[i].role === 'assistant' && thread[i].blueprint) return thread[i].blueprint!;
@@ -152,8 +245,10 @@ export default function HomeExperience() {
     return '';
   }, [thread]);
 
-  const currentLang = latestBlueprint?.language || normalizeClientLanguage(language);
+  const interfaceLanguage = settings.language.uiLanguage;
+  const currentLang = latestBlueprint?.language || interfaceLanguage;
   const t = locales[currentLang as string] || locales.English;
+  const copy = uiCopy[interfaceLanguage] || uiCopy.English;
 
   const ensureLocale = useCallback(
     async (next: string) => {
@@ -167,14 +262,11 @@ export default function HomeExperience() {
     [locales],
   );
 
-  const handleLanguageChange = useCallback(
-    async (next: string) => {
-      const normalized = normalizeClientLanguage(next);
-      await ensureLocale(normalized);
-      setLanguage(normalized);
-    },
-    [ensureLocale],
-  );
+  const updateSettings = useCallback((next: ProductSettings) => {
+    setSettings(next);
+    void ensureLocale(next.language.uiLanguage);
+    void ensureLocale(next.language.customDecisionLanguage);
+  }, [ensureLocale]);
 
   const handleReset = useCallback(() => {
     setThread([]);
@@ -207,7 +299,12 @@ export default function HomeExperience() {
       setIntelligence(buildIntelligenceSnapshot(null, 'running'));
 
       try {
-        const requestLanguage = normalizeClientLanguage(language);
+        const detected = detectInputLanguage(message);
+        const requestLanguage = settings.language.decisionMode === 'detected'
+          ? detected
+          : settings.language.decisionMode === 'ui'
+            ? settings.language.uiLanguage
+            : settings.language.customDecisionLanguage;
         const body: SolveRequest = {
           problem: message,
           language: requestLanguage,
@@ -246,12 +343,12 @@ export default function HomeExperience() {
         blueprint.language = blueprint.language || 'English';
         if (typeof data.decisionId === 'string') setLatestDecisionId(data.decisionId);
         if (blueprint.language) void ensureLocale(blueprint.language);
-        setAdvancedOpen(false);
+        setAdvancedOpen(settings.general.advancedByDefault);
 
         const assistantTurn: ConversationTurn = {
           id: crypto.randomUUID(),
           role: 'assistant',
-          content: blueprint.recommendation || 'Decision analysis completed.',
+          content: buildAssistantAnswer(blueprint, uiCopy[requestLanguage] || copy),
           blueprint,
           timestamp: Date.now(),
         };
@@ -285,7 +382,7 @@ export default function HomeExperience() {
         setLoading(false);
       }
     },
-    [language, ensureLocale],
+    [copy, ensureLocale, settings.general.advancedByDefault, settings.language.customDecisionLanguage, settings.language.decisionMode, settings.language.uiLanguage],
   );
 
   const resultKey = useMemo(
@@ -296,19 +393,19 @@ export default function HomeExperience() {
   const conversationTitle = useMemo(() => {
     const firstUser = thread.find((turn) => turn.role === 'user')?.content;
     if (!firstUser) return 'New decision';
-    return firstUser.length > 42 ? `${firstUser.slice(0, 42)}...` : firstUser;
+    return readableThreadTitle(firstUser);
   }, [thread]);
 
   return (
     <div className="relative z-10 flex h-screen w-full overflow-hidden">
-      <aside className="hidden w-72 flex-shrink-0 flex-col border-r border-white/10 bg-[#080D1A]/88 p-4 backdrop-blur-xl md:flex">
+      <aside className={`hidden flex-shrink-0 flex-col border-r border-white/10 bg-[#080D1A]/88 p-4 backdrop-blur-xl md:flex ${settings.appearance.density === 'compact' ? 'w-64' : 'w-72'}`}>
         <div className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <SolveOSSymbol className="h-7 w-7" />
             <div>
-              <div className="text-sm font-semibold text-white">SolveOS</div>
+              <div className="text-sm font-semibold text-white">{copy.appName}</div>
               <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                {loading ? 'Thinking' : 'Live'}
+                {loading ? copy.statusThinking : copy.statusLive}
               </div>
             </div>
           </div>
@@ -328,18 +425,24 @@ export default function HomeExperience() {
           className="mb-4 flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06]"
         >
           <Plus className="h-4 w-4" />
-          New chat
+          {copy.newChat}
         </button>
 
-        <div className="mb-2 px-2 text-[10px] font-black uppercase tracking-widest text-slate-600">History</div>
+        <div className="mb-2 px-2 text-[10px] font-black uppercase tracking-widest text-slate-600">{copy.history}</div>
         <div className="space-y-1 overflow-y-auto">
-          <button
-            type="button"
-            className="flex w-full items-start gap-2 rounded-xl bg-purple-500/[0.08] px-3 py-3 text-left text-sm text-slate-200"
-          >
-            <MessageSquare className="mt-0.5 h-4 w-4 flex-shrink-0 text-purple-300" />
-            <span className="line-clamp-2">{conversationTitle}</span>
-          </button>
+          {thread.length > 0 ? (
+            <button
+              type="button"
+              className="flex w-full items-start gap-2 rounded-xl bg-purple-500/[0.08] px-3 py-3 text-left text-sm text-slate-200"
+            >
+              <MessageSquare className="mt-0.5 h-4 w-4 flex-shrink-0 text-purple-300" />
+              <span className="line-clamp-2">{conversationTitle}</span>
+            </button>
+          ) : (
+            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-3 text-sm text-slate-500">
+              {copy.noDecisions}
+            </div>
+          )}
         </div>
       </aside>
 
@@ -347,7 +450,7 @@ export default function HomeExperience() {
         <header className="flex h-14 flex-shrink-0 items-center justify-between border-b border-white/10 bg-[#090E1B]/86 px-4 backdrop-blur-xl md:hidden">
           <div className="flex items-center gap-2">
             <SolveOSSymbol className="h-7 w-7" />
-            <span className="font-semibold text-white">SolveOS</span>
+            <span className="font-semibold text-white">{copy.appName}</span>
           </div>
           <button
             type="button"
@@ -364,6 +467,8 @@ export default function HomeExperience() {
           loading={loading}
           onSubmit={handleSubmit}
           onReset={handleReset}
+          copy={copy}
+          settings={settings}
         />
 
         {latestBlueprint && (
@@ -374,8 +479,8 @@ export default function HomeExperience() {
               className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-3 text-left sm:px-6"
             >
               <div>
-                <div className="text-xs font-semibold text-slate-200">Advanced Analysis</div>
-                <div className="text-[11px] text-slate-500">Risk, scenarios, memory, and operator detail</div>
+                <div className="text-xs font-semibold text-slate-200">{copy.advancedAnalysis}</div>
+                <div className="text-[11px] text-slate-500">{copy.advancedSubtext}</div>
               </div>
               <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${advancedOpen ? 'rotate-180' : ''}`} />
             </button>
@@ -411,9 +516,11 @@ export default function HomeExperience() {
         <SettingsModal
           isOpen={settingsOpen}
           onClose={() => setSettingsOpen(false)}
-          currentLanguage={language}
-          onLanguageChange={handleLanguageChange}
-          locales={locales}
+          settings={settings}
+          onSettingsChange={updateSettings}
+          copy={copy}
+          conversations={thread}
+          onDeleteHistory={handleReset}
         />
       )}
     </div>

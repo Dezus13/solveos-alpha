@@ -226,6 +226,7 @@ async function strategistNode(state: AgentState): Promise<Partial<AgentState>> {
     ],
     temperature: 0.9,
     top_p: 0.95,
+    max_tokens: 1800,
   });
   return { strategistAnalysis: response.choices[0]?.message?.content || '' };
 }
@@ -243,6 +244,7 @@ async function skepticNode(state: AgentState): Promise<Partial<AgentState>> {
     ],
     temperature: 0.9,
     top_p: 0.95,
+    max_tokens: 1800,
   });
   return { skepticAnalysis: response.choices[0]?.message?.content || '' };
 }
@@ -260,6 +262,7 @@ async function operatorNode(state: AgentState): Promise<Partial<AgentState>> {
     ],
     temperature: 0.85,
     top_p: 0.95,
+    max_tokens: 1800,
   });
   return { operatorAnalysis: response.choices[0]?.message?.content || '' };
 }
@@ -300,6 +303,7 @@ async function synthesizerNode(state: AgentState): Promise<Partial<AgentState>> 
       ],
       temperature: 0.8,
       top_p: 0.95,
+      max_tokens: 5000,
     });
 
     return JSON.parse(response.choices[0]?.message?.content || '{}');
