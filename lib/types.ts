@@ -297,15 +297,24 @@ export interface DecisionOutcome {
   actualOutcome: string;
   scoreAccuracy: number; // How accurate was the score? 0-100
   verdictAccuracy?: number; // 0-100: was the verdict CLASS directionally correct?
+  outcomeStatus?: OutcomeStatus;
   timestamp: string;
   lessons: string[];
   recommendations: string[];
 }
 
+export type OutcomeStatus = 'unknown' | 'better' | 'expected' | 'worse';
+
 export interface PendingReview {
   reviewType: '30day' | '60day' | '90day';
   scheduledFor: string; // ISO date string
   createdAt: string;
+}
+
+export interface ReviewCheckpoint {
+  horizon: 30 | 60 | 90;
+  scheduledFor: string; // ISO date string
+  status: OutcomeStatus;
 }
 
 export type MilestoneStatus = 'on_track' | 'behind' | 'exceeded' | 'failed' | 'unknown';
@@ -321,11 +330,19 @@ export interface MilestoneMetric {
 export interface DecisionMemoryEntry {
   id: string;
   timestamp: string;
+  createdAt?: string;
   problem: string;
+  question?: string;
+  verdict?: string;
+  confidence?: number;
+  keyRisks?: string[];
+  nextMove?: string;
   blueprint: DecisionBlueprint;
   context?: DecisionContext;
   outcome?: DecisionOutcome;
+  outcomeStatus?: OutcomeStatus;
   pendingReview?: PendingReview;
+  reviewCheckpoints?: ReviewCheckpoint[];
   tags: string[]; // For domain/category classification
   similarity?: number; // Similarity to current problem (0-100)
 }

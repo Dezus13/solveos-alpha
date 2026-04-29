@@ -1,9 +1,23 @@
-import { DecisionMemoryEntry, DecisionOutcome, DecisionContext, MemoryGraph, MemoryIntelligence, PendingReview } from './types';
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
+import {
+  DecisionMemoryEntry,
+  DecisionOutcome,
+  DecisionContext,
+  MemoryGraph,
+  MemoryIntelligence,
+  OutcomeStatus,
+  PendingReview,
+  ReviewCheckpoint,
+} from './types';
 import { buildMemoryGraph, getMemoryIntelligenceFromHistory } from './memory-graph';
 
 const REVIEW_EXPIRY_DAYS = 90;
+const MEMORY_FILE = path.join(process.cwd(), 'data', 'decisions.json');
+const CHECKPOINT_HORIZONS = [30, 60, 90] as const;
 
 let memoryStore: DecisionMemoryEntry[] = [];
+let memoryLoaded = false;
 let memoryWriteQueue: Promise<void> = Promise.resolve();
 
 function cloneEntry(entry: DecisionMemoryEntry): DecisionMemoryEntry {
@@ -12,6 +26,9 @@ function cloneEntry(entry: DecisionMemoryEntry): DecisionMemoryEntry {
 
 async function writeHistory(history: DecisionMemoryEntry[]): Promise<void> {
   memoryStore = history.map(cloneEntry);
+  memoryLoaded = true;
+  await fs.mkdir(path.dirname(MEMORY_FILE), { recursive: true });
+  await fs.writeFile(MEMORY_FILE, `${JSON.stringify(memoryStore, null, 2)}\n`, 'utf8');
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -28,6 +45,99 @@ function clampScore(value: number): number {
 
 function isValidDateString(value: unknown): value is string {
   return typeof value === 'string' && Number.isFinite(new Date(value).getTime());
+}
+
+function isOutcomeStatus(value: unknown): value is OutcomeStatus {
+  return value === 'unknown' || value === 'better' || value === 'expected' || value === 'worse';
+}
+
+function addDaysIso(baseIso: string, days: number): string {
+  return new Date(new Date(baseIso).getTime() + days * 86_400_000).toISOString();
+}
+
+function createReviewCheckpoints(createdAt: string, status: OutcomeStatus): ReviewCheckpoint[] {
+  return CHECKPOINT_HORIZONS.map(horizon => ({
+    horizon,
+    scheduledFor: addDaysIso(createdAt, horizon),
+    status,
+  }));
+}
+
+function normalizeReviewCheckpoints(value: unknown, createdAt: string, status: OutcomeStatus): ReviewCheckpoint[] {
+  if (!Array.isArray(value)) return createReviewCheckpoints(createdAt, status);
+
+  const byHorizon = new Map<number, ReviewCheckpoint>();
+  value.filter(isRecord).forEach(checkpoint => {
+    const horizon = checkpoint.horizon;
+    if (
+      (horizon === 30 || horizon === 60 || horizon === 90) &&
+      isValidDateString(checkpoint.scheduledFor)
+    ) {
+      byHorizon.set(horizon, {
+        horizon,
+        scheduledFor: checkpoint.scheduledFor,
+        status: isOutcomeStatus(checkpoint.status) ? checkpoint.status : status,
+      });
+    }
+  });
+
+  return CHECKPOINT_HORIZONS.map(horizon => (
+    byHorizon.get(horizon) || {
+      horizon,
+      scheduledFor: addDaysIso(createdAt, horizon),
+      status,
+    }
+  ));
+}
+
+function inferOutcomeStatusFromOutcome(outcome: DecisionOutcome | undefined): OutcomeStatus {
+  if (!outcome) return 'unknown';
+  if (isOutcomeStatus(outcome.outcomeStatus)) return outcome.outcomeStatus;
+
+  const lower = outcome.actualOutcome.toLowerCase();
+  if (lower.includes('succeeded') || lower.includes('better')) return 'better';
+  if (lower.includes('failed') || lower.includes('worse')) return 'worse';
+  return 'expected';
+}
+
+function keyRisksFromEntry(entry: DecisionMemoryEntry): string[] {
+  const risks: string[] = [];
+  const diagnosisRisk = entry.blueprint.diagnosis?.keyRisks;
+  if (typeof diagnosisRisk === 'string' && diagnosisRisk.trim()) risks.push(diagnosisRisk.trim());
+  entry.blueprint.preMortemRisks?.forEach(risk => {
+    if (risk.riskTrigger?.trim()) risks.push(risk.riskTrigger.trim());
+  });
+  return risks.slice(0, 5);
+}
+
+function nextMoveFromEntry(entry: DecisionMemoryEntry): string {
+  return (
+    entry.blueprint.actionPlan?.today ||
+    entry.blueprint.operatorNextSteps?.[0] ||
+    entry.blueprint.actionPlan?.thisWeek ||
+    ''
+  );
+}
+
+function applyMemorySnapshotFields(entry: DecisionMemoryEntry): DecisionMemoryEntry {
+  const createdAt = entry.createdAt || entry.timestamp;
+  const outcomeStatus = isOutcomeStatus(entry.outcomeStatus)
+    ? entry.outcomeStatus
+    : inferOutcomeStatusFromOutcome(entry.outcome);
+
+  return {
+    ...entry,
+    createdAt,
+    question: entry.question || entry.problem,
+    verdict: entry.verdict || entry.blueprint.recommendation,
+    confidence: isFiniteNumber(entry.confidence) ? clampScore(entry.confidence) : clampScore(entry.blueprint.score),
+    keyRisks: Array.isArray(entry.keyRisks)
+      ? entry.keyRisks.filter((risk): risk is string => typeof risk === 'string' && risk.trim().length > 0)
+      : keyRisksFromEntry(entry),
+    nextMove: entry.nextMove || nextMoveFromEntry(entry),
+    outcomeStatus,
+    reviewCheckpoints: normalizeReviewCheckpoints(entry.reviewCheckpoints, createdAt, outcomeStatus),
+  };
 }
 
 function isPendingReviewExpired(
@@ -58,7 +168,7 @@ function normalizeHistoryEntry(value: unknown): DecisionMemoryEntry | null {
     ? value.tags.filter((tag): tag is string => typeof tag === 'string')
     : extractTags(entry.problem, entry.context);
 
-  const normalized: DecisionMemoryEntry = {
+  let normalized: DecisionMemoryEntry = {
     ...entry,
     blueprint: {
       ...entry.blueprint,
@@ -79,6 +189,8 @@ function normalizeHistoryEntry(value: unknown): DecisionMemoryEntry | null {
         decisionId: typeof outcome.decisionId === 'string' ? outcome.decisionId : normalized.id,
         actualOutcome: outcome.actualOutcome,
         scoreAccuracy: clampScore(outcome.scoreAccuracy),
+        verdictAccuracy: isFiniteNumber(outcome.verdictAccuracy) ? clampScore(outcome.verdictAccuracy) : undefined,
+        outcomeStatus: isOutcomeStatus(outcome.outcomeStatus) ? outcome.outcomeStatus : undefined,
         timestamp: outcome.timestamp,
         lessons: Array.isArray(outcome.lessons)
           ? outcome.lessons.filter((lesson): lesson is string => typeof lesson === 'string')
@@ -109,6 +221,8 @@ function normalizeHistoryEntry(value: unknown): DecisionMemoryEntry | null {
     delete normalized.pendingReview;
   }
 
+  normalized = applyMemorySnapshotFields(normalized);
+
   return normalized;
 }
 
@@ -128,29 +242,44 @@ async function withMemoryWrite<T>(mutate: (history: DecisionMemoryEntry[]) => Pr
 }
 
 async function readHistory(): Promise<DecisionMemoryEntry[]> {
+  if (!memoryLoaded) {
+    try {
+      const raw = await fs.readFile(MEMORY_FILE, 'utf8');
+      const parsed = JSON.parse(raw) as unknown;
+      memoryStore = Array.isArray(parsed)
+        ? parsed.map(normalizeHistoryEntry).filter((entry): entry is DecisionMemoryEntry => Boolean(entry))
+        : [];
+    } catch (error: unknown) {
+      if (!isRecord(error) || error.code !== 'ENOENT') throw error;
+      memoryStore = [];
+    }
+    memoryLoaded = true;
+  }
   return memoryStore.map(cloneEntry);
 }
 
 /**
- * Save a decision to process-local memory.
- * Serverless deployments may discard this between invocations.
+ * Save a decision to local memory storage.
  */
 export async function saveDecision(
   entry: Omit<DecisionMemoryEntry, 'id' | 'timestamp' | 'tags' | 'similarity'>
 ) {
   return withMemoryWrite(async history => {
     const tags = extractTags(entry.problem, entry.context);
+    const timestamp = new Date().toISOString();
 
-    const newEntry: DecisionMemoryEntry = {
+    const newEntry = applyMemorySnapshotFields({
       ...entry,
       blueprint: {
         ...entry.blueprint,
         score: clampScore(entry.blueprint.score),
       },
       id: Math.random().toString(36).substring(2, 9),
-      timestamp: new Date().toISOString(),
+      timestamp,
+      createdAt: timestamp,
+      outcomeStatus: 'unknown',
       tags,
-    };
+    });
 
     history.unshift(newEntry);
     await writeHistory(history);
@@ -183,11 +312,22 @@ export async function recordOutcome(
     entry.outcome = {
       actualOutcome: outcome.actualOutcome.trim(),
       scoreAccuracy: clampScore(outcome.scoreAccuracy),
+      verdictAccuracy: isFiniteNumber(outcome.verdictAccuracy) ? clampScore(outcome.verdictAccuracy) : undefined,
+      outcomeStatus: isOutcomeStatus(outcome.outcomeStatus) ? outcome.outcomeStatus : undefined,
       lessons: Array.isArray(outcome.lessons) ? outcome.lessons.filter(Boolean) : [],
       recommendations: Array.isArray(outcome.recommendations) ? outcome.recommendations.filter(Boolean) : [],
       decisionId,
       timestamp: new Date().toISOString(),
     };
+    entry.outcomeStatus = inferOutcomeStatusFromOutcome(entry.outcome);
+    entry.reviewCheckpoints = normalizeReviewCheckpoints(
+      entry.reviewCheckpoints,
+      entry.createdAt || entry.timestamp,
+      entry.outcomeStatus
+    ).map(checkpoint => ({
+      ...checkpoint,
+      status: entry.outcomeStatus || checkpoint.status,
+    }));
     // Clear any pending review now that the outcome is logged.
     delete entry.pendingReview;
 
@@ -225,6 +365,15 @@ export async function scheduleReview(
       scheduledFor: new Date(Date.now() + daysOut * 86_400_000).toISOString(),
       createdAt: entry.pendingReview?.reviewType === reviewType ? entry.pendingReview.createdAt : now,
     };
+    entry.reviewCheckpoints = normalizeReviewCheckpoints(
+      entry.reviewCheckpoints,
+      entry.createdAt || entry.timestamp,
+      entry.outcomeStatus || 'unknown'
+    ).map(checkpoint => (
+      checkpoint.horizon === daysOut
+        ? { ...checkpoint, scheduledFor: entry.pendingReview!.scheduledFor, status: 'unknown' }
+        : checkpoint
+    ));
 
     await writeHistory(history);
     return { ok: true, entry };

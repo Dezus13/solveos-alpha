@@ -1,6 +1,21 @@
 import { NextResponse } from 'next/server';
 import { recordOutcome, getDecisionHistory, scheduleReview } from '@/lib/memory';
 import { computeVerdictAccuracy } from '@/lib/semantic-guards';
+import type { OutcomeStatus } from '@/lib/types';
+
+function isOutcomeStatus(value: unknown): value is OutcomeStatus {
+  return value === 'unknown' || value === 'better' || value === 'expected' || value === 'worse';
+}
+
+function inferOutcomeStatus(actualOutcome: string, scoreAccuracy: number): OutcomeStatus {
+  const lower = actualOutcome.toLowerCase();
+  if (lower.includes('succeeded') || lower.includes('better')) return 'better';
+  if (lower.includes('failed') || lower.includes('worse')) return 'worse';
+  if (lower.includes('partial') || lower.includes('expected')) return 'expected';
+  if (scoreAccuracy >= 70) return 'better';
+  if (scoreAccuracy < 35) return 'worse';
+  return 'expected';
+}
 
 export async function POST(req: Request) {
   try {
@@ -62,6 +77,9 @@ export async function POST(req: Request) {
       actualOutcome: outcome.actualOutcome,
       scoreAccuracy: outcome.scoreAccuracy,
       verdictAccuracy,
+      outcomeStatus: isOutcomeStatus(outcome.outcomeStatus)
+        ? outcome.outcomeStatus
+        : inferOutcomeStatus(outcome.actualOutcome, outcome.scoreAccuracy),
       lessons: Array.isArray(outcome.lessons) ? outcome.lessons : [],
       recommendations: Array.isArray(outcome.recommendations) ? outcome.recommendations : [],
     });
@@ -100,7 +118,9 @@ export async function GET(req: Request) {
       return NextResponse.json({
         decisionId: decision.id,
         outcome: decision.outcome ?? null,
+        outcomeStatus: decision.outcomeStatus ?? 'unknown',
         pendingReview: decision.pendingReview ?? null,
+        reviewCheckpoints: decision.reviewCheckpoints ?? [],
         timestamp: decision.timestamp,
       });
     }
@@ -110,6 +130,8 @@ export async function GET(req: Request) {
       .map(e => ({
         decisionId: e.id,
         outcome: e.outcome,
+        outcomeStatus: e.outcomeStatus ?? 'unknown',
+        reviewCheckpoints: e.reviewCheckpoints ?? [],
         originalScore: e.blueprint.score,
         problem: e.problem,
       }));

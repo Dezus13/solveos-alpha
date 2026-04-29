@@ -5,6 +5,7 @@ import { CheckCircle2, XCircle, MinusCircle, Clock, Loader2, BookOpen, Calendar 
 
 type Choice = 'succeeded' | 'partial' | 'failed' | 'unknown';
 type Phase = 'idle' | 'open' | 'scheduling' | 'submitting' | 'done' | 'scheduled' | 'error';
+type OutcomeStatus = 'better' | 'expected' | 'worse';
 
 interface ChoiceDef {
   id: Choice;
@@ -60,6 +61,12 @@ const CHOICES: ChoiceDef[] = [
   },
 ];
 
+const OUTCOME_STATUS_BY_CHOICE: Record<Exclude<Choice, 'unknown'>, OutcomeStatus> = {
+  succeeded: 'better',
+  partial: 'expected',
+  failed: 'worse',
+};
+
 interface OutcomeLoggerProps {
   decisionId: string;
   blueprintScore: number;
@@ -90,7 +97,7 @@ function OutcomeLogger({ decisionId, blueprintScore }: OutcomeLoggerProps) {
     }
   };
 
-  const submitOutcome = async (outcomeChoice: Choice) => {
+  const submitOutcome = async (outcomeChoice: Exclude<Choice, 'unknown'>) => {
     try {
       const res = await fetch('/api/outcomes', {
         method: 'POST',
@@ -102,6 +109,7 @@ function OutcomeLogger({ decisionId, blueprintScore }: OutcomeLoggerProps) {
               ? `${outcomeChoice}: ${notes.trim()}`
               : outcomeChoice,
             scoreAccuracy: CHOICES.find(c => c.id === outcomeChoice)!.scoreAccuracy,
+            outcomeStatus: OUTCOME_STATUS_BY_CHOICE[outcomeChoice],
             lessons: notes.trim() ? [notes.trim()] : [],
             recommendations: [],
           },
