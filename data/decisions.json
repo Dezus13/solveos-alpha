@@ -1,5 +1,599 @@
 [
   {
+    "problem": "What risks could kill this product in 90 days?",
+    "blueprint": {
+      "score": 69,
+      "hiddenPain": "The decision pressure is real, but the underlying pain needs sharper definition.",
+      "strategistView": {
+        "biggestUpside": "The biggest upside is capturing signal before competitors or hesitation close the window.",
+        "leverageMove": "Use a staged commitment that creates evidence without overexposing the downside."
+      },
+      "skepticView": {
+        "hiddenFlaw": "The hidden flaw is assuming intent will convert into reliable behavior.",
+        "whatCouldBreak": "Execution quality, timing, or trust could break before the upside appears."
+      },
+      "operatorNextSteps": [
+        "Define the smallest reversible test.",
+        "Assign one owner and one success metric.",
+        "Review evidence before scaling commitment."
+      ],
+      "redTeamCritique": "The strongest attack is that the decision may scale risk faster than learning.",
+      "economistView": "The opportunity cost is capital, attention, and time that cannot be reused if the bet is wrong.",
+      "counterfactualPaths": [
+        {
+          "name": "Proceed Now",
+          "probability": "Medium",
+          "impact": 8,
+          "confidence": 63,
+          "likelyUpside": "The biggest upside is capturing signal before competitors or hesitation close the window.",
+          "keyFailureMode": "Execution quality, timing, or trust could break before the upside appears."
+        },
+        {
+          "name": "Delay",
+          "probability": "High",
+          "impact": 6,
+          "confidence": 55,
+          "reducedRisk": "More time to validate evidence before scaling commitment.",
+          "opportunityCost": "The opportunity cost is capital, attention, and time that cannot be reused if the bet is wrong."
+        },
+        {
+          "name": "Do Nothing",
+          "probability": "High",
+          "impact": 9,
+          "confidence": 50,
+          "probableDownside": "The window narrows while uncertainty stays unresolved.",
+          "hiddenRiskAccumulation": "Inaction compounds ambiguity and slows organizational learning."
+        }
+      ],
+      "preMortemRisks": [
+        {
+          "mode": "Execution Failure",
+          "riskTrigger": "Execution quality, timing, or trust could break before the upside appears.",
+          "earlyWarningSignal": "The first milestone slips or ownership is unclear.",
+          "mitigationMove": "Define the smallest reversible test."
+        },
+        {
+          "mode": "Market Assumption Failure",
+          "riskTrigger": "The hidden flaw is assuming intent will convert into reliable behavior.",
+          "earlyWarningSignal": "Users do not behave as the strategy assumes.",
+          "mitigationMove": "Validate the riskiest assumption before increasing exposure."
+        },
+        {
+          "mode": "Hidden Second-Order Risk",
+          "riskTrigger": "The strongest attack is that the decision may scale risk faster than learning.",
+          "earlyWarningSignal": "A secondary cost appears after the first move.",
+          "mitigationMove": "Install a review checkpoint and explicit stop criteria."
+        }
+      ],
+      "secondOrderEffects": [
+        {
+          "scenario": "Proceed Now",
+          "immediateEffect": "The biggest upside is capturing signal before competitors or hesitation close the window.",
+          "downstreamConsequence": "Execution quality, timing, or trust could break before the upside appears.",
+          "hiddenLongTermEffect": "The opportunity cost is capital, attention, and time that cannot be reused if the bet is wrong."
+        },
+        {
+          "scenario": "Delay",
+          "immediateEffect": "Risk exposure decreases while evidence improves.",
+          "downstreamConsequence": "Momentum and market timing may weaken.",
+          "hiddenLongTermEffect": "The cost of waiting becomes visible only after the window moves."
+        }
+      ],
+      "confidenceScore": 63,
+      "outcomeLessonPrompt": "What happened after execution, and which assumption was most wrong?",
+      "recommendation": "Reversible Experiment: make the next move create evidence instead of defaulting to a generic commitment.",
+      "warRoomDebate": {
+        "strategist": "Go aggressively only where the upside is explicit: The biggest upside is capturing signal before competitors or hesitation close the window. The leverage move is Use a staged commitment that creates evidence without overexposing the downside.",
+        "skeptic": "This fails if the hidden flaw is real: The hidden flaw is assuming intent will convert into reliable behavior. The first break point is Execution quality, timing, or trust could break before the upside appears.",
+        "operator": "Make the next move reversible: Define the smallest reversible test.",
+        "redTeam": "Attack the premise: The strongest attack is that the decision may scale risk faster than learning.",
+        "finalSynthesis": {
+          "survivesDebate": "Use a staged commitment that creates evidence without overexposing the downside.",
+          "breaks": "Execution quality, timing, or trust could break before the upside appears.",
+          "recommendedMoveAfterDebate": "Reversible Experiment: make the next move create evidence instead of defaulting to a generic commitment."
+        }
+      },
+      "executionPlan": [
+        {
+          "week": "Week 1",
+          "objective": "Define the test boundary and the one assumption being validated.",
+          "experiment": "Define the smallest reversible test.",
+          "metric": "Qualified participants, activation, and first useful signal.",
+          "killCriteria": "No qualified users, unclear owner, or no measurable behavior by the end of the week.",
+          "goNoGoThreshold": "Go if at least 5 qualified users complete the test setup and one metric can be tracked."
+        },
+        {
+          "week": "Week 2",
+          "objective": "Run the experiment with real users or real operating constraints.",
+          "experiment": "Assign one owner and one success metric.",
+          "metric": "Activation rate, completion rate, time-to-value, and qualitative friction.",
+          "killCriteria": "Users do not engage, cannot explain the value, or require manual rescue to complete the flow.",
+          "goNoGoThreshold": "Go if 40% or more complete the core action and can name the value without prompting."
+        },
+        {
+          "week": "Week 3",
+          "objective": "Stress-test retention, willingness to pay, or repeat behavior.",
+          "experiment": "Review evidence before scaling commitment.",
+          "metric": "Repeat usage, conversion intent, willingness to pay, referral, or retained engagement.",
+          "killCriteria": "Interest drops after novelty, users avoid commitment, or the cost to support them is too high.",
+          "goNoGoThreshold": "Go if retained usage or commitment clears the pre-set success metric."
+        },
+        {
+          "week": "Week 4",
+          "objective": "Decide scale, redesign, delay, or kill based on evidence.",
+          "experiment": "Compare results against thresholds and make the go / no-go decision.",
+          "metric": "Evidence strength, risk reduction, resource cost, and confidence delta.",
+          "killCriteria": "Core assumption remains unproven or the next phase requires disproportionate resources.",
+          "goNoGoThreshold": "Go only if the evidence supports the next commitment without weakening runway or focus."
+        }
+      ],
+      "diagnosis": {
+        "coreProblem": "Strategic expansion into unproven territory.",
+        "blindSpots": "Overestimating internal velocity and underestimating competitive response.",
+        "keyRisks": "The Skeptic warns of high resource drain and potential brand dilution if the MVP fails to deliver premium value."
+      },
+      "paths": {
+        "safe": {
+          "description": "Maintain current trajectory while running low-cost experiments.",
+          "pros": [
+            "Zero capital risk",
+            "Team focus preserved"
+          ],
+          "cons": [
+            "Market opportunity loss",
+            "Stagnation"
+          ]
+        },
+        "balanced": {
+          "description": "The Operator's recommended path: Phased rollout over 12 weeks.",
+          "pros": [
+            "Controlled burn",
+            "Faster feedback"
+          ],
+          "cons": [
+            "Moderate resource strain"
+          ]
+        },
+        "bold": {
+          "description": "The Strategist's vision: Aggressive pivot to capture the market immediately.",
+          "pros": [
+            "First-mover advantage",
+            "High potential ROI"
+          ],
+          "cons": [
+            "Binary outcome risk",
+            "Maximum burn"
+          ]
+        }
+      },
+      "contrarianInsight": {
+        "perspective": "What if the market doesn't want an OS, but just a better single tool?",
+        "hiddenOpportunity": "Niche dominance in the 'Founder' segment before going broad.",
+        "uncomfortableTruth": "Your current team might not have the specific AI expertise for a full-scale engine."
+      },
+      "futureSimulation": {
+        "threeMonths": "Early feedback confirms core value, but UI complexity is a hurdle.",
+        "twelveMonths": "SolveOS becomes the standard for high-stakes decisions in mid-market firms."
+      },
+      "actionPlan": {
+        "today": "Lock down MVP spec by EOD and define success metrics.",
+        "thisWeek": "Set up core LangGraph nodes for Strategist and Skeptic agents.",
+        "thirtyDays": "Deploy initial alpha to 5 trusted testers for feedback."
+      },
+      "language": "English",
+      "isDemo": true,
+      "council": {
+        "strategistConfidence": 82,
+        "skepticAgreement": 28,
+        "operatorFeasibility": 71,
+        "consensusScore": 60,
+        "debateIntensity": 44,
+        "keyDisagreements": [
+          "Skeptic questions market timing assumptions"
+        ],
+        "resolutionPath": "Moderate agreement with manageable risks: Pilot with safeguards."
+      },
+      "riskMap": {
+        "opportunity": 69,
+        "risk": 37
+      },
+      "scenarioBranches": [
+        {
+          "id": "scenario-bull",
+          "name": "Bull Case (Best Execution)",
+          "probability": 31,
+          "upside": 500,
+          "downside": -50,
+          "timeline": "6-12 months",
+          "description": "Perfect execution: market embrace, zero churn, rapid adoption by founders"
+        },
+        {
+          "id": "scenario-base",
+          "name": "Base Case (Plan)",
+          "probability": 40,
+          "upside": 150,
+          "downside": -100,
+          "timeline": "3-6 months",
+          "description": "Normal execution with expected friction and gradual market discovery"
+        },
+        {
+          "id": "scenario-bear",
+          "name": "Bear Case (Stress Test)",
+          "probability": 22,
+          "upside": -200,
+          "downside": -800,
+          "timeline": "1-3 months",
+          "description": "Key features underperform, higher CAC than projected, founder churn begins"
+        },
+        {
+          "id": "scenario-tail",
+          "name": "Tail Risk (Black Swan)",
+          "probability": 7,
+          "upside": -1000,
+          "downside": -5000,
+          "timeline": "Immediate",
+          "description": "Regulatory challenge, major security incident, or founding team fracture"
+        }
+      ],
+      "confidenceDrivers": {
+        "baseConfidence": 63,
+        "priorOutcomesAdjustment": 6,
+        "similarSuccessRate": 84,
+        "riskPenalty": 0,
+        "finalConfidence": 69,
+        "sampleSize": 2,
+        "evidence": [
+          {
+            "decisionId": "2fyol9u",
+            "problem": "Сможет продукт решать боль лучше чем ChatGPT/Claude?",
+            "predictedConfidence": 78,
+            "actualOutcome": "succeeded",
+            "actualConfidence": 85,
+            "calibrationOffset": 7
+          },
+          {
+            "decisionId": "9zogegs",
+            "problem": "Should I launch SolveOS to 5 beta users this week?",
+            "predictedConfidence": 78,
+            "actualOutcome": "Persisted proof outcome: beta launch completed and feedback was actionable.",
+            "actualConfidence": 82,
+            "calibrationOffset": 4
+          }
+        ]
+      }
+    },
+    "id": "nrzgkn7",
+    "timestamp": "2026-04-29T20:34:28.770Z",
+    "createdAt": "2026-04-29T20:34:28.770Z",
+    "outcomeStatus": "unknown",
+    "tags": [
+      "business"
+    ],
+    "question": "What risks could kill this product in 90 days?",
+    "verdict": "Reversible Experiment: make the next move create evidence instead of defaulting to a generic commitment.",
+    "confidence": 69,
+    "keyRisks": [
+      "The Skeptic warns of high resource drain and potential brand dilution if the MVP fails to deliver premium value.",
+      "Execution quality, timing, or trust could break before the upside appears.",
+      "The hidden flaw is assuming intent will convert into reliable behavior.",
+      "The strongest attack is that the decision may scale risk faster than learning."
+    ],
+    "nextMove": "Lock down MVP spec by EOD and define success metrics.",
+    "reviewCheckpoints": [
+      {
+        "horizon": 30,
+        "scheduledFor": "2026-05-29T20:34:28.770Z",
+        "status": "unknown"
+      },
+      {
+        "horizon": 60,
+        "scheduledFor": "2026-06-28T20:34:28.770Z",
+        "status": "unknown"
+      },
+      {
+        "horizon": 90,
+        "scheduledFor": "2026-07-28T20:34:28.770Z",
+        "status": "unknown"
+      }
+    ]
+  },
+  {
+    "problem": "Should we launch to 300 beta users next month?",
+    "blueprint": {
+      "score": 80,
+      "hiddenPain": "The decision pressure is real, but the underlying pain needs sharper definition.",
+      "strategistView": {
+        "biggestUpside": "The biggest upside is capturing signal before competitors or hesitation close the window.",
+        "leverageMove": "Use a staged commitment that creates evidence without overexposing the downside."
+      },
+      "skepticView": {
+        "hiddenFlaw": "The hidden flaw is assuming intent will convert into reliable behavior.",
+        "whatCouldBreak": "Execution quality, timing, or trust could break before the upside appears."
+      },
+      "operatorNextSteps": [
+        "Define the smallest reversible test.",
+        "Assign one owner and one success metric.",
+        "Review evidence before scaling commitment."
+      ],
+      "redTeamCritique": "The strongest attack is that the decision may scale risk faster than learning.",
+      "economistView": "The opportunity cost is capital, attention, and time that cannot be reused if the bet is wrong.",
+      "counterfactualPaths": [
+        {
+          "name": "Proceed Now",
+          "probability": "Medium",
+          "impact": 8,
+          "confidence": 74,
+          "likelyUpside": "The biggest upside is capturing signal before competitors or hesitation close the window.",
+          "keyFailureMode": "Execution quality, timing, or trust could break before the upside appears."
+        },
+        {
+          "name": "Delay",
+          "probability": "High",
+          "impact": 6,
+          "confidence": 66,
+          "reducedRisk": "More time to validate evidence before scaling commitment.",
+          "opportunityCost": "The opportunity cost is capital, attention, and time that cannot be reused if the bet is wrong."
+        },
+        {
+          "name": "Do Nothing",
+          "probability": "High",
+          "impact": 9,
+          "confidence": 50,
+          "probableDownside": "The window narrows while uncertainty stays unresolved.",
+          "hiddenRiskAccumulation": "Inaction compounds ambiguity and slows organizational learning."
+        }
+      ],
+      "preMortemRisks": [
+        {
+          "mode": "Execution Failure",
+          "riskTrigger": "Execution quality, timing, or trust could break before the upside appears.",
+          "earlyWarningSignal": "The first milestone slips or ownership is unclear.",
+          "mitigationMove": "Define the smallest reversible test."
+        },
+        {
+          "mode": "Market Assumption Failure",
+          "riskTrigger": "The hidden flaw is assuming intent will convert into reliable behavior.",
+          "earlyWarningSignal": "Users do not behave as the strategy assumes.",
+          "mitigationMove": "Validate the riskiest assumption before increasing exposure."
+        },
+        {
+          "mode": "Hidden Second-Order Risk",
+          "riskTrigger": "The strongest attack is that the decision may scale risk faster than learning.",
+          "earlyWarningSignal": "A secondary cost appears after the first move.",
+          "mitigationMove": "Install a review checkpoint and explicit stop criteria."
+        }
+      ],
+      "secondOrderEffects": [
+        {
+          "scenario": "Proceed Now",
+          "immediateEffect": "The biggest upside is capturing signal before competitors or hesitation close the window.",
+          "downstreamConsequence": "Execution quality, timing, or trust could break before the upside appears.",
+          "hiddenLongTermEffect": "The opportunity cost is capital, attention, and time that cannot be reused if the bet is wrong."
+        },
+        {
+          "scenario": "Delay",
+          "immediateEffect": "Risk exposure decreases while evidence improves.",
+          "downstreamConsequence": "Momentum and market timing may weaken.",
+          "hiddenLongTermEffect": "The cost of waiting becomes visible only after the window moves."
+        }
+      ],
+      "confidenceScore": 74,
+      "outcomeLessonPrompt": "What happened after execution, and which assumption was most wrong?",
+      "recommendation": "Reversible Experiment: expose the decision to a controlled cohort before you risk reputation, support load, or trust at full scale.",
+      "warRoomDebate": {
+        "strategist": "Go aggressively only where the upside is explicit: The biggest upside is capturing signal before competitors or hesitation close the window. The leverage move is Use a staged commitment that creates evidence without overexposing the downside.",
+        "skeptic": "This fails if the hidden flaw is real: The hidden flaw is assuming intent will convert into reliable behavior. The first break point is Execution quality, timing, or trust could break before the upside appears.",
+        "operator": "Make the next move reversible: Define the smallest reversible test.",
+        "redTeam": "Attack the premise: The strongest attack is that the decision may scale risk faster than learning.",
+        "finalSynthesis": {
+          "survivesDebate": "Use a staged commitment that creates evidence without overexposing the downside.",
+          "breaks": "Execution quality, timing, or trust could break before the upside appears.",
+          "recommendedMoveAfterDebate": "Reversible Experiment: expose the decision to a controlled cohort before you risk reputation, support load, or trust at full scale."
+        }
+      },
+      "executionPlan": [
+        {
+          "week": "Week 1",
+          "objective": "Define the test boundary and the one assumption being validated.",
+          "experiment": "Define the smallest reversible test.",
+          "metric": "Qualified participants, activation, and first useful signal.",
+          "killCriteria": "No qualified users, unclear owner, or no measurable behavior by the end of the week.",
+          "goNoGoThreshold": "Go if at least 5 qualified users complete the test setup and one metric can be tracked."
+        },
+        {
+          "week": "Week 2",
+          "objective": "Run the experiment with real users or real operating constraints.",
+          "experiment": "Assign one owner and one success metric.",
+          "metric": "Activation rate, completion rate, time-to-value, and qualitative friction.",
+          "killCriteria": "Users do not engage, cannot explain the value, or require manual rescue to complete the flow.",
+          "goNoGoThreshold": "Go if 40% or more complete the core action and can name the value without prompting."
+        },
+        {
+          "week": "Week 3",
+          "objective": "Stress-test retention, willingness to pay, or repeat behavior.",
+          "experiment": "Review evidence before scaling commitment.",
+          "metric": "Repeat usage, conversion intent, willingness to pay, referral, or retained engagement.",
+          "killCriteria": "Interest drops after novelty, users avoid commitment, or the cost to support them is too high.",
+          "goNoGoThreshold": "Go if retained usage or commitment clears the pre-set success metric."
+        },
+        {
+          "week": "Week 4",
+          "objective": "Decide scale, redesign, delay, or kill based on evidence.",
+          "experiment": "Compare results against thresholds and make the go / no-go decision.",
+          "metric": "Evidence strength, risk reduction, resource cost, and confidence delta.",
+          "killCriteria": "Core assumption remains unproven or the next phase requires disproportionate resources.",
+          "goNoGoThreshold": "Go only if the evidence supports the next commitment without weakening runway or focus."
+        }
+      ],
+      "diagnosis": {
+        "coreProblem": "Strategic expansion into unproven territory.",
+        "blindSpots": "Overestimating internal velocity and underestimating competitive response.",
+        "keyRisks": "The Skeptic warns of high resource drain and potential brand dilution if the MVP fails to deliver premium value."
+      },
+      "paths": {
+        "safe": {
+          "description": "Maintain current trajectory while running low-cost experiments.",
+          "pros": [
+            "Zero capital risk",
+            "Team focus preserved"
+          ],
+          "cons": [
+            "Market opportunity loss",
+            "Stagnation"
+          ]
+        },
+        "balanced": {
+          "description": "The Operator's recommended path: Phased rollout over 12 weeks.",
+          "pros": [
+            "Controlled burn",
+            "Faster feedback"
+          ],
+          "cons": [
+            "Moderate resource strain"
+          ]
+        },
+        "bold": {
+          "description": "The Strategist's vision: Aggressive pivot to capture the market immediately.",
+          "pros": [
+            "First-mover advantage",
+            "High potential ROI"
+          ],
+          "cons": [
+            "Binary outcome risk",
+            "Maximum burn"
+          ]
+        }
+      },
+      "contrarianInsight": {
+        "perspective": "What if the market doesn't want an OS, but just a better single tool?",
+        "hiddenOpportunity": "Niche dominance in the 'Founder' segment before going broad.",
+        "uncomfortableTruth": "Your current team might not have the specific AI expertise for a full-scale engine."
+      },
+      "futureSimulation": {
+        "threeMonths": "Early feedback confirms core value, but UI complexity is a hurdle.",
+        "twelveMonths": "SolveOS becomes the standard for high-stakes decisions in mid-market firms."
+      },
+      "actionPlan": {
+        "today": "Lock down MVP spec by EOD and define success metrics.",
+        "thisWeek": "Set up core LangGraph nodes for Strategist and Skeptic agents.",
+        "thirtyDays": "Deploy initial alpha to 5 trusted testers for feedback."
+      },
+      "language": "English",
+      "isDemo": true,
+      "council": {
+        "strategistConfidence": 82,
+        "skepticAgreement": 28,
+        "operatorFeasibility": 71,
+        "consensusScore": 60,
+        "debateIntensity": 44,
+        "keyDisagreements": [
+          "Skeptic questions market timing assumptions"
+        ],
+        "resolutionPath": "Moderate agreement with manageable risks: Pilot with safeguards."
+      },
+      "riskMap": {
+        "opportunity": 80,
+        "risk": 26
+      },
+      "scenarioBranches": [
+        {
+          "id": "scenario-bull",
+          "name": "Bull Case (Best Execution)",
+          "probability": 31,
+          "upside": 500,
+          "downside": -50,
+          "timeline": "6-12 months",
+          "description": "Perfect execution: market embrace, zero churn, rapid adoption by founders"
+        },
+        {
+          "id": "scenario-base",
+          "name": "Base Case (Plan)",
+          "probability": 40,
+          "upside": 150,
+          "downside": -100,
+          "timeline": "3-6 months",
+          "description": "Normal execution with expected friction and gradual market discovery"
+        },
+        {
+          "id": "scenario-bear",
+          "name": "Bear Case (Stress Test)",
+          "probability": 22,
+          "upside": -200,
+          "downside": -800,
+          "timeline": "1-3 months",
+          "description": "Key features underperform, higher CAC than projected, founder churn begins"
+        },
+        {
+          "id": "scenario-tail",
+          "name": "Tail Risk (Black Swan)",
+          "probability": 7,
+          "upside": -1000,
+          "downside": -5000,
+          "timeline": "Immediate",
+          "description": "Regulatory challenge, major security incident, or founding team fracture"
+        }
+      ],
+      "confidenceDrivers": {
+        "baseConfidence": 74,
+        "priorOutcomesAdjustment": 6,
+        "similarSuccessRate": 84,
+        "riskPenalty": 0,
+        "finalConfidence": 80,
+        "sampleSize": 2,
+        "evidence": [
+          {
+            "decisionId": "2fyol9u",
+            "problem": "Сможет продукт решать боль лучше чем ChatGPT/Claude?",
+            "predictedConfidence": 78,
+            "actualOutcome": "succeeded",
+            "actualConfidence": 85,
+            "calibrationOffset": 7
+          },
+          {
+            "decisionId": "9zogegs",
+            "problem": "Should I launch SolveOS to 5 beta users this week?",
+            "predictedConfidence": 78,
+            "actualOutcome": "Persisted proof outcome: beta launch completed and feedback was actionable.",
+            "actualConfidence": 82,
+            "calibrationOffset": 4
+          }
+        ]
+      }
+    },
+    "id": "vsd0jx4",
+    "timestamp": "2026-04-29T20:33:41.479Z",
+    "createdAt": "2026-04-29T20:33:41.479Z",
+    "outcomeStatus": "unknown",
+    "tags": [],
+    "question": "Should we launch to 300 beta users next month?",
+    "verdict": "Reversible Experiment: expose the decision to a controlled cohort before you risk reputation, support load, or trust at full scale.",
+    "confidence": 80,
+    "keyRisks": [
+      "The Skeptic warns of high resource drain and potential brand dilution if the MVP fails to deliver premium value.",
+      "Execution quality, timing, or trust could break before the upside appears.",
+      "The hidden flaw is assuming intent will convert into reliable behavior.",
+      "The strongest attack is that the decision may scale risk faster than learning."
+    ],
+    "nextMove": "Lock down MVP spec by EOD and define success metrics.",
+    "reviewCheckpoints": [
+      {
+        "horizon": 30,
+        "scheduledFor": "2026-05-29T20:33:41.479Z",
+        "status": "unknown"
+      },
+      {
+        "horizon": 60,
+        "scheduledFor": "2026-06-28T20:33:41.479Z",
+        "status": "unknown"
+      },
+      {
+        "horizon": 90,
+        "scheduledFor": "2026-07-28T20:33:41.479Z",
+        "status": "unknown"
+      }
+    ]
+  },
+  {
     "problem": "Should I launch SolveOS to 5000 users?”",
     "blueprint": {
       "score": 85,
@@ -133,7 +727,33 @@
     },
     "id": "noqkaz9",
     "timestamp": "2026-04-28T13:06:45.585Z",
-    "tags": []
+    "tags": [],
+    "createdAt": "2026-04-28T13:06:45.585Z",
+    "question": "Should I launch SolveOS to 5000 users?”",
+    "verdict": "Reversible Experiment: derive the verdict from the exact decision question before committing reputation, capital, or team focus.",
+    "confidence": 85,
+    "keyRisks": [
+      "The Skeptic warns of high resource drain and potential brand dilution if the MVP fails to deliver premium value."
+    ],
+    "nextMove": "Lock down MVP spec by EOD and define success metrics.",
+    "outcomeStatus": "unknown",
+    "reviewCheckpoints": [
+      {
+        "horizon": 30,
+        "scheduledFor": "2026-05-28T13:06:45.585Z",
+        "status": "unknown"
+      },
+      {
+        "horizon": 60,
+        "scheduledFor": "2026-06-27T13:06:45.585Z",
+        "status": "unknown"
+      },
+      {
+        "horizon": 90,
+        "scheduledFor": "2026-07-27T13:06:45.585Z",
+        "status": "unknown"
+      }
+    ]
   },
   {
     "problem": "Should I launch SolveOS to 5000 users?”",
@@ -285,7 +905,38 @@
       "timestamp": "2026-04-28T12:52:03.988Z",
       "lessons": [],
       "recommendations": []
-    }
+    },
+    "createdAt": "2026-04-28T12:51:43.997Z",
+    "question": "Should I launch SolveOS to 5000 users?”",
+    "verdict": "Reversible Experiment: derive the verdict from the exact decision question before committing reputation, capital, or team focus.",
+    "confidence": 84,
+    "keyRisks": [
+      "The Skeptic warns of high resource drain and potential brand dilution if the MVP fails to deliver premium value."
+    ],
+    "nextMove": "Lock down MVP spec by EOD and define success metrics.",
+    "outcomeStatus": "better",
+    "learning": {
+      "decisionAccuracy": 90,
+      "calibrationScore": 98,
+      "learningInsight": "Outcome beat expectations by 1 points. Keep this verdict pattern as positive evidence."
+    },
+    "reviewCheckpoints": [
+      {
+        "horizon": 30,
+        "scheduledFor": "2026-05-28T12:51:43.997Z",
+        "status": "better"
+      },
+      {
+        "horizon": 60,
+        "scheduledFor": "2026-06-27T12:51:43.997Z",
+        "status": "better"
+      },
+      {
+        "horizon": 90,
+        "scheduledFor": "2026-07-27T12:51:43.997Z",
+        "status": "better"
+      }
+    ]
   },
   {
     "problem": "Should I launch SolveOS publicly to 10,000 users next quarter?",
@@ -411,7 +1062,33 @@
     },
     "id": "9t1b8pz",
     "timestamp": "2026-04-28T12:14:40.166Z",
-    "tags": []
+    "tags": [],
+    "createdAt": "2026-04-28T12:14:40.166Z",
+    "question": "Should I launch SolveOS publicly to 10,000 users next quarter?",
+    "verdict": "Reversible Experiment: derive the verdict from the exact decision question before committing reputation, capital, or team focus.",
+    "confidence": 84,
+    "keyRisks": [
+      "The Skeptic warns of high resource drain and potential brand dilution if the MVP fails to deliver premium value."
+    ],
+    "nextMove": "Lock down MVP spec by EOD and define success metrics.",
+    "outcomeStatus": "unknown",
+    "reviewCheckpoints": [
+      {
+        "horizon": 30,
+        "scheduledFor": "2026-05-28T12:14:40.166Z",
+        "status": "unknown"
+      },
+      {
+        "horizon": 60,
+        "scheduledFor": "2026-06-27T12:14:40.166Z",
+        "status": "unknown"
+      },
+      {
+        "horizon": 90,
+        "scheduledFor": "2026-07-27T12:14:40.166Z",
+        "status": "unknown"
+      }
+    ]
   },
   {
     "problem": "Should I launch SolveOS to 100 beta users this quarter?",
@@ -545,7 +1222,38 @@
       "timestamp": "2026-04-28T12:07:39.325Z",
       "lessons": [],
       "recommendations": []
-    }
+    },
+    "createdAt": "2026-04-28T12:07:14.052Z",
+    "question": "Should I launch SolveOS to 100 beta users this quarter?",
+    "verdict": "Reversible Experiment: derive the verdict from the exact decision question before committing reputation, capital, or team focus.",
+    "confidence": 85,
+    "keyRisks": [
+      "The Skeptic warns of high resource drain and potential brand dilution if the MVP fails to deliver premium value."
+    ],
+    "nextMove": "Lock down MVP spec by EOD and define success metrics.",
+    "outcomeStatus": "better",
+    "learning": {
+      "decisionAccuracy": 90,
+      "calibrationScore": 100,
+      "learningInsight": "Outcome beat expectations by 0 points. Keep this verdict pattern as positive evidence."
+    },
+    "reviewCheckpoints": [
+      {
+        "horizon": 30,
+        "scheduledFor": "2026-05-28T12:07:14.052Z",
+        "status": "better"
+      },
+      {
+        "horizon": 60,
+        "scheduledFor": "2026-06-27T12:07:14.052Z",
+        "status": "better"
+      },
+      {
+        "horizon": 90,
+        "scheduledFor": "2026-07-27T12:07:14.052Z",
+        "status": "better"
+      }
+    ]
   },
   {
     "problem": "Should I launch SolveOS publicly to 5000 users next month?",
@@ -671,7 +1379,38 @@
       "timestamp": "2026-04-28T11:55:25.935Z",
       "lessons": [],
       "recommendations": []
-    }
+    },
+    "createdAt": "2026-04-28T11:54:57.743Z",
+    "question": "Should I launch SolveOS publicly to 5000 users next month?",
+    "verdict": "Reversible Experiment: derive the verdict from the exact decision question before committing reputation, capital, or team focus.",
+    "confidence": 82,
+    "keyRisks": [
+      "The Skeptic warns of high resource drain and potential brand dilution if the MVP fails to deliver premium value."
+    ],
+    "nextMove": "Lock down MVP spec by EOD and define success metrics.",
+    "outcomeStatus": "better",
+    "learning": {
+      "decisionAccuracy": 90,
+      "calibrationScore": 94,
+      "learningInsight": "Outcome beat expectations by 3 points. Keep this verdict pattern as positive evidence."
+    },
+    "reviewCheckpoints": [
+      {
+        "horizon": 30,
+        "scheduledFor": "2026-05-28T11:54:57.743Z",
+        "status": "better"
+      },
+      {
+        "horizon": 60,
+        "scheduledFor": "2026-06-27T11:54:57.743Z",
+        "status": "better"
+      },
+      {
+        "horizon": 90,
+        "scheduledFor": "2026-07-27T11:54:57.743Z",
+        "status": "better"
+      }
+    ]
   },
   {
     "problem": "Should I launch SolveOS to 100 beta users this quarter?",
@@ -797,7 +1536,38 @@
       "timestamp": "2026-04-28T11:47:32.129Z",
       "lessons": [],
       "recommendations": []
-    }
+    },
+    "createdAt": "2026-04-28T11:46:49.763Z",
+    "question": "Should I launch SolveOS to 100 beta users this quarter?",
+    "verdict": "Reversible Experiment: derive the verdict from the exact decision question before committing reputation, capital, or team focus.",
+    "confidence": 82,
+    "keyRisks": [
+      "The Skeptic warns of high resource drain and potential brand dilution if the MVP fails to deliver premium value."
+    ],
+    "nextMove": "Lock down MVP spec by EOD and define success metrics.",
+    "outcomeStatus": "better",
+    "learning": {
+      "decisionAccuracy": 90,
+      "calibrationScore": 94,
+      "learningInsight": "Outcome beat expectations by 3 points. Keep this verdict pattern as positive evidence."
+    },
+    "reviewCheckpoints": [
+      {
+        "horizon": 30,
+        "scheduledFor": "2026-05-28T11:46:49.763Z",
+        "status": "better"
+      },
+      {
+        "horizon": 60,
+        "scheduledFor": "2026-06-27T11:46:49.763Z",
+        "status": "better"
+      },
+      {
+        "horizon": 90,
+        "scheduledFor": "2026-07-27T11:46:49.763Z",
+        "status": "better"
+      }
+    ]
   },
   {
     "problem": "Should I launch SolveOS to 50 beta users this month?",
@@ -915,7 +1685,33 @@
     },
     "id": "7yhh5rg",
     "timestamp": "2026-04-28T11:33:47.479Z",
-    "tags": []
+    "tags": [],
+    "createdAt": "2026-04-28T11:33:47.479Z",
+    "question": "Should I launch SolveOS to 50 beta users this month?",
+    "verdict": "Reversible Experiment: derive the verdict from the exact decision question before committing reputation, capital, or team focus.",
+    "confidence": 78,
+    "keyRisks": [
+      "The Skeptic warns of high resource drain and potential brand dilution if the MVP fails to deliver premium value."
+    ],
+    "nextMove": "Lock down MVP spec by EOD and define success metrics.",
+    "outcomeStatus": "unknown",
+    "reviewCheckpoints": [
+      {
+        "horizon": 30,
+        "scheduledFor": "2026-05-28T11:33:47.479Z",
+        "status": "unknown"
+      },
+      {
+        "horizon": 60,
+        "scheduledFor": "2026-06-27T11:33:47.479Z",
+        "status": "unknown"
+      },
+      {
+        "horizon": 90,
+        "scheduledFor": "2026-07-27T11:33:47.479Z",
+        "status": "unknown"
+      }
+    ]
   },
   {
     "problem": "Сможет продукт решать боль лучше чем ChatGPT/Claude?",
@@ -988,7 +1784,38 @@
       "timestamp": "2026-04-28T11:31:00.641Z",
       "lessons": [],
       "recommendations": []
-    }
+    },
+    "createdAt": "2026-04-28T11:30:06.003Z",
+    "question": "Сможет продукт решать боль лучше чем ChatGPT/Claude?",
+    "verdict": "Рекомендуется поэтапный запуск с контролируемым риском. Потенциал рынка подтвержден, однако операционная сложность требует жесткого управления этапами реализации.",
+    "confidence": 78,
+    "keyRisks": [
+      "Скептик указывает на риск нецелевого сжигания капитала (burn rate) и размытие ценности бренда при отсутствии четкого MVP."
+    ],
+    "nextMove": "Финализировать спецификацию MVP и зафиксировать метрики успеха.",
+    "outcomeStatus": "better",
+    "learning": {
+      "decisionAccuracy": 90,
+      "calibrationScore": 86,
+      "learningInsight": "Outcome beat expectations by 7 points. Keep this verdict pattern as positive evidence."
+    },
+    "reviewCheckpoints": [
+      {
+        "horizon": 30,
+        "scheduledFor": "2026-05-28T11:30:06.003Z",
+        "status": "better"
+      },
+      {
+        "horizon": 60,
+        "scheduledFor": "2026-06-27T11:30:06.003Z",
+        "status": "better"
+      },
+      {
+        "horizon": 90,
+        "scheduledFor": "2026-07-27T11:30:06.003Z",
+        "status": "better"
+      }
+    ]
   },
   {
     "problem": "Сможет продукт решать боль лучше чем ChatGPT/Claude?",
@@ -1106,7 +1933,33 @@
     },
     "id": "3tsibo8",
     "timestamp": "2026-04-28T11:29:38.522Z",
-    "tags": []
+    "tags": [],
+    "createdAt": "2026-04-28T11:29:38.522Z",
+    "question": "Сможет продукт решать боль лучше чем ChatGPT/Claude?",
+    "verdict": "Reversible Experiment: derive the verdict from the exact decision question before committing reputation, capital, or team focus.",
+    "confidence": 78,
+    "keyRisks": [
+      "The Skeptic warns of high resource drain and potential brand dilution if the MVP fails to deliver premium value."
+    ],
+    "nextMove": "Lock down MVP spec by EOD and define success metrics.",
+    "outcomeStatus": "unknown",
+    "reviewCheckpoints": [
+      {
+        "horizon": 30,
+        "scheduledFor": "2026-05-28T11:29:38.522Z",
+        "status": "unknown"
+      },
+      {
+        "horizon": 60,
+        "scheduledFor": "2026-06-27T11:29:38.522Z",
+        "status": "unknown"
+      },
+      {
+        "horizon": 90,
+        "scheduledFor": "2026-07-27T11:29:38.522Z",
+        "status": "unknown"
+      }
+    ]
   },
   {
     "problem": "Launch 50 beta users?",
@@ -1224,7 +2077,33 @@
     },
     "id": "8wk1waj",
     "timestamp": "2026-04-28T11:27:50.017Z",
-    "tags": []
+    "tags": [],
+    "createdAt": "2026-04-28T11:27:50.017Z",
+    "question": "Launch 50 beta users?",
+    "verdict": "Reversible Experiment: derive the verdict from the exact decision question before committing reputation, capital, or team focus.",
+    "confidence": 78,
+    "keyRisks": [
+      "The Skeptic warns of high resource drain and potential brand dilution if the MVP fails to deliver premium value."
+    ],
+    "nextMove": "Lock down MVP spec by EOD and define success metrics.",
+    "outcomeStatus": "unknown",
+    "reviewCheckpoints": [
+      {
+        "horizon": 30,
+        "scheduledFor": "2026-05-28T11:27:50.017Z",
+        "status": "unknown"
+      },
+      {
+        "horizon": 60,
+        "scheduledFor": "2026-06-27T11:27:50.017Z",
+        "status": "unknown"
+      },
+      {
+        "horizon": 90,
+        "scheduledFor": "2026-07-27T11:27:50.017Z",
+        "status": "unknown"
+      }
+    ]
   },
   {
     "problem": "Launch 20 beta users\nLog = Succeeded",
@@ -1342,7 +2221,33 @@
     },
     "id": "3ri2jhf",
     "timestamp": "2026-04-28T11:27:06.907Z",
-    "tags": []
+    "tags": [],
+    "createdAt": "2026-04-28T11:27:06.907Z",
+    "question": "Launch 20 beta users\nLog = Succeeded",
+    "verdict": "Reversible Experiment: derive the verdict from the exact decision question before committing reputation, capital, or team focus.",
+    "confidence": 78,
+    "keyRisks": [
+      "The Skeptic warns of high resource drain and potential brand dilution if the MVP fails to deliver premium value."
+    ],
+    "nextMove": "Lock down MVP spec by EOD and define success metrics.",
+    "outcomeStatus": "unknown",
+    "reviewCheckpoints": [
+      {
+        "horizon": 30,
+        "scheduledFor": "2026-05-28T11:27:06.907Z",
+        "status": "unknown"
+      },
+      {
+        "horizon": 60,
+        "scheduledFor": "2026-06-27T11:27:06.907Z",
+        "status": "unknown"
+      },
+      {
+        "horizon": 90,
+        "scheduledFor": "2026-07-27T11:27:06.907Z",
+        "status": "unknown"
+      }
+    ]
   },
   {
     "problem": "Should I launch SolveOS to 20 beta users this week?",
@@ -1460,7 +2365,33 @@
     },
     "id": "dzzmbvm",
     "timestamp": "2026-04-28T11:23:20.236Z",
-    "tags": []
+    "tags": [],
+    "createdAt": "2026-04-28T11:23:20.236Z",
+    "question": "Should I launch SolveOS to 20 beta users this week?",
+    "verdict": "Reversible Experiment: derive the verdict from the exact decision question before committing reputation, capital, or team focus.",
+    "confidence": 78,
+    "keyRisks": [
+      "The Skeptic warns of high resource drain and potential brand dilution if the MVP fails to deliver premium value."
+    ],
+    "nextMove": "Lock down MVP spec by EOD and define success metrics.",
+    "outcomeStatus": "unknown",
+    "reviewCheckpoints": [
+      {
+        "horizon": 30,
+        "scheduledFor": "2026-05-28T11:23:20.236Z",
+        "status": "unknown"
+      },
+      {
+        "horizon": 60,
+        "scheduledFor": "2026-06-27T11:23:20.236Z",
+        "status": "unknown"
+      },
+      {
+        "horizon": 90,
+        "scheduledFor": "2026-07-27T11:23:20.236Z",
+        "status": "unknown"
+      }
+    ]
   },
   {
     "problem": "Should I launch SolveOS to 5 beta users this week?",
@@ -1588,7 +2519,38 @@
         "Persistence proof outcome recorded through /api/outcomes."
       ],
       "recommendations": []
-    }
+    },
+    "createdAt": "2026-04-28T11:08:10.871Z",
+    "question": "Should I launch SolveOS to 5 beta users this week?",
+    "verdict": "Reversible Experiment: derive the verdict from the exact decision question before committing reputation, capital, or team focus.",
+    "confidence": 78,
+    "keyRisks": [
+      "The Skeptic warns of high resource drain and potential brand dilution if the MVP fails to deliver premium value."
+    ],
+    "nextMove": "Lock down MVP spec by EOD and define success metrics.",
+    "outcomeStatus": "expected",
+    "learning": {
+      "decisionAccuracy": 70,
+      "calibrationScore": 100,
+      "learningInsight": "Outcome landed near expectations. Calibration stays neutral for similar decisions."
+    },
+    "reviewCheckpoints": [
+      {
+        "horizon": 30,
+        "scheduledFor": "2026-05-28T11:08:10.871Z",
+        "status": "expected"
+      },
+      {
+        "horizon": 60,
+        "scheduledFor": "2026-06-27T11:08:10.871Z",
+        "status": "expected"
+      },
+      {
+        "horizon": 90,
+        "scheduledFor": "2026-07-27T11:08:10.871Z",
+        "status": "expected"
+      }
+    ]
   },
   {
     "problem": "Should I quit my job and go all-in on my startup within the next 60 days?",
@@ -1661,7 +2623,33 @@
       "reviewType": "7day",
       "scheduledFor": "2026-05-05T11:18:59.496Z",
       "createdAt": "2026-04-28T11:18:59.496Z"
-    }
+    },
+    "createdAt": "2026-04-27T16:33:33.413Z",
+    "question": "Should I quit my job and go all-in on my startup within the next 60 days?",
+    "verdict": "Рекомендуется поэтапный запуск с контролируемым риском. Потенциал рынка подтвержден, однако операционная сложность требует жесткого управления этапами реализации.",
+    "confidence": 78,
+    "keyRisks": [
+      "Скептик указывает на риск нецелевого сжигания капитала (burn rate) и размытие ценности бренда при отсутствии четкого MVP."
+    ],
+    "nextMove": "Финализировать спецификацию MVP и зафиксировать метрики успеха.",
+    "outcomeStatus": "unknown",
+    "reviewCheckpoints": [
+      {
+        "horizon": 30,
+        "scheduledFor": "2026-05-27T16:33:33.413Z",
+        "status": "unknown"
+      },
+      {
+        "horizon": 60,
+        "scheduledFor": "2026-06-26T16:33:33.413Z",
+        "status": "unknown"
+      },
+      {
+        "horizon": 90,
+        "scheduledFor": "2026-07-26T16:33:33.413Z",
+        "status": "unknown"
+      }
+    ]
   },
   {
     "problem": "Should I quit my job and go all-in on my startup within the next 60 days?",
@@ -1729,6 +2717,32 @@
     "tags": [
       "business",
       "career"
+    ],
+    "createdAt": "2026-04-27T16:33:28.031Z",
+    "question": "Should I quit my job and go all-in on my startup within the next 60 days?",
+    "verdict": "Рекомендуется поэтапный запуск с контролируемым риском. Потенциал рынка подтвержден, однако операционная сложность требует жесткого управления этапами реализации.",
+    "confidence": 78,
+    "keyRisks": [
+      "Скептик указывает на риск нецелевого сжигания капитала (burn rate) и размытие ценности бренда при отсутствии четкого MVP."
+    ],
+    "nextMove": "Финализировать спецификацию MVP и зафиксировать метрики успеха.",
+    "outcomeStatus": "unknown",
+    "reviewCheckpoints": [
+      {
+        "horizon": 30,
+        "scheduledFor": "2026-05-27T16:33:28.031Z",
+        "status": "unknown"
+      },
+      {
+        "horizon": 60,
+        "scheduledFor": "2026-06-26T16:33:28.031Z",
+        "status": "unknown"
+      },
+      {
+        "horizon": 90,
+        "scheduledFor": "2026-07-26T16:33:28.031Z",
+        "status": "unknown"
+      }
     ]
   },
   {
@@ -1794,6 +2808,32 @@
     },
     "id": "6dn508z",
     "timestamp": "2026-04-27T16:10:15.769Z",
-    "tags": []
+    "tags": [],
+    "createdAt": "2026-04-27T16:10:15.769Z",
+    "question": "chto ty mojesh reshat dlya menya?",
+    "verdict": "Рекомендуется поэтапный запуск с контролируемым риском. Потенциал рынка подтвержден, однако операционная сложность требует жесткого управления этапами реализации.",
+    "confidence": 78,
+    "keyRisks": [
+      "Скептик указывает на риск нецелевого сжигания капитала (burn rate) и размытие ценности бренда при отсутствии четкого MVP."
+    ],
+    "nextMove": "Финализировать спецификацию MVP и зафиксировать метрики успеха.",
+    "outcomeStatus": "unknown",
+    "reviewCheckpoints": [
+      {
+        "horizon": 30,
+        "scheduledFor": "2026-05-27T16:10:15.769Z",
+        "status": "unknown"
+      },
+      {
+        "horizon": 60,
+        "scheduledFor": "2026-06-26T16:10:15.769Z",
+        "status": "unknown"
+      },
+      {
+        "horizon": 90,
+        "scheduledFor": "2026-07-26T16:10:15.769Z",
+        "status": "unknown"
+      }
+    ]
   }
 ]
