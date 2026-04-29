@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
-import Navbar from '@/components/Navbar';
+import { ChevronDown, MessageSquare, Plus, Settings } from 'lucide-react';
 import DecisionConsole from '@/components/DecisionConsole';
+import SolveOSSymbol from '@/components/SolveOSSymbol';
 import type { IntelligenceSnapshot } from '@/components/IntelligenceRail';
 import type { ConversationTurn, DecisionBlueprint, SolveRequest } from '@/lib/types';
 
@@ -121,6 +122,7 @@ export default function HomeExperience() {
   const [loading, setLoading] = useState(false);
   const [language, setLanguage] = useState('en');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [intelligence, setIntelligence] = useState<IntelligenceSnapshot>(idleSnapshot);
   const [locales, setLocales] = useState<LocaleDictionary>(initialLocales);
   const [memoryScore, setMemoryScore] = useState(0);
@@ -183,6 +185,7 @@ export default function HomeExperience() {
     setCalibrationOffset(undefined);
     setCalibrationSampleSize(undefined);
     setLatestDecisionId(undefined);
+    setAdvancedOpen(false);
   }, []);
 
   const handleSubmit = useCallback(
@@ -243,6 +246,7 @@ export default function HomeExperience() {
         blueprint.language = blueprint.language || 'English';
         if (typeof data.decisionId === 'string') setLatestDecisionId(data.decisionId);
         if (blueprint.language) void ensureLocale(blueprint.language);
+        setAdvancedOpen(false);
 
         const assistantTurn: ConversationTurn = {
           id: crypto.randomUUID(),
@@ -284,75 +288,124 @@ export default function HomeExperience() {
     [language, ensureLocale],
   );
 
-  const handleOpenSettings = useCallback(() => {
-    void import('@/components/SettingsModal');
-    setSettingsOpen(true);
-  }, []);
-
   const resultKey = useMemo(
     () => `${latestUserMessage}-${latestBlueprint?.recommendation || ''}`,
     [latestBlueprint?.recommendation, latestUserMessage],
   );
 
+  const conversationTitle = useMemo(() => {
+    const firstUser = thread.find((turn) => turn.role === 'user')?.content;
+    if (!firstUser) return 'New decision';
+    return firstUser.length > 42 ? `${firstUser.slice(0, 42)}...` : firstUser;
+  }, [thread]);
+
   return (
-    <>
-      <Navbar onOpenSettings={handleOpenSettings} isLoading={loading} />
-
-      <div className="w-full max-w-5xl flex flex-col items-center relative z-10">
-        <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-3 mb-16 bg-[#0B1020]/70 border border-white/10 px-8 sm:px-12 py-3 rounded-full backdrop-blur-3xl shadow-[0_24px_80px_rgba(0,0,0,0.35),0_0_40px_rgba(168,85,247,0.06)]">
-          {[
-            { name: t.agent_strategist, color: 'text-emerald-500', glow: 'bg-emerald-500' },
-            { name: t.agent_skeptic, color: 'text-rose-500', glow: 'bg-rose-500' },
-            { name: t.agent_operator, color: 'text-blue-500', glow: 'bg-blue-500' },
-          ].map((agent, i) => (
-            <div key={i} className="flex items-center space-x-3 group">
-              <div
-                className={`w-1.5 h-1.5 rounded-full ${agent.glow} ${
-                  loading
-                    ? 'opacity-100 shadow-[0_0_10px_rgba(168,85,247,0.35)]'
-                    : 'opacity-40 shadow-[0_0_10px_rgba(255,255,255,0.1)]'
-                } transition-all group-hover:opacity-100 group-hover:scale-125`}
-              />
-              <span
-                className={`text-[10px] font-black uppercase ${agent.color} ${
-                  loading ? 'opacity-100' : 'opacity-75'
-                } transition-all group-hover:opacity-100`}
-              >
-                {agent.name}
-              </span>
+    <div className="relative z-10 flex h-screen w-full overflow-hidden">
+      <aside className="hidden w-72 flex-shrink-0 flex-col border-r border-white/10 bg-[#080D1A]/88 p-4 backdrop-blur-xl md:flex">
+        <div className="mb-5 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <SolveOSSymbol className="h-7 w-7" />
+            <div>
+              <div className="text-sm font-semibold text-white">SolveOS</div>
+              <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                {loading ? 'Thinking' : 'Live'}
+              </div>
             </div>
-          ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => setSettingsOpen(true)}
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-slate-400 hover:bg-white/[0.06] hover:text-white"
+            aria-label="Open settings"
+          >
+            <Settings className="h-4 w-4" />
+          </button>
         </div>
 
-        <div className="w-full flex items-start">
-          <DecisionConsole
-            thread={thread}
-            loading={loading}
-            onSubmit={handleSubmit}
-            onReset={handleReset}
-          />
-          <IntelligenceRail snapshot={intelligence} />
+        <button
+          type="button"
+          onClick={handleReset}
+          className="mb-4 flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06]"
+        >
+          <Plus className="h-4 w-4" />
+          New chat
+        </button>
+
+        <div className="mb-2 px-2 text-[10px] font-black uppercase tracking-widest text-slate-600">History</div>
+        <div className="space-y-1 overflow-y-auto">
+          <button
+            type="button"
+            className="flex w-full items-start gap-2 rounded-xl bg-purple-500/[0.08] px-3 py-3 text-left text-sm text-slate-200"
+          >
+            <MessageSquare className="mt-0.5 h-4 w-4 flex-shrink-0 text-purple-300" />
+            <span className="line-clamp-2">{conversationTitle}</span>
+          </button>
         </div>
+      </aside>
+
+      <section className="flex min-w-0 flex-1 flex-col">
+        <header className="flex h-14 flex-shrink-0 items-center justify-between border-b border-white/10 bg-[#090E1B]/86 px-4 backdrop-blur-xl md:hidden">
+          <div className="flex items-center gap-2">
+            <SolveOSSymbol className="h-7 w-7" />
+            <span className="font-semibold text-white">SolveOS</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSettingsOpen(true)}
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-slate-400"
+            aria-label="Open settings"
+          >
+            <Settings className="h-4 w-4" />
+          </button>
+        </header>
+
+        <DecisionConsole
+          thread={thread}
+          loading={loading}
+          onSubmit={handleSubmit}
+          onReset={handleReset}
+        />
 
         {latestBlueprint && (
-          <SimulationResults
-            key={resultKey}
-            result={latestBlueprint}
-            intelligence={intelligence}
-            submittedProblem={latestUserMessage}
-            initialShowBoard={false}
-            t={t}
-            memoryScore={memoryScore}
-            networkScore={networkScore}
-            calibratedScore={calibratedScore}
-            calibrationOffset={calibrationOffset}
-            calibrationSampleSize={calibrationSampleSize}
-            decisionId={latestDecisionId}
-            decisionAccuracy={decisionAccuracy}
-            calibrationScore={calibrationScore}
-          />
+          <div className="border-t border-white/10 bg-[#090E1B]/95">
+            <button
+              type="button"
+              onClick={() => setAdvancedOpen((open) => !open)}
+              className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-3 text-left sm:px-6"
+            >
+              <div>
+                <div className="text-xs font-semibold text-slate-200">Advanced Analysis</div>
+                <div className="text-[11px] text-slate-500">Risk, scenarios, memory, and operator detail</div>
+              </div>
+              <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${advancedOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {advancedOpen && (
+              <div className="max-h-[70vh] overflow-y-auto border-t border-white/10 px-4 pb-8 pt-5 sm:px-6">
+                <div className="mx-auto max-w-5xl space-y-6">
+                  <IntelligenceRail snapshot={intelligence} />
+                  <SimulationResults
+                    key={resultKey}
+                    result={latestBlueprint}
+                    intelligence={intelligence}
+                    submittedProblem={latestUserMessage}
+                    initialShowBoard={false}
+                    t={t}
+                    memoryScore={memoryScore}
+                    networkScore={networkScore}
+                    calibratedScore={calibratedScore}
+                    calibrationOffset={calibrationOffset}
+                    calibrationSampleSize={calibrationSampleSize}
+                    decisionId={latestDecisionId}
+                    decisionAccuracy={decisionAccuracy}
+                    calibrationScore={calibrationScore}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
         )}
-      </div>
+      </section>
 
       {settingsOpen && (
         <SettingsModal
@@ -363,6 +416,6 @@ export default function HomeExperience() {
           locales={locales}
         />
       )}
-    </>
+    </div>
   );
 }

@@ -5,6 +5,7 @@ const root = process.cwd();
 const solveRoute = readFileSync(join(root, 'app/api/solve/route.ts'), 'utf8');
 const guards = readFileSync(join(root, 'lib/semantic-guards.ts'), 'utf8');
 const decisionConsole = readFileSync(join(root, 'components/DecisionConsole.tsx'), 'utf8');
+const homeExperience = readFileSync(join(root, 'components/HomeExperience.tsx'), 'utf8');
 
 function fail(message) {
   throw new Error(message);
@@ -106,12 +107,12 @@ if (!solveRoute.includes('buildRecoveryBlueprint') || !solveRoute.includes("inte
   fail('Repeated verdicts must trigger recovery mode.');
 }
 
-if (!decisionConsole.includes('detectSolveRequestIntent(rawText)')) {
+if (!decisionConsole.includes('detectSolveRequestIntent(text)')) {
   fail('DecisionConsole must detect intent before enforcing the 20-character decision gate.');
 }
 
-if (!decisionConsole.includes('Intent: {turn.intent}')) {
-  fail('Direct responses must show visible detected intent in the UI.');
+if (!homeExperience.includes('data.directResponse') || decisionConsole.includes('Intent: ${turn.intent}')) {
+  fail('Direct responses must be supported without exposing debug intent badges in the UI.');
 }
 
 console.log('Intent routing tests passed.');

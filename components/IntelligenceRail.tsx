@@ -30,7 +30,7 @@ function IntelligenceRail({ snapshot }: IntelligenceRailProps) {
   ], [snapshot.blackSwanExposure, snapshot.downsideRisk, snapshot.successProbability]);
 
   return (
-    <aside className="hidden xl:flex flex-col w-72 space-y-4 ml-6">
+    <div className="grid gap-4 lg:grid-cols-3">
       {/* Probability Vectors */}
       <div className="bg-[#0B1020]/72 backdrop-blur-xl p-6 rounded-2xl border border-white/10 relative overflow-hidden group shadow-[0_20px_70px_rgba(0,0,0,0.25)]">
         <div className="flex items-center justify-between mb-8">
@@ -143,12 +143,12 @@ function IntelligenceRail({ snapshot }: IntelligenceRailProps) {
       )}
 
       {/* Kernel Footer */}
-      <div className="mt-auto px-6 pb-4">
+      <div className="hidden">
         <div className="flex items-center justify-end opacity-20">
           <Activity className="w-3.5 h-3.5 text-slate-500" />
         </div>
       </div>
-    </aside>
+    </div>
   );
 }
 
