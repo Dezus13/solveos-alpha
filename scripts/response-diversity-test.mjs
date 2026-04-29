@@ -411,4 +411,203 @@ if (computeVerdictAccuracyLocal('Reversible Experiment: run a small test', 75) !
   throw new Error('computeVerdictAccuracy: Reversible Experiment at 75 should be 90');
 }
 
+// ─── Trust layer calibrated scoring tests ────────────────────────────────────
+
+function normalizeTrustLayerLocal(tl, score, fallbackKillCriteria) {
+  if (!tl) return undefined;
+  const whyWrong = Array.isArray(tl.whyWrong) ? tl.whyWrong.filter((s) => typeof s === 'string') : [];
+  const evidenceToChange = Array.isArray(tl.evidenceToChange) ? tl.evidenceToChange.filter((s) => typeof s === 'string') : [];
+  const testBeforeCommitting = Array.isArray(tl.testBeforeCommitting) ? tl.testBeforeCommitting.filter((s) => typeof s === 'string') : [];
+  const confidenceReason = typeof tl.confidenceReason === 'string' ? tl.confidenceReason : '';
+  const clamp = (n, def) => Math.min(10, Math.max(1, typeof n === 'number' && !isNaN(n) ? Math.round(n) : def));
+  const asymmetryRaw = tl.asymmetry ?? {};
+  const asymmetry = {
+    upside: clamp(asymmetryRaw.upside, Math.max(1, Math.round(score / 10))),
+    downside: clamp(asymmetryRaw.downside, Math.max(1, Math.round((100 - score) / 10))),
+  };
+  const VALID_REV = ['reversible', 'partially-reversible', 'irreversible'];
+  const reversibility = VALID_REV.includes(tl.reversibility) ? tl.reversibility : 'partially-reversible';
+  const VALID_EV = ['high', 'medium', 'low'];
+  const expectedValue = VALID_EV.includes(tl.expectedValue)
+    ? tl.expectedValue
+    : score >= 70 ? 'high' : score >= 50 ? 'medium' : 'low';
+  const killCriteria = typeof tl.killCriteria === 'string' && tl.killCriteria ? tl.killCriteria : fallbackKillCriteria;
+  if (!confidenceReason && whyWrong.length === 0 && evidenceToChange.length === 0 && testBeforeCommitting.length === 0) return undefined;
+  return { confidenceReason, asymmetry, reversibility, expectedValue, killCriteria, whyWrong, evidenceToChange, testBeforeCommitting };
+}
+
+// Full valid input passes through correctly
+const fullTl = normalizeTrustLayerLocal({
+  confidenceReason: 'Evidence supports the strategic direction.',
+  asymmetry: { upside: 8, downside: 3 },
+  reversibility: 'reversible',
+  expectedValue: 'high',
+  killCriteria: 'Abandon if first milestone is missed within 30 days.',
+  whyWrong: ['Assumption X is fragile'],
+  evidenceToChange: ['Data Y would flip this'],
+  testBeforeCommitting: ['Run experiment Z for 2 weeks'],
+}, 75, 'fallback kill');
+if (!fullTl) throw new Error('Trust layer: valid full input should not return undefined');
+if (fullTl.asymmetry.upside !== 8) throw new Error(`Trust layer: asymmetry.upside should be 8, got ${fullTl.asymmetry.upside}`);
+if (fullTl.asymmetry.downside !== 3) throw new Error(`Trust layer: asymmetry.downside should be 3, got ${fullTl.asymmetry.downside}`);
+if (fullTl.reversibility !== 'reversible') throw new Error(`Trust layer: reversibility should be 'reversible', got '${fullTl.reversibility}'`);
+if (fullTl.expectedValue !== 'high') throw new Error(`Trust layer: expectedValue should be 'high', got '${fullTl.expectedValue}'`);
+if (fullTl.killCriteria !== 'Abandon if first milestone is missed within 30 days.') throw new Error('Trust layer: killCriteria should match input');
+if (fullTl.confidenceReason !== 'Evidence supports the strategic direction.') throw new Error('Trust layer: confidenceReason should match input');
+
+// Invalid reversibility falls back to partially-reversible
+const invalidRevTl = normalizeTrustLayerLocal({
+  confidenceReason: 'test',
+  asymmetry: { upside: 5, downside: 5 },
+  reversibility: 'INVALID_VALUE',
+  expectedValue: 'medium',
+  killCriteria: 'kill it',
+  whyWrong: ['reason'],
+  evidenceToChange: ['evidence'],
+  testBeforeCommitting: ['test'],
+}, 60, 'fallback');
+if (invalidRevTl?.reversibility !== 'partially-reversible') {
+  throw new Error(`Trust layer: invalid reversibility should fall back to 'partially-reversible', got '${invalidRevTl?.reversibility}'`);
+}
+
+// Invalid expectedValue falls back to score-derived default
+const highScoreTl = normalizeTrustLayerLocal({
+  confidenceReason: 'test',
+  asymmetry: { upside: 5, downside: 5 },
+  reversibility: 'irreversible',
+  expectedValue: 'INVALID_VALUE',
+  killCriteria: 'kill',
+  whyWrong: ['r'],
+  evidenceToChange: ['e'],
+  testBeforeCommitting: ['t'],
+}, 75, 'fallback');
+if (highScoreTl?.expectedValue !== 'high') {
+  throw new Error(`Trust layer: score 75 should default expectedValue to 'high', got '${highScoreTl?.expectedValue}'`);
+}
+const midScoreTl = normalizeTrustLayerLocal({
+  confidenceReason: 'test', asymmetry: { upside: 5, downside: 5 }, reversibility: 'reversible',
+  expectedValue: 'INVALID', killCriteria: 'k', whyWrong: ['r'], evidenceToChange: ['e'], testBeforeCommitting: ['t'],
+}, 60, 'fallback');
+if (midScoreTl?.expectedValue !== 'medium') {
+  throw new Error(`Trust layer: score 60 should default expectedValue to 'medium', got '${midScoreTl?.expectedValue}'`);
+}
+const lowScoreTl = normalizeTrustLayerLocal({
+  confidenceReason: 'test', asymmetry: { upside: 5, downside: 5 }, reversibility: 'reversible',
+  expectedValue: 'INVALID', killCriteria: 'k', whyWrong: ['r'], evidenceToChange: ['e'], testBeforeCommitting: ['t'],
+}, 40, 'fallback');
+if (lowScoreTl?.expectedValue !== 'low') {
+  throw new Error(`Trust layer: score 40 should default expectedValue to 'low', got '${lowScoreTl?.expectedValue}'`);
+}
+
+// Asymmetry out of range is clamped to [1, 10]
+const clampedTl = normalizeTrustLayerLocal({
+  confidenceReason: 'test', asymmetry: { upside: 15, downside: -2 }, reversibility: 'reversible',
+  expectedValue: 'low', killCriteria: 'kill', whyWrong: ['r'], evidenceToChange: ['e'], testBeforeCommitting: ['t'],
+}, 30, 'fallback');
+if (clampedTl?.asymmetry.upside !== 10) {
+  throw new Error(`Trust layer: upside 15 should clamp to 10, got ${clampedTl?.asymmetry.upside}`);
+}
+if (clampedTl?.asymmetry.downside !== 1) {
+  throw new Error(`Trust layer: downside -2 should clamp to 1, got ${clampedTl?.asymmetry.downside}`);
+}
+
+// Missing killCriteria falls back to provided fallback
+const noKillTl = normalizeTrustLayerLocal({
+  confidenceReason: 'reason', asymmetry: { upside: 5, downside: 5 }, reversibility: 'reversible',
+  expectedValue: 'medium', killCriteria: '', whyWrong: ['r'], evidenceToChange: ['e'], testBeforeCommitting: ['t'],
+}, 55, 'fallback kill criteria');
+if (noKillTl?.killCriteria !== 'fallback kill criteria') {
+  throw new Error(`Trust layer: empty killCriteria should use fallback, got '${noKillTl?.killCriteria}'`);
+}
+
+// null input returns undefined
+if (normalizeTrustLayerLocal(null, 60, 'fallback') !== undefined) {
+  throw new Error('Trust layer: null input should return undefined');
+}
+
+// All-empty arrays with no confidenceReason returns undefined
+if (normalizeTrustLayerLocal({
+  confidenceReason: '', asymmetry: { upside: 5, downside: 5 }, reversibility: 'reversible',
+  expectedValue: 'medium', killCriteria: 'k', whyWrong: [], evidenceToChange: [], testBeforeCommitting: [],
+}, 60, 'fallback') !== undefined) {
+  throw new Error('Trust layer: empty arrays + no confidenceReason should return undefined');
+}
+
+// ─── OutcomeContract normalization tests ─────────────────────────────────────
+
+function normalizeOutcomeContractLocal(oc, fallbackCorrect, fallbackMistake, fallbackPrediction90) {
+  if (!oc || typeof oc !== 'object') return undefined;
+  const prediction30 = typeof oc.prediction30 === 'string' ? oc.prediction30 : '';
+  const prediction60 = typeof oc.prediction60 === 'string' ? oc.prediction60 : '';
+  const prediction90 = typeof oc.prediction90 === 'string' && oc.prediction90 ? oc.prediction90 : (fallbackPrediction90 || '');
+  const proveCorrect = typeof oc.proveCorrect === 'string' && oc.proveCorrect ? oc.proveCorrect : (fallbackCorrect || '');
+  const proveMistake = typeof oc.proveMistake === 'string' && oc.proveMistake ? oc.proveMistake : (fallbackMistake || '');
+  if (!prediction30 && !prediction60 && !prediction90 && !proveCorrect) return undefined;
+  return { prediction30, prediction60, prediction90, proveCorrect, proveMistake };
+}
+
+// Full valid outcomeContract passes through
+const fullOc = normalizeOutcomeContractLocal(
+  {
+    prediction30: 'MRR exceeds $5k',
+    prediction60: 'MRR exceeds $12k',
+    prediction90: 'MRR exceeds $20k',
+    proveCorrect: 'Revenue target hit within 90 days',
+    proveMistake: 'MRR still below $2k at 90 days',
+  },
+  'fallback correct',
+  'fallback mistake',
+  'fallback 90'
+);
+if (!fullOc) throw new Error('outcomeContract: valid full input should not return undefined');
+if (fullOc.prediction30 !== 'MRR exceeds $5k') throw new Error('outcomeContract: prediction30 should pass through');
+if (fullOc.prediction90 !== 'MRR exceeds $20k') throw new Error('outcomeContract: prediction90 should pass through');
+if (fullOc.proveCorrect !== 'Revenue target hit within 90 days') throw new Error('outcomeContract: proveCorrect should pass through');
+if (fullOc.proveMistake !== 'MRR still below $2k at 90 days') throw new Error('outcomeContract: proveMistake should pass through');
+
+// Missing prediction90 falls back to provided fallback
+const noP90 = normalizeOutcomeContractLocal(
+  { prediction30: 'signal at 30d', prediction60: '', prediction90: '', proveCorrect: 'correct signal', proveMistake: '' },
+  'fc', 'fm', 'fallback 90d signal'
+);
+if (!noP90) throw new Error('outcomeContract: partial input should not return undefined when prediction30 exists');
+if (noP90.prediction90 !== 'fallback 90d signal') throw new Error('outcomeContract: missing prediction90 should use fallback');
+
+// Missing proveCorrect uses fallback
+const noCorrect = normalizeOutcomeContractLocal(
+  { prediction30: '', prediction60: '', prediction90: 'metric at 90d', proveCorrect: '', proveMistake: 'bad signal' },
+  'fallback correct evidence', 'fm', ''
+);
+if (noCorrect?.proveCorrect !== 'fallback correct evidence') throw new Error('outcomeContract: empty proveCorrect should use fallback');
+
+// All empty (no prediction or proof) returns undefined
+const emptyOc = normalizeOutcomeContractLocal(
+  { prediction30: '', prediction60: '', prediction90: '', proveCorrect: '', proveMistake: '' },
+  '', '', ''
+);
+if (emptyOc !== undefined) throw new Error('outcomeContract: all-empty should return undefined');
+
+// null / missing input returns undefined
+if (normalizeOutcomeContractLocal(null, 'a', 'b', 'c') !== undefined) throw new Error('outcomeContract: null should return undefined');
+if (normalizeOutcomeContractLocal(undefined, 'a', 'b', 'c') !== undefined) throw new Error('outcomeContract: undefined should return undefined');
+
+// ─── Decision journal extraction tests ───────────────────────────────────────
+
+function extractVerdictClassLocal2(recommendation) {
+  const r = (recommendation || '').trim().toLowerCase();
+  if (r.startsWith('full commit')) return 'FC';
+  if (r.startsWith('reversible experiment')) return 'RE';
+  if (r.startsWith('delay')) return 'D';
+  if (r.startsWith('kill the idea')) return 'KI';
+  if (r.startsWith('review')) return 'RV';
+  return '—';
+}
+
+if (extractVerdictClassLocal2('Full Commit: go all in') !== 'FC') throw new Error('Journal: Full Commit should map to FC');
+if (extractVerdictClassLocal2('Reversible Experiment: test first') !== 'RE') throw new Error('Journal: RE should map to RE');
+if (extractVerdictClassLocal2('Delay: not enough evidence') !== 'D') throw new Error('Journal: Delay should map to D');
+if (extractVerdictClassLocal2('Kill The Idea: shut it down') !== 'KI') throw new Error('Journal: Kill The Idea should map to KI');
+if (extractVerdictClassLocal2('Review: checking back') !== 'RV') throw new Error('Journal: Review should map to RV');
+if (extractVerdictClassLocal2('') !== '—') throw new Error('Journal: empty recommendation should map to —');
+
 console.log('Response diversity test passed.');

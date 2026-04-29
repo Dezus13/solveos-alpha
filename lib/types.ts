@@ -199,6 +199,14 @@ export interface ExecutionPlanWeek {
   goNoGoThreshold: string;
 }
 
+export interface OutcomeContract {
+  prediction30: string; // observable signal at 30 days
+  prediction60: string; // observable signal at 60 days
+  prediction90: string; // observable signal at 90 days
+  proveCorrect: string; // decisive evidence the decision was right
+  proveMistake: string; // decisive evidence the decision was wrong
+}
+
 export interface DecisionBlueprint {
   score: number;
   recommendation: string;
@@ -267,7 +275,13 @@ export interface DecisionBlueprint {
     sampleSize: number;
     evidence?: ConfidenceEvidence[];
   };
+  outcomeContract?: OutcomeContract;
   trustLayer?: {
+    confidenceReason: string;
+    asymmetry: { upside: number; downside: number };
+    reversibility: 'reversible' | 'partially-reversible' | 'irreversible';
+    expectedValue: 'high' | 'medium' | 'low';
+    killCriteria: string;
     whyWrong: string[];
     evidenceToChange: string[];
     testBeforeCommitting: string[];

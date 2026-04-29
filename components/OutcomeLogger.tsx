@@ -297,6 +297,28 @@ function OutcomeLogger({ decisionId, blueprintScore, problem, blueprint, default
         </span>
       </div>
 
+      {/* Prediction context */}
+      {blueprint?.outcomeContract && (() => {
+        const oc = blueprint.outcomeContract!;
+        const predictions = [
+          { label: '30d', value: oc.prediction30 },
+          { label: '60d', value: oc.prediction60 },
+          { label: '90d', value: oc.prediction90 },
+        ].filter(p => p.value);
+        if (predictions.length === 0) return null;
+        return (
+          <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl px-4 py-3 space-y-1.5">
+            <div className="text-[8px] font-black uppercase tracking-widest text-slate-600 mb-2">What was predicted</div>
+            {predictions.map(({ label, value }) => (
+              <div key={label} className="grid grid-cols-[32px_1fr] gap-2 items-start">
+                <span className="text-[8px] font-black uppercase tracking-widest text-slate-600">{label}</span>
+                <span className="text-[10px] text-slate-500 leading-snug">{value}</span>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
       {/* Choice grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {CHOICES.map((c) => {

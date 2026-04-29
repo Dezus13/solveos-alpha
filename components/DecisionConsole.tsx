@@ -14,6 +14,10 @@ interface DecisionConsoleProps {
   onReset: () => void;
   copy: UiCopy;
   settings: ProductSettings;
+  mode: string;
+  onModeChange: (mode: string) => void;
+  modesLoading?: Record<string, boolean>;
+  loadedModes?: Set<string>;
 }
 
 const modeOptions = ['Strategy', 'Risk', 'Scenarios', 'Red Team'];
@@ -148,9 +152,8 @@ function ThinkingMessage({ copy }: { copy: UiCopy }) {
   );
 }
 
-function DecisionConsole({ thread, loading, onSubmit, copy, settings }: DecisionConsoleProps) {
+function DecisionConsole({ thread, loading, onSubmit, copy, settings, mode, onModeChange, modesLoading, loadedModes }: DecisionConsoleProps) {
   const [input, setInput] = useState('');
-  const [mode, setMode] = useState('Strategy');
   const [error, setError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const hasThread = thread.length > 0;
@@ -226,18 +229,28 @@ function DecisionConsole({ thread, loading, onSubmit, copy, settings }: Decision
             />
             <div className="flex flex-col gap-3 border-t border-white/[0.06] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="inline-flex w-full rounded-xl border border-white/8 bg-white/[0.025] p-1 sm:w-auto">
-                {modeOptions.map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    onClick={() => setMode(option)}
-                    className={`flex-1 rounded-lg px-3 py-1.5 text-[11px] font-semibold transition-colors sm:flex-none ${
-                      mode === option ? 'bg-white/[0.09] text-white' : 'text-slate-500 hover:text-slate-200'
-                    }`}
-                  >
-                    {option}
-                  </button>
-                ))}
+                {modeOptions.map((option) => {
+                  const isActive = mode === option;
+                  const isLoading = modesLoading?.[option] === true;
+                  const isLoaded = !isActive && loadedModes?.has(option);
+                  return (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => onModeChange(option)}
+                      className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-semibold transition-colors sm:flex-none ${
+                        isActive ? 'bg-white/[0.09] text-white' : 'text-slate-500 hover:text-slate-200'
+                      }`}
+                    >
+                      {isLoading
+                        ? <Loader2 className="h-2.5 w-2.5 animate-spin flex-shrink-0" />
+                        : isLoaded
+                          ? <span className="w-1 h-1 rounded-full bg-purple-400 flex-shrink-0" />
+                          : null}
+                      {option}
+                    </button>
+                  );
+                })}
               </div>
               <button
                 type="button"

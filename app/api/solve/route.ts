@@ -414,13 +414,40 @@ function normalizeBlueprint(value: unknown, problem: string, language: string, m
           description: safeText(branch.description, 'Scenario requires more evidence.'),
         }))
       : defaultScenarioBranches(score),
+    outcomeContract: (() => {
+      const oc = isRecord(blueprint.outcomeContract) ? blueprint.outcomeContract : {};
+      const prediction30 = safeText(oc.prediction30, '');
+      const prediction60 = safeText(oc.prediction60, '');
+      const prediction90 = safeText(oc.prediction90, safeText(futureSimulation.twelveMonths, ''));
+      const proveCorrect = safeText(oc.proveCorrect, strategistBiggestUpside);
+      const proveMistake = safeText(oc.proveMistake, skepticWhatCouldBreak);
+      if (!prediction30 && !prediction60 && !prediction90 && !proveCorrect) return undefined;
+      return { prediction30, prediction60, prediction90, proveCorrect, proveMistake };
+    })(),
     trustLayer: (() => {
       const tl = isRecord(blueprint.trustLayer) ? blueprint.trustLayer : {};
       const whyWrong = safeStringList(tl.whyWrong, []);
       const evidenceToChange = safeStringList(tl.evidenceToChange, []);
       const testBeforeCommitting = safeStringList(tl.testBeforeCommitting, []);
-      if (whyWrong.length === 0 && evidenceToChange.length === 0 && testBeforeCommitting.length === 0) return undefined;
-      return { whyWrong, evidenceToChange, testBeforeCommitting };
+      const confidenceReason = safeText(tl.confidenceReason, '');
+      const asymmetryRaw = isRecord(tl.asymmetry) ? tl.asymmetry : {};
+      const clamp = (n: unknown, def: number) =>
+        Math.min(10, Math.max(1, typeof n === 'number' && !isNaN(n) ? Math.round(n) : def));
+      const asymmetry = {
+        upside: clamp(asymmetryRaw.upside, Math.max(1, Math.round(score / 10))),
+        downside: clamp(asymmetryRaw.downside, Math.max(1, Math.round((100 - score) / 10))),
+      };
+      const VALID_REV = ['reversible', 'partially-reversible', 'irreversible'] as const;
+      const reversibility: 'reversible' | 'partially-reversible' | 'irreversible' =
+        VALID_REV.includes(tl.reversibility as never) ? (tl.reversibility as typeof VALID_REV[number]) : 'partially-reversible';
+      const VALID_EV = ['high', 'medium', 'low'] as const;
+      const expectedValue: 'high' | 'medium' | 'low' =
+        VALID_EV.includes(tl.expectedValue as never)
+          ? (tl.expectedValue as typeof VALID_EV[number])
+          : score >= 70 ? 'high' : score >= 50 ? 'medium' : 'low';
+      const killCriteria = safeText(tl.killCriteria, skepticWhatCouldBreak);
+      if (!confidenceReason && whyWrong.length === 0 && evidenceToChange.length === 0 && testBeforeCommitting.length === 0) return undefined;
+      return { confidenceReason, asymmetry, reversibility, expectedValue, killCriteria, whyWrong, evidenceToChange, testBeforeCommitting };
     })(),
   };
 }

@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { ChevronDown, MessageSquare, Plus, Settings } from 'lucide-react';
+import { ChevronDown, Loader2, MessageSquare, Plus, Settings } from 'lucide-react';
 import DecisionConsole from '@/components/DecisionConsole';
 import SolveOSSymbol from '@/components/SolveOSSymbol';
 import { detectInputLanguage, uiCopy, type SupportedLanguage, type UiCopy } from '@/lib/i18n';
 import { defaultSettings, SETTINGS_STORAGE_KEY, type ProductSettings } from '@/lib/settings';
 import type { IntelligenceSnapshot } from '@/components/IntelligenceRail';
+import DecisionJournal from '@/components/DecisionJournal';
 import type { ConversationTurn, DecisionBlueprint, SolveRequest } from '@/lib/types';
 
 import en from '@/locales/en/common.json';
@@ -219,6 +220,10 @@ export default function HomeExperience() {
   const [decisionAccuracy, setDecisionAccuracy] = useState<number | undefined>(undefined);
   const [calibrationScore, setCalibrationScore] = useState<number | undefined>(undefined);
   const [latestDecisionId, setLatestDecisionId] = useState<string | undefined>(undefined);
+  const [activeMode, setActiveMode] = useState('Strategy');
+  const [modeBlueprints, setModeBlueprints] = useState<Record<string, DecisionBlueprint>>({});
+  const [modesLoading, setModesLoading] = useState<Record<string, boolean>>({});
+  const fetchGenRef = useRef(0);
 
   // Keep a stable ref to thread so handleSubmit always sees the latest value
   const threadRef = useRef<ConversationTurn[]>([]);
@@ -277,6 +282,9 @@ export default function HomeExperience() {
     setCalibrationOffset(undefined);
     setCalibrationSampleSize(undefined);
     setLatestDecisionId(undefined);
+    setActiveMode('Strategy');
+    setModeBlueprints({});
+    setModesLoading({});
     setAdvancedOpen(false);
   }, []);
 
@@ -297,6 +305,11 @@ export default function HomeExperience() {
       setThread((prev) => [...prev, userTurn]);
       setLoading(true);
       setIntelligence(buildIntelligenceSnapshot(null, 'running'));
+      setModeBlueprints({});
+      setModesLoading({});
+      setActiveMode(mode);
+      fetchGenRef.current += 1;
+      const submitGen = fetchGenRef.current;
 
       try {
         const detected = detectInputLanguage(message);
@@ -355,6 +368,11 @@ export default function HomeExperience() {
 
         setThread((prev) => [...prev, assistantTurn]);
 
+        if (!blueprint.isReviewMode && fetchGenRef.current === submitGen) {
+          const normalMode = mode === 'Risk' || mode === 'Scenarios' || mode === 'Red Team' ? mode : 'Strategy';
+          setModeBlueprints(prev => ({ ...prev, [normalMode]: blueprint }));
+        }
+
         const snap = buildIntelligenceSnapshot(blueprint, 'complete');
         if (typeof data.memoryScore === 'number') {
           snap.memoryScore = data.memoryScore;
@@ -385,9 +403,66 @@ export default function HomeExperience() {
     [copy, ensureLocale, settings.general.advancedByDefault, settings.language.customDecisionLanguage, settings.language.decisionMode, settings.language.uiLanguage],
   );
 
+  const fetchModeBlueprint = useCallback(async (problem: string, fetchMode: string) => {
+    const gen = fetchGenRef.current;
+    setModesLoading(prev => ({ ...prev, [fetchMode]: true }));
+    try {
+      const detected = detectInputLanguage(problem);
+      const requestLanguage = settings.language.decisionMode === 'detected'
+        ? detected
+        : settings.language.decisionMode === 'ui'
+          ? settings.language.uiLanguage
+          : settings.language.customDecisionLanguage;
+      const body: SolveRequest = {
+        problem,
+        language: requestLanguage,
+        mode: fetchMode as SolveRequest['mode'],
+        conversationHistory: threadRef.current.map((t) => ({
+          role: t.role,
+          content: t.role === 'assistant' ? (t.blueprint?.recommendation || t.content) : t.content,
+        })),
+      };
+      const response = await fetch('/api/solve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify(body),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed');
+      if (data.result && fetchGenRef.current === gen) {
+        const bp = data.result as DecisionBlueprint;
+        bp.language = bp.language || 'English';
+        setModeBlueprints(prev => ({ ...prev, [fetchMode]: bp }));
+      }
+    } catch {
+      // silent — background mode fetch failure doesn't surface
+    } finally {
+      setModesLoading(prev => ({ ...prev, [fetchMode]: false }));
+    }
+  }, [settings.language.decisionMode, settings.language.uiLanguage, settings.language.customDecisionLanguage, threadRef]);
+
+  const handleModeChange = useCallback((mode: string) => {
+    setActiveMode(mode);
+    let latestProblem = '';
+    for (let i = threadRef.current.length - 1; i >= 0; i--) {
+      if (threadRef.current[i].role === 'user') {
+        latestProblem = threadRef.current[i].content;
+        break;
+      }
+    }
+    if (!latestProblem) return;
+    setAdvancedOpen(true);
+    if (!modeBlueprints[mode]) {
+      void fetchModeBlueprint(latestProblem, mode);
+    }
+  }, [modeBlueprints, fetchModeBlueprint, threadRef]);
+
+  const loadedModes = useMemo(() => new Set(Object.keys(modeBlueprints)), [modeBlueprints]);
+
   const resultKey = useMemo(
-    () => `${latestUserMessage}-${latestBlueprint?.recommendation || ''}`,
-    [latestBlueprint?.recommendation, latestUserMessage],
+    () => `${latestUserMessage}-${latestBlueprint?.recommendation || ''}-${activeMode}`,
+    [latestBlueprint?.recommendation, latestUserMessage, activeMode],
   );
 
   const conversationTitle = useMemo(() => {
@@ -428,22 +503,25 @@ export default function HomeExperience() {
           {copy.newChat}
         </button>
 
-        <div className="mb-2 px-2 text-[10px] font-black uppercase tracking-widest text-slate-600">{copy.history}</div>
-        <div className="space-y-1 overflow-y-auto">
-          {thread.length > 0 ? (
+        {thread.length > 0 && (
+          <>
+            <div className="mb-2 px-2 text-[10px] font-black uppercase tracking-widest text-slate-600">{copy.history}</div>
             <button
               type="button"
-              className="flex w-full items-start gap-2 rounded-xl bg-purple-500/[0.08] px-3 py-3 text-left text-sm text-slate-200"
+              className="flex w-full items-start gap-2 rounded-xl bg-purple-500/[0.08] px-3 py-3 text-left text-sm text-slate-200 mb-4"
             >
               <MessageSquare className="mt-0.5 h-4 w-4 flex-shrink-0 text-purple-300" />
               <span className="line-clamp-2">{conversationTitle}</span>
             </button>
-          ) : (
-            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-3 text-sm text-slate-500">
-              {copy.noDecisions}
-            </div>
-          )}
-        </div>
+          </>
+        )}
+
+        <div className="mb-2 px-2 text-[10px] font-black uppercase tracking-widest text-slate-600">Decision Journal</div>
+        <DecisionJournal
+          refreshTrigger={latestDecisionId}
+          currentDecisionId={latestDecisionId}
+          onReview={(problem) => void handleSubmit(`Revisit: ${problem}`)}
+        />
       </aside>
 
       <section className="flex min-w-0 flex-1 flex-col">
@@ -469,9 +547,15 @@ export default function HomeExperience() {
           onReset={handleReset}
           copy={copy}
           settings={settings}
+          mode={activeMode}
+          onModeChange={handleModeChange}
+          modesLoading={modesLoading}
+          loadedModes={loadedModes}
         />
 
-        {latestBlueprint && (
+        {latestBlueprint && (() => {
+          const displayBlueprint = modeBlueprints[activeMode] ?? latestBlueprint;
+          return (
           <div className="border-t border-white/10 bg-[#090E1B]/95">
             <button
               type="button"
@@ -480,18 +564,26 @@ export default function HomeExperience() {
             >
               <div>
                 <div className="text-xs font-semibold text-slate-200">{copy.advancedAnalysis}</div>
-                <div className="text-[11px] text-slate-500">{copy.advancedSubtext}</div>
+                <div className="text-[11px] text-slate-500">
+                  {activeMode !== 'Strategy' ? `${activeMode} synthesis` : copy.advancedSubtext}
+                </div>
               </div>
               <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${advancedOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {advancedOpen && (
               <div className="max-h-[70vh] overflow-y-auto border-t border-white/10 px-4 pb-8 pt-5 sm:px-6">
+                {modesLoading[activeMode] ? (
+                  <div className="mx-auto flex max-w-5xl items-center justify-center gap-3 py-16">
+                    <Loader2 className="h-5 w-5 animate-spin text-purple-300" />
+                    <span className="text-sm text-slate-400">Synthesizing {activeMode} view…</span>
+                  </div>
+                ) : (
                 <div className="mx-auto max-w-5xl space-y-6">
                   <IntelligenceRail snapshot={intelligence} />
                   <SimulationResults
                     key={resultKey}
-                    result={latestBlueprint}
+                    result={displayBlueprint}
                     intelligence={intelligence}
                     submittedProblem={latestUserMessage}
                     initialShowBoard={false}
@@ -506,10 +598,12 @@ export default function HomeExperience() {
                     calibrationScore={calibrationScore}
                   />
                 </div>
+                )}
               </div>
             )}
           </div>
-        )}
+          );
+        })()}
       </section>
 
       {settingsOpen && (

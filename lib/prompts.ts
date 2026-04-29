@@ -35,7 +35,19 @@ YOU MUST RETURN A VALID JSON OBJECT exactly matching this structure:
     "twelveMonths": "Likely scenario 12 months out"
   },
   "recommendation": "Your definitive stance on which path is the best, and why.",
+  "outcomeContract": {
+    "prediction30": "Observable or measurable result that should be true at 30 days if this is correct — name a specific metric or event",
+    "prediction60": "Observable result at 60 days",
+    "prediction90": "Observable result at 90 days that confirms the recommendation",
+    "proveCorrect": "The single most decisive evidence that would prove this recommendation was right",
+    "proveMistake": "The single most decisive evidence that would prove this recommendation was wrong"
+  },
   "trustLayer": {
+    "confidenceReason": "One sentence: why this confidence score — name the single strongest factor",
+    "asymmetry": { "upside": 1-10, "downside": 1-10 },
+    "reversibility": "reversible | partially-reversible | irreversible",
+    "expectedValue": "high | medium | low",
+    "killCriteria": "Specific condition that should trigger abandoning this recommendation — one sentence",
     "whyWrong": ["Most likely reason this recommendation is wrong", "Second fragile assumption", "External condition that could invalidate this"],
     "evidenceToChange": ["Specific signal that would flip this recommendation", "Data that contradicts the key assumption", "New information that would change the verdict"],
     "testBeforeCommitting": ["Cheapest experiment to run before acting — with metric and timebox", "Specific validation reducing the biggest uncertainty", "Lowest-cost test that proves or disproves the core premise"]
@@ -344,7 +356,19 @@ YOU MUST RETURN A VALID JSON OBJECT exactly matching this structure:
   ],
   "confidenceScore": 0-100,
   "outcomeLessonPrompt": "Question that helps the user log the lesson after execution in ${language}",
+  "outcomeContract": {
+    "prediction30": "Observable or measurable result at 30 days in ${language} — name a specific metric, number, or event that can be checked",
+    "prediction60": "Observable result at 60 days in ${language} — something concrete that will either confirm or challenge the recommendation",
+    "prediction90": "Observable result at 90 days in ${language} — the decisive signal that confirms or refutes the decision",
+    "proveCorrect": "Single most decisive evidence that would prove this recommendation was right in ${language} — must be falsifiable",
+    "proveMistake": "Single most decisive evidence that would prove this recommendation was wrong in ${language} — must be falsifiable"
+  },
   "trustLayer": {
+    "confidenceReason": "One sentence in ${language}: why this confidence score — name the single strongest factor driving it",
+    "asymmetry": { "upside": 1-10, "downside": 1-10 },
+    "reversibility": "reversible | partially-reversible | irreversible",
+    "expectedValue": "high | medium | low",
+    "killCriteria": "Specific condition in ${language} that should trigger abandoning this recommendation — name the metric, threshold, or event",
     "whyWrong": [
       "Most likely reason this recommendation is wrong in ${language} — name the fragile assumption",
       "Second reason the recommendation may fail in ${language} — name the structural weakness",
@@ -371,6 +395,13 @@ Rules:
 - Make risks specific enough for an executive team to act on.
 - Make warRoomDebate feel like advisors debating live. The four voices must disagree, not summarize each other.
 - Make confidenceScore reflect strategic upside, risk exposure, reversibility, and evidence strength.
+- outcomeContract.prediction30/60/90: each must name a metric, number, or named observable event — not a vague hope. "Revenue up" is wrong. "MRR exceeds $10k" is right.
+- outcomeContract.proveCorrect/proveMistake: must be falsifiable in a single sentence. No hedging.
+- trustLayer.confidenceReason: one sentence, name the single strongest factor — do not repeat the verdict.
+- trustLayer.asymmetry: upside = potential reward score 1-10; downside = potential harm score 1-10. Calibrate against riskMap.
+- trustLayer.reversibility: "reversible" if the move can be undone within weeks with low cost; "irreversible" if it permanently closes options; "partially-reversible" otherwise.
+- trustLayer.expectedValue: "high" if risk-adjusted outcome is strongly positive; "low" if risk-adjusted outcome is negative or highly uncertain; "medium" otherwise.
+- trustLayer.killCriteria: name a specific metric or observable trigger — not a vague principle.
 - trustLayer.whyWrong: name the specific fragile assumptions, not generic caveats. Each entry must be falsifiable.
 - trustLayer.evidenceToChange: name concrete signals (data, events, numbers), not vague conditions.
 - trustLayer.testBeforeCommitting: each test must be runnable within days or weeks — not another analysis.
@@ -461,7 +492,19 @@ YOU MUST RETURN A VALID JSON OBJECT exactly matching this structure:
   },
   "confidenceScore": 0-100,
   "outcomeLessonPrompt": "Question to capture the core lesson from this review in ${language}",
+  "outcomeContract": {
+    "prediction30": "What should have been observable at 30 days in ${language} — based on what is now known",
+    "prediction60": "What should have been observable at 60 days in ${language}",
+    "prediction90": "What should have been observable at 90 days in ${language} — the decisive outcome signal",
+    "proveCorrect": "The evidence that most confirms the original verdict was right in ${language}",
+    "proveMistake": "The evidence that most confirms the original verdict was wrong in ${language}"
+  },
   "trustLayer": {
+    "confidenceReason": "One sentence in ${language}: why this review confidence score — name the primary uncertainty or evidence gap",
+    "asymmetry": { "upside": 1-10, "downside": 1-10 },
+    "reversibility": "reversible | partially-reversible | irreversible",
+    "expectedValue": "high | medium | low",
+    "killCriteria": "Specific condition in ${language} that would invalidate this review's conclusions — name the missing data or event",
     "whyWrong": [
       "Most likely reason the review assessment is incomplete or wrong in ${language}",
       "Key information gap that makes this review uncertain in ${language}",
@@ -487,5 +530,6 @@ Rules:
 - Every milestone needs a specific metric (a number, rate, or named deliverable), not vague descriptions.
 - Be honest about failures. Do not soften negative outcomes with corporate hedging.
 - trustLayer: make all entries specific to this exact decision review, not generic disclaimers.
+- trustLayer.asymmetry: score the remaining upside/downside given what is now known.
 Only output JSON.`;
 }

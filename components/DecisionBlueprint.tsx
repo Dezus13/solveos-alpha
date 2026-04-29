@@ -295,6 +295,134 @@ export default function DecisionBlueprint({ data, t, decisionAccuracy, calibrati
         </p>
       </div>
 
+      {/* Decision Confidence Panel — executive briefing, directly under verdict */}
+      {data?.trustLayer && (
+        <div className="rounded-3xl border border-white/10 bg-neutral-900/70 backdrop-blur-xl overflow-hidden shadow-[0_4px_40px_rgba(0,0,0,0.4)]">
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-3 border-b border-white/[0.05] bg-white/[0.015]">
+            <span className="text-[9px] font-black uppercase tracking-widest text-neutral-500">Decision Intelligence</span>
+            <span className="text-[9px] font-mono text-neutral-600 tabular-nums">{data.score} / 100</span>
+          </div>
+
+          {/* Metrics row */}
+          <div className="grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-white/[0.04]">
+            {/* Confidence */}
+            <div className="px-6 py-5 space-y-1.5">
+              <div className="text-[8px] font-black uppercase tracking-widest text-neutral-600">Confidence</div>
+              <div className="text-4xl font-black text-white leading-none tabular-nums">
+                {data.score}<span className="text-lg text-neutral-600 ml-0.5">%</span>
+              </div>
+              {data.trustLayer.confidenceReason && (
+                <p className="text-[10px] text-neutral-500 leading-snug pt-0.5 max-w-[160px]">
+                  {data.trustLayer.confidenceReason}
+                </p>
+              )}
+            </div>
+
+            {/* Asymmetry */}
+            <div className="px-6 py-5 space-y-1.5">
+              <div className="text-[8px] font-black uppercase tracking-widest text-neutral-600">Asymmetry</div>
+              <div className="flex items-center gap-4">
+                <div className="space-y-0.5">
+                  <div className="text-3xl font-black text-emerald-400 leading-none tabular-nums">{data.trustLayer.asymmetry.upside}</div>
+                  <div className="text-[9px] font-black text-emerald-700 uppercase tracking-wider">Upside</div>
+                </div>
+                <div className="text-neutral-700 text-lg font-thin">/</div>
+                <div className="space-y-0.5">
+                  <div className="text-3xl font-black text-rose-400 leading-none tabular-nums">{data.trustLayer.asymmetry.downside}</div>
+                  <div className="text-[9px] font-black text-rose-700 uppercase tracking-wider">Downside</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Decision Type */}
+            <div className="px-6 py-5 space-y-2">
+              <div className="text-[8px] font-black uppercase tracking-widest text-neutral-600">Decision Type</div>
+              <span className={`inline-flex items-center text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-full border ${
+                data.trustLayer.reversibility === 'reversible'
+                  ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20'
+                  : data.trustLayer.reversibility === 'irreversible'
+                  ? 'bg-rose-500/10 text-rose-300 border-rose-500/20'
+                  : 'bg-amber-500/10 text-amber-300 border-amber-500/20'
+              }`}>
+                {data.trustLayer.reversibility === 'reversible' && <span className="mr-1.5 text-emerald-400">↺</span>}
+                {data.trustLayer.reversibility === 'irreversible' && <span className="mr-1.5 text-rose-400">⚠</span>}
+                {data.trustLayer.reversibility === 'partially-reversible' && <span className="mr-1.5 text-amber-400">~</span>}
+                {data.trustLayer.reversibility}
+              </span>
+            </div>
+
+            {/* Expected Value */}
+            <div className="px-6 py-5 space-y-2">
+              <div className="text-[8px] font-black uppercase tracking-widest text-neutral-600">Expected Value</div>
+              <div className={`text-3xl font-black leading-none ${
+                data.trustLayer.expectedValue === 'high'
+                  ? 'text-emerald-400'
+                  : data.trustLayer.expectedValue === 'low'
+                  ? 'text-rose-400'
+                  : 'text-amber-400'
+              }`}>
+                {data.trustLayer.expectedValue.toUpperCase()}
+              </div>
+              <div className="text-[9px] text-neutral-600 uppercase tracking-wider">
+                {data.trustLayer.expectedValue === 'high' ? 'Risk-adjusted positive' :
+                 data.trustLayer.expectedValue === 'low'  ? 'Risk outweighs upside' :
+                 'Proceed carefully'}
+              </div>
+            </div>
+          </div>
+
+          {/* Kill Criteria */}
+          {data.trustLayer.killCriteria && (
+            <div className="flex items-start gap-4 px-6 py-4 border-t border-white/[0.05] bg-rose-950/[0.12]">
+              <div className="flex items-center gap-1.5 flex-shrink-0 mt-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                <span className="text-[8px] font-black uppercase tracking-widest text-rose-600">Kill Criteria</span>
+              </div>
+              <p className="text-[11px] text-neutral-400 leading-relaxed">{data.trustLayer.killCriteria}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Outcome Contract */}
+      {data?.outcomeContract && (
+        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] px-5 py-5 space-y-4">
+          <div className="flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-purple-400 flex-shrink-0" />
+            <span className="text-[8px] font-black uppercase tracking-widest text-neutral-600">Outcome Contract · Verify in 30 / 60 / 90 days</span>
+          </div>
+          <div className="space-y-2">
+            {([
+              { label: '30d', value: data.outcomeContract.prediction30 },
+              { label: '60d', value: data.outcomeContract.prediction60 },
+              { label: '90d', value: data.outcomeContract.prediction90 },
+            ] as const).map(({ label, value }) => value ? (
+              <div key={label} className="grid grid-cols-[40px_1fr] gap-3 items-start">
+                <span className="text-[9px] font-black uppercase tracking-widest text-neutral-600 pt-0.5">{label}</span>
+                <span className="text-[11px] text-neutral-400 leading-relaxed">{value}</span>
+              </div>
+            ) : null)}
+          </div>
+          {(data.outcomeContract.proveCorrect || data.outcomeContract.proveMistake) && (
+            <div className="space-y-2 border-t border-white/[0.04] pt-4">
+              {data.outcomeContract.proveCorrect && (
+                <div className="flex items-start gap-2.5">
+                  <span className="text-[10px] font-black text-emerald-500 mt-0.5 flex-shrink-0 leading-none">✓</span>
+                  <span className="text-[11px] text-neutral-400 leading-relaxed">{data.outcomeContract.proveCorrect}</span>
+                </div>
+              )}
+              {data.outcomeContract.proveMistake && (
+                <div className="flex items-start gap-2.5">
+                  <span className="text-[10px] font-black text-rose-500 mt-0.5 flex-shrink-0 leading-none">✗</span>
+                  <span className="text-[11px] text-neutral-400 leading-relaxed">{data.outcomeContract.proveMistake}</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Trust Layer */}
       {data?.trustLayer && (
         <div className="border border-amber-500/20 bg-amber-950/10 backdrop-blur-xl rounded-3xl p-5 md:p-8 relative overflow-hidden">
