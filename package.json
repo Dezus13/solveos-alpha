@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test:review": "node scripts/test-review-routing.mjs",
-    "test:learning": "node scripts/test-learning-loop.mjs"
+    "test:learning": "node scripts/test-learning-loop.mjs",
+    "test:outcome-logger": "node scripts/test-outcome-logger-interactions.mjs"
   },
   "dependencies": {
     "@langchain/langgraph": "^1.2.9",
