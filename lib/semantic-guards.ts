@@ -100,6 +100,73 @@ export function hasValidVerdictClass(output: string): boolean {
   return getVerdictClass(output) !== '';
 }
 
+// ─── Pre-verdict request intent ───────────────────────────────────────────────
+
+export type SolveRequestIntent = 'literal_output' | 'debug_request' | 'architect_request' | 'normal_decision';
+
+function evaluateSimpleArithmetic(text: string): string | null {
+  const match = text.match(/\b(-?\d+(?:\.\d+)?)\s*([+\-*/])\s*(-?\d+(?:\.\d+)?)\b/);
+  if (!match) return null;
+
+  const left = Number(match[1]);
+  const right = Number(match[3]);
+  if (!Number.isFinite(left) || !Number.isFinite(right)) return null;
+
+  const result =
+    match[2] === '+'
+      ? left + right
+      : match[2] === '-'
+      ? left - right
+      : match[2] === '*'
+      ? left * right
+      : right === 0
+      ? null
+      : left / right;
+
+  if (result === null || !Number.isFinite(result)) return null;
+  return Number.isInteger(result) ? String(result) : String(Number(result.toFixed(8)));
+}
+
+export function extractLiteralOutput(problem: string): string | null {
+  const text = problem.trim();
+  const withoutQuestionLabel = text.match(/(?:^|\n)\s*Decision question:\s*(.+?)\s*$/i)?.[1]?.trim() || text;
+  const arithmetic = evaluateSimpleArithmetic(text);
+  if (arithmetic && /^\s*-?\d+(?:\.\d+)?\s*[+\-*/]\s*-?\d+(?:\.\d+)?\s*\??\s*$/.test(withoutQuestionLabel)) return arithmetic;
+  if (arithmetic && /\breply only (?:the )?number\b/i.test(withoutQuestionLabel)) return arithmetic;
+  if (/^[A-Z0-9][A-Z0-9_-]{0,40}$/.test(withoutQuestionLabel)) return withoutQuestionLabel;
+
+  const literalMatch = withoutQuestionLabel.match(/\b(?:reply|respond|print|say|return)\s+(?:only\s+)?["'`]?(.+?)["'`]?\s*$/i);
+  if (!literalMatch) return null;
+
+  const literal = literalMatch[1].trim().replace(/[.!?]+$/, '').trim();
+  if (!literal) return null;
+  if (/^(?:the )?number$/i.test(literal) && arithmetic) return arithmetic;
+  return literal;
+}
+
+export function detectSolveRequestIntent(problem: string): SolveRequestIntent {
+  const text = problem.toLowerCase();
+  if (extractLiteralOutput(problem) !== null) return 'literal_output';
+  if (
+    text.includes('debug') ||
+    text.includes('diagnostic') ||
+    text.includes('inspect route') ||
+    text.includes('show request') ||
+    text.includes('trace router')
+  ) {
+    return 'debug_request';
+  }
+  if (
+    text.includes('architect') ||
+    text.includes('architecture') ||
+    text.includes('system design') ||
+    text.includes('technical design')
+  ) {
+    return 'architect_request';
+  }
+  return 'normal_decision';
+}
+
 // ─── Intent classification ────────────────────────────────────────────────────
 
 const CONTRARIAN_TRIGGERS = [

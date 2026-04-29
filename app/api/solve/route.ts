@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { saveDecision, getDecisionHistory } from '@/lib/memory';
 import { getMemoryIntelligenceFromHistory } from '@/lib/memory-graph';
 import { computeNetworkIntelligence, calibrateScore, buildCalibrationContext, computeDecisionAccuracy, computeCalibrationScore } from '@/lib/benchmarks';
-import { isPlanModeRequest, isReviewModeRequest, semanticVerdictForQuestion, shouldRejectDecisionOutput, detectVerdictLoop, buildForceDiversityInstruction, semanticVerdictExcluding, extractVerdictClass, buildIntentInstruction, enforceIntentRouting } from '@/lib/semantic-guards';
+import { isPlanModeRequest, isReviewModeRequest, semanticVerdictForQuestion, shouldRejectDecisionOutput, detectVerdictLoop, buildForceDiversityInstruction, semanticVerdictExcluding, extractVerdictClass, buildIntentInstruction, enforceIntentRouting, detectSolveRequestIntent, extractLiteralOutput } from '@/lib/semantic-guards';
 import type { CouncilMetrics, CounterfactualPath, DecisionBlueprint, DecisionContext, ExecutionPlanWeek, MilestoneMetric, MilestoneStatus, PreMortemRisk, ScenarioBranch, SecondOrderEffect, SolveRequest, SolveResponse, WarRoomDebate } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -417,6 +417,75 @@ function normalizeBlueprint(value: unknown, problem: string, language: string, m
   };
 }
 
+function directSolveResponse(directResponse: string, intent: SolveResponse['intent']): SolveResponse {
+  return {
+    result: null,
+    directResponse,
+    intent,
+  };
+}
+
+function buildDiagnosticResponse(problem: string, intent: SolveResponse['intent']): SolveResponse {
+  return directSolveResponse(
+    [
+      `intent=${intent}`,
+      'verdict_engine=bypassed',
+      `input_length=${problem.length}`,
+      'route=/api/solve',
+    ].join('\n'),
+    intent
+  );
+}
+
+function buildRecoveryBlueprint(problem: string, repeatedVerdict: string, language: string): DecisionBlueprint {
+  return normalizeBlueprint(
+    {
+      score: 50,
+      confidenceScore: 50,
+      recommendation: `Recovery Mode: "${repeatedVerdict}" repeated twice. Stop verdict generation and ask what new fact, threshold, or constraint changed before issuing another verdict.`,
+      diagnosis: {
+        coreProblem: 'The decision thread is locked into a repeated verdict.',
+        blindSpots: 'The prompt may be missing new evidence, changed constraints, or a concrete success threshold.',
+        keyRisks: 'Repeating the same recommendation can hide uncertainty instead of resolving it.',
+      },
+      paths: {
+        safe: {
+          description: 'Pause the verdict loop and ask for one new fact.',
+          pros: ['Prevents stale routing.'],
+          cons: ['Requires a clearer next prompt.'],
+        },
+        balanced: {
+          description: 'Convert the thread into a threshold question.',
+          pros: ['Creates a measurable way out of the loop.'],
+          cons: ['Still needs evidence.'],
+        },
+        bold: {
+          description: 'Restart the decision with changed assumptions only.',
+          pros: ['Forces novelty into the analysis.'],
+          cons: ['Can discard useful prior context.'],
+        },
+      },
+      contrarianInsight: {
+        perspective: 'The repeated verdict is now less informative than the missing evidence.',
+        hiddenOpportunity: 'Use the lock as a signal to define better decision criteria.',
+        uncomfortableTruth: 'A repeated verdict can feel decisive while adding no new judgment.',
+      },
+      futureSimulation: {
+        threeMonths: 'The thread improves if future prompts include new evidence or numeric thresholds.',
+        twelveMonths: 'Decision quality compounds when repeated advice triggers calibration instead of more repetition.',
+      },
+      actionPlan: {
+        today: 'Name the new fact, constraint, or threshold that changed.',
+        thisWeek: 'Compare the repeated verdict against one alternate path with measurable evidence.',
+        thirtyDays: 'Review whether recovery prompts reduced repeated routing.',
+      },
+    },
+    problem,
+    language,
+    'Review'
+  );
+}
+
 export async function POST(req: Request) {
   try {
     const parsedBody = await req.json().catch(() => ({}));
@@ -425,12 +494,35 @@ export async function POST(req: Request) {
     const language = readLanguage(body);
     const mode = readMode(body);
     const context = readContext(body);
+    const rawConversationContext = readConversationContext(body);
+    const conversationHistoryForGuard = Array.isArray(body?.conversationHistory)
+      ? (body.conversationHistory as Array<{ role: string; content: string }>)
+      : [];
 
     if (!problem) {
       return NextResponse.json(
         { error: 'Decision description is required.' },
         { status: 400 }
       );
+    }
+
+    const requestIntent = detectSolveRequestIntent(problem);
+    console.info('Solve request intent detected:', {
+      intent: requestIntent,
+      problemPreview: problem.slice(0, 80),
+      verdictEngineBypassed: requestIntent !== 'normal_decision',
+    });
+    if (requestIntent === 'literal_output') {
+      const literal = extractLiteralOutput(problem);
+      return NextResponse.json(directSolveResponse(literal || problem, 'literal_output'));
+    }
+
+    if (requestIntent === 'debug_request') {
+      return NextResponse.json(buildDiagnosticResponse(problem, 'debug_request'));
+    }
+
+    if (requestIntent === 'architect_request') {
+      return NextResponse.json(buildDiagnosticResponse(problem, 'architect_request'));
     }
 
     if (problem.length < 20) {
@@ -443,11 +535,16 @@ export async function POST(req: Request) {
     const history = await getDecisionHistory().catch(() => []);
     const isReview = isReviewModeRequest(problem);
     const effectiveMode = isReview ? 'Review' : mode;
-    const rawConversationContext = readConversationContext(body);
-    const conversationHistoryForGuard = Array.isArray(body?.conversationHistory)
-      ? (body.conversationHistory as Array<{ role: string; content: string }>)
-      : [];
     const bannedVerdict = isReview ? null : detectVerdictLoop(conversationHistoryForGuard);
+    if (bannedVerdict) {
+      const blueprint = buildRecoveryBlueprint(problem, bannedVerdict, language);
+      return NextResponse.json({
+        result: blueprint,
+        intent: 'recovery_mode',
+        memoryScore: 0,
+        networkScore: 0,
+      } satisfies SolveResponse);
+    }
     const diversityInstruction = bannedVerdict ? buildForceDiversityInstruction(bannedVerdict) : '';
     const intentInstruction = isReview ? '' : buildIntentInstruction(problem, conversationHistoryForGuard);
     const conversationContext = [rawConversationContext, diversityInstruction, intentInstruction]

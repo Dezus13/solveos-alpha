@@ -3,6 +3,7 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, CheckCircle2, FileText, Play, RotateCcw, Send, ShieldQuestion } from 'lucide-react';
 import SolveOSSymbol from '@/components/SolveOSSymbol';
+import { detectSolveRequestIntent } from '@/lib/semantic-guards';
 import type { ConversationTurn } from '@/lib/types';
 
 // ─── Streaming hook ──────────────────────────────────────────────────────────
@@ -74,6 +75,29 @@ function AssistantTurn({ turn, isLatest }: { turn: ConversationTurn; isLatest: b
 
   const isReviewMode = !!bp?.isReviewMode;
   const milestoneTable = bp?.milestoneTable;
+  const isDirectResponse = !!turn.intent && !bp;
+
+  if (isDirectResponse) {
+    return (
+      <div className="space-y-3 blueprint-enter">
+        <div className="flex items-center space-x-3">
+          <div className="h-2 w-2 flex-shrink-0 rounded-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.6)]" />
+          <span className="text-[9px] font-black uppercase tracking-widest text-cyan-300">
+            Intent: {turn.intent}
+          </span>
+          <div className="h-[1px] flex-1 bg-gradient-to-r from-cyan-500/20 to-transparent" />
+        </div>
+        <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-5">
+          <p className="text-lg font-semibold leading-relaxed text-[#F8FAFF]">
+            {streamedVerdict}
+            {isLatest && !streamDone && (
+              <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-cyan-400 align-middle" />
+            )}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 blueprint-enter">
@@ -254,9 +278,13 @@ function DecisionConsole({ thread, loading, onSubmit, onReset }: DecisionConsole
   }, [decisionIntake]);
 
   const handleSubmit = useCallback((override?: string) => {
-    const text = (override ?? (hasThread ? input : buildDecisionPrompt())).trim();
+    const rawText = (override ?? (hasThread ? input : decisionIntake.question || buildDecisionPrompt())).trim();
+    const intent = detectSolveRequestIntent(rawText);
+    const text = !hasThread && intent === 'normal_decision' && !override
+      ? buildDecisionPrompt().trim()
+      : rawText;
     if (!text) { setError('Please describe your decision to enable simulation.'); return; }
-    if (text.length < 20) {
+    if (intent === 'normal_decision' && text.length < 20) {
       setError(`Decision details too brief (${text.length}/20 characters minimum). Provide more context about stakes, constraints, and timeline.`);
       return;
     }
@@ -275,7 +303,7 @@ function DecisionConsole({ thread, loading, onSubmit, onReset }: DecisionConsole
       horizon: '',
     });
     onSubmit(text, terminalTab);
-  }, [buildDecisionPrompt, hasThread, input, onSubmit, terminalTab]);
+  }, [buildDecisionPrompt, decisionIntake.question, hasThread, input, onSubmit, terminalTab]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {

@@ -2,6 +2,7 @@
 
 import { memo, useState } from 'react';
 import { CheckCircle2, XCircle, MinusCircle, Clock, Loader2, BookOpen, Calendar } from 'lucide-react';
+import type { DecisionBlueprint } from '@/lib/types';
 
 type Choice = 'better' | 'expected' | 'worse' | 'unknown';
 type Phase = 'idle' | 'open' | 'scheduling' | 'submitting' | 'done' | 'scheduled' | 'error';
@@ -70,6 +71,9 @@ const OUTCOME_STATUS_BY_CHOICE: Record<Exclude<Choice, 'unknown'>, OutcomeStatus
 interface OutcomeLoggerProps {
   decisionId: string;
   blueprintScore: number;
+  problem?: string;
+  blueprint?: DecisionBlueprint;
+  defaultOpen?: boolean;
 }
 
 function formatReviewDate(daysOut: number): string {
@@ -77,8 +81,8 @@ function formatReviewDate(daysOut: number): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-function OutcomeLogger({ decisionId, blueprintScore }: OutcomeLoggerProps) {
-  const [phase, setPhase] = useState<Phase>('idle');
+function OutcomeLogger({ decisionId, blueprintScore, problem, blueprint, defaultOpen = false }: OutcomeLoggerProps) {
+  const [phase, setPhase] = useState<Phase>(defaultOpen ? 'open' : 'idle');
   const [choice, setChoice] = useState<Choice | null>(null);
   const [notes, setNotes] = useState('');
   const [loggedChoice, setLoggedChoice] = useState<Choice | null>(null);
@@ -107,6 +111,7 @@ function OutcomeLogger({ decisionId, blueprintScore }: OutcomeLoggerProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           decisionId,
+          decision: problem && blueprint ? { id: decisionId, problem, blueprint } : undefined,
           outcome: {
             actualOutcome: notes.trim()
               ? `${outcomeChoice}: ${notes.trim()}`
@@ -119,7 +124,16 @@ function OutcomeLogger({ decisionId, blueprintScore }: OutcomeLoggerProps) {
         }),
       });
 
-      if (!res.ok) throw new Error('Failed to log outcome');
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        console.error('Outcome logging failed', {
+          status: res.status,
+          error,
+          decisionId,
+          outcomeChoice,
+        });
+        throw new Error(typeof error.error === 'string' ? error.error : 'Failed to log outcome');
+      }
 
       setLoggedChoice(outcomeChoice);
       setPhase('done');

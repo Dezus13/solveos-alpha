@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test:review": "node scripts/test-review-routing.mjs",
     "test:learning": "node scripts/test-learning-loop.mjs",
-    "test:outcome-logger": "node scripts/test-outcome-logger-interactions.mjs"
+    "test:outcome-logger": "node scripts/test-outcome-logger-interactions.mjs",
+    "test:intent-routing": "node scripts/test-intent-routing.mjs"
   },
   "dependencies": {
     "@langchain/langgraph": "^1.2.9",

@@ -369,6 +369,33 @@ export async function saveDecision(
   });
 }
 
+export async function saveDecisionSnapshot(
+  entry: Omit<DecisionMemoryEntry, 'timestamp' | 'tags' | 'similarity'>
+) {
+  return withMemoryWrite(async history => {
+    const existing = history.find(e => e.id === entry.id);
+    if (existing) return existing;
+
+    const tags = extractTags(entry.problem, entry.context);
+    const timestamp = entry.createdAt || new Date().toISOString();
+    const newEntry = applyMemorySnapshotFields({
+      ...entry,
+      blueprint: {
+        ...entry.blueprint,
+        score: clampScore(entry.blueprint.score),
+      },
+      timestamp,
+      createdAt: timestamp,
+      outcomeStatus: entry.outcomeStatus || 'unknown',
+      tags,
+    });
+
+    history.unshift(newEntry);
+    await writeHistory(history);
+    return newEntry;
+  });
+}
+
 /**
  * Record outcome for a past decision (learning mechanism).
  * Returns:

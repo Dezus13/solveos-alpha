@@ -225,6 +225,19 @@ export default function HomeExperience() {
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Failed to generate solution');
 
+        if (typeof data.directResponse === 'string') {
+          const assistantTurn: ConversationTurn = {
+            id: crypto.randomUUID(),
+            role: 'assistant',
+            content: data.directResponse,
+            intent: data.intent,
+            timestamp: Date.now(),
+          };
+          setThread((prev) => [...prev, assistantTurn]);
+          setIntelligence(buildIntelligenceSnapshot(null, 'complete'));
+          return;
+        }
+
         const blueprint = data?.result as DecisionBlueprint | undefined;
         if (!blueprint) throw new Error(data?.error || 'Decision engine returned no result.');
         blueprint.language = blueprint.language || 'English';

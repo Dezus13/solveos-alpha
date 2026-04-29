@@ -115,6 +115,7 @@ export interface ConversationTurn {
   role: 'user' | 'assistant';
   content: string;
   blueprint?: DecisionBlueprint;
+  intent?: SolveResponse['intent'];
   isError?: boolean;
   timestamp: number;
 }
@@ -280,6 +281,8 @@ export interface ScenarioBranch {
 
 export interface SolveResponse {
   result: DecisionBlueprint | null;
+  directResponse?: string;
+  intent?: 'literal_output' | 'debug_request' | 'architect_request' | 'normal_decision' | 'recovery_mode';
   error?: string;
   decisionId?: string;
   memoryScore?: number;

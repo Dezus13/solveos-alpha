@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { recordOutcome, getDecisionHistory, scheduleReview } from '@/lib/memory';
+import { recordOutcome, getDecisionHistory, saveDecisionSnapshot, scheduleReview } from '@/lib/memory';
 import { computeVerdictAccuracy } from '@/lib/semantic-guards';
-import type { OutcomeStatus } from '@/lib/types';
+import type { DecisionBlueprint, OutcomeStatus } from '@/lib/types';
 
 function isOutcomeStatus(value: unknown): value is OutcomeStatus {
   return value === 'unknown' || value === 'better' || value === 'expected' || value === 'worse';
@@ -15,6 +15,19 @@ function inferOutcomeStatus(actualOutcome: string, scoreAccuracy: number): Outco
   if (scoreAccuracy >= 70) return 'better';
   if (scoreAccuracy < 35) return 'worse';
   return 'expected';
+}
+
+function isDecisionSnapshot(value: unknown): value is { id: string; problem: string; blueprint: DecisionBlueprint } {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  const snapshot = value as Record<string, unknown>;
+  const blueprint = snapshot.blueprint as Record<string, unknown> | undefined;
+  return (
+    typeof snapshot.id === 'string' &&
+    typeof snapshot.problem === 'string' &&
+    typeof blueprint === 'object' &&
+    blueprint !== null &&
+    typeof blueprint.score === 'number'
+  );
 }
 
 export async function POST(req: Request) {
@@ -73,7 +86,7 @@ export async function POST(req: Request) {
       ? computeVerdictAccuracy(originalRecommendation, outcome.scoreAccuracy)
       : undefined;
 
-    const result = await recordOutcome(decisionId, {
+    let result = await recordOutcome(decisionId, {
       actualOutcome: outcome.actualOutcome,
       scoreAccuracy: outcome.scoreAccuracy,
       verdictAccuracy,
@@ -84,6 +97,26 @@ export async function POST(req: Request) {
       recommendations: Array.isArray(outcome.recommendations) ? outcome.recommendations : [],
     });
 
+    if (!result.ok && result.reason === 'not_found' && isDecisionSnapshot(body.decision)) {
+      await saveDecisionSnapshot({
+        id: decisionId,
+        problem: body.decision.problem,
+        blueprint: body.decision.blueprint,
+      });
+      result = await recordOutcome(decisionId, {
+        actualOutcome: outcome.actualOutcome,
+        scoreAccuracy: outcome.scoreAccuracy,
+        verdictAccuracy: body.decision.blueprint.recommendation
+          ? computeVerdictAccuracy(body.decision.blueprint.recommendation, outcome.scoreAccuracy)
+          : verdictAccuracy,
+        outcomeStatus: isOutcomeStatus(outcome.outcomeStatus)
+          ? outcome.outcomeStatus
+          : inferOutcomeStatus(outcome.actualOutcome, outcome.scoreAccuracy),
+        lessons: Array.isArray(outcome.lessons) ? outcome.lessons : [],
+        recommendations: Array.isArray(outcome.recommendations) ? outcome.recommendations : [],
+      });
+    }
+
     if (!result.ok) {
       const status = result.reason === 'not_found' ? 404 : result.reason === 'invalid_outcome' ? 400 : 409;
       const error =
@@ -92,6 +125,12 @@ export async function POST(req: Request) {
           : result.reason === 'invalid_outcome'
           ? 'Invalid outcome payload'
           : 'Outcome already logged for this decision';
+      console.error('Outcome logging rejected:', {
+        decisionId,
+        reason: result.reason,
+        status,
+        hasDecisionSnapshot: isDecisionSnapshot(body.decision),
+      });
       return NextResponse.json({ error }, { status });
     }
 

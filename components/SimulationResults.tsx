@@ -348,36 +348,20 @@ function SimulationResults({
               </div>
             </div>
             <div className="mt-4 rounded-2xl border border-blue-500/15 bg-blue-500/[0.025] p-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <div className="text-[10px] font-black uppercase tracking-widest text-blue-300">Outcome Logging</div>
-                  <p className="mt-2 text-xs leading-relaxed text-slate-300">What happened after execution?</p>
-                </div>
-                <button
-                  type="button"
-                  className="rounded-lg border border-blue-400/20 bg-blue-400/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-blue-200 transition-colors hover:bg-blue-400/15"
-                >
-                  Record Outcome
-                </button>
+              <div>
+                <div className="text-[10px] font-black uppercase tracking-widest text-blue-300">Outcome Logging</div>
+                <p className="mt-2 text-xs leading-relaxed text-slate-300">What happened after execution?</p>
               </div>
-              <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                {['Outcome better', 'Outcome expected', 'Outcome worse'].map((label) => (
-                  <div key={label} className="rounded-lg border border-white/5 bg-[#0B1020]/45 px-3 py-2 text-[10px] font-bold uppercase text-slate-300">
-                    {label}
-                  </div>
-                ))}
-              </div>
-              <div className="mt-3 rounded-lg border border-white/5 bg-[#0B1020]/45 px-3 py-2">
-                <div className="text-[8px] font-bold uppercase text-slate-600">Key lesson learned</div>
-                <div className="mt-1 text-xs text-slate-400">{result.outcomeLessonPrompt || 'Save lesson to decision memory'}</div>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {['+ Strategy worked', '+ Risk missed', '+ Assumption wrong'].map((tag) => (
-                  <span key={tag} className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[9px] font-bold uppercase text-slate-400">
-                    {tag}
-                  </span>
-                ))}
-              </div>
+              {decisionId && (
+                <OutcomeLogger
+                  key={decisionId}
+                  decisionId={decisionId}
+                  blueprintScore={result.score}
+                  problem={submittedProblem}
+                  blueprint={result}
+                  defaultOpen
+                />
+              )}
             </div>
             <div className="mt-4 rounded-2xl border border-cyan-500/15 bg-cyan-500/[0.025] p-4">
               <div className="mb-3 text-[10px] font-black uppercase tracking-widest text-cyan-300">Advisor Council</div>
@@ -501,14 +485,6 @@ function SimulationResults({
             ))}
           </div>
         </div>
-
-        {decisionId && (
-          <OutcomeLogger
-            key={decisionId}
-            decisionId={decisionId}
-            blueprintScore={result.score}
-          />
-        )}
       </div>
 
       <div className="w-full flex flex-col items-center mt-12">
