@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, memo } from 'react';
 import { Brain, TrendingUp, Zap, AlertTriangle, CheckCircle2, Circle, BookOpen } from 'lucide-react';
-import type { MemoryGraph, MemoryGraphNode, StrategicPattern } from '@/lib/types';
+import type { DecisionMemoryEntry, MemoryGraph, MemoryGraphNode, StrategicPattern } from '@/lib/types';
 
 // ─── Domain Colour Map ────────────────────────────────────────────────────────
 
@@ -368,6 +368,7 @@ function DomainLegend({ domains }: { domains: Record<string, number> }) {
 
 function MemoryGraphPanel() {
   const [graph, setGraph] = useState<MemoryGraph | null>(null);
+  const [latestLearning, setLatestLearning] = useState<DecisionMemoryEntry | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -382,7 +383,15 @@ function MemoryGraphPanel() {
         const res = await fetch('/api/memory?action=graph');
         if (!res.ok) throw new Error('Failed to fetch memory graph');
         const data = await res.json();
-        if (!cancelled) setGraph(data.graph);
+        const memoryRes = await fetch('/api/memory');
+        const memoryData = memoryRes.ok ? await memoryRes.json() : { decisions: [] };
+        const learned = Array.isArray(memoryData.decisions)
+          ? memoryData.decisions.find((entry: DecisionMemoryEntry) => entry.learning)
+          : null;
+        if (!cancelled) {
+          setGraph(data.graph);
+          setLatestLearning(learned ?? null);
+        }
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : 'Unknown error');
       } finally {
@@ -499,6 +508,26 @@ function MemoryGraphPanel() {
           </div>
         </div>
       </div>
+
+      {latestLearning?.learning && (
+        <div className="rounded-2xl border border-emerald-500/15 bg-emerald-500/[0.03] p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="text-[9px] font-black uppercase text-emerald-300">Learning</span>
+          </div>
+          <p className="text-sm text-slate-300 leading-relaxed mb-4">{latestLearning.learning.learningInsight}</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+              <div className="text-[8px] font-bold uppercase text-slate-500">Decision Accuracy</div>
+              <div className="text-xl font-black text-[#F8FAFF]">{latestLearning.learning.decisionAccuracy}%</div>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+              <div className="text-[8px] font-bold uppercase text-slate-500">Calibration</div>
+              <div className="text-xl font-black text-[#F8FAFF]">{latestLearning.learning.calibrationScore}/100</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Strategic Patterns */}
       {graph.patterns.length > 0 && (

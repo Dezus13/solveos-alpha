@@ -317,6 +317,12 @@ export interface ReviewCheckpoint {
   status: OutcomeStatus;
 }
 
+export interface LearningResult {
+  decisionAccuracy: number;
+  calibrationScore: number;
+  learningInsight: string;
+}
+
 export type MilestoneStatus = 'on_track' | 'behind' | 'exceeded' | 'failed' | 'unknown';
 
 export interface MilestoneMetric {
@@ -341,6 +347,7 @@ export interface DecisionMemoryEntry {
   context?: DecisionContext;
   outcome?: DecisionOutcome;
   outcomeStatus?: OutcomeStatus;
+  learning?: LearningResult;
   pendingReview?: PendingReview;
   reviewCheckpoints?: ReviewCheckpoint[];
   tags: string[]; // For domain/category classification

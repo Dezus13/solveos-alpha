@@ -17,6 +17,7 @@ export async function GET(req: Request) {
         timestamp: e.timestamp,
         blueprintScore: e.blueprint.score,
         pendingReview: e.pendingReview,
+        learning: e.learning ?? null,
       })),
       count: reviews.length,
     });

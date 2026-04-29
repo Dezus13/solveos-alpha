@@ -6,6 +6,8 @@ import {
   CalibrationBucket,
   NetworkIntelligence,
   CalibrationResult,
+  LearningResult,
+  OutcomeStatus,
   TrendPoint,
 } from './types';
 
@@ -527,6 +529,39 @@ export function computeCalibrationScore(history: DecisionMemoryEntry[]): number 
   if (withData.length === 0) return 0;
   const drift = avg(withData.map(b => Math.abs(b.offset)));
   return Math.max(0, Math.round(100 - drift * 2));
+}
+
+export function computeLearningResult(entry: DecisionMemoryEntry): LearningResult | undefined {
+  if (!entry.outcome || !entry.outcomeStatus || entry.outcomeStatus === 'unknown') {
+    return undefined;
+  }
+
+  const confidence = entry.confidence ?? entry.blueprint.score;
+  const calibrationOffset = entry.outcome.scoreAccuracy - confidence;
+  const calibrationScore =
+    entry.outcomeStatus === 'expected'
+      ? 100
+      : Math.max(0, Math.round(100 - Math.abs(calibrationOffset) * 2));
+
+  const statusAccuracy: Record<Exclude<OutcomeStatus, 'unknown'>, number> = {
+    better: Math.max(75, entry.outcome.verdictAccuracy ?? 90),
+    expected: Math.max(60, entry.outcome.verdictAccuracy ?? 70),
+    worse: Math.min(45, entry.outcome.verdictAccuracy ?? 30),
+  };
+
+  const decisionAccuracy = statusAccuracy[entry.outcomeStatus];
+  const learningInsight =
+    entry.outcomeStatus === 'better'
+      ? `Outcome beat expectations by ${Math.max(0, calibrationOffset)} points. Keep this verdict pattern as positive evidence.`
+      : entry.outcomeStatus === 'worse'
+        ? `Outcome underperformed by ${Math.abs(Math.min(0, calibrationOffset))} points. Discount similar confidence until risks are better controlled.`
+        : 'Outcome landed near expectations. Calibration stays neutral for similar decisions.';
+
+  return {
+    decisionAccuracy,
+    calibrationScore,
+    learningInsight,
+  };
 }
 
 // ─── Utilities ────────────────────────────────────────────────────────────────

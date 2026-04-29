@@ -10,6 +10,7 @@ import {
   PendingReview,
   ReviewCheckpoint,
 } from './types';
+import { computeLearningResult } from './benchmarks';
 import { buildMemoryGraph, getMemoryIntelligenceFromHistory } from './memory-graph';
 
 const REVIEW_EXPIRY_DAYS = 90;
@@ -124,6 +125,7 @@ function applyMemorySnapshotFields(entry: DecisionMemoryEntry): DecisionMemoryEn
   const outcomeStatus = isOutcomeStatus(entry.outcomeStatus)
     ? entry.outcomeStatus
     : inferOutcomeStatusFromOutcome(entry.outcome);
+  const learning = entry.learning || computeLearningResult({ ...entry, outcomeStatus });
 
   return {
     ...entry,
@@ -136,6 +138,7 @@ function applyMemorySnapshotFields(entry: DecisionMemoryEntry): DecisionMemoryEn
       : keyRisksFromEntry(entry),
     nextMove: entry.nextMove || nextMoveFromEntry(entry),
     outcomeStatus,
+    learning,
     reviewCheckpoints: normalizeReviewCheckpoints(entry.reviewCheckpoints, createdAt, outcomeStatus),
   };
 }
@@ -320,6 +323,7 @@ export async function recordOutcome(
       timestamp: new Date().toISOString(),
     };
     entry.outcomeStatus = inferOutcomeStatusFromOutcome(entry.outcome);
+    entry.learning = computeLearningResult(entry);
     entry.reviewCheckpoints = normalizeReviewCheckpoints(
       entry.reviewCheckpoints,
       entry.createdAt || entry.timestamp,

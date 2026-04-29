@@ -13,7 +13,7 @@ import {
   Clock,
   ChevronRight,
 } from 'lucide-react';
-import type { NetworkIntelligence, DomainBenchmark, CalibrationBucket, TrendPoint } from '@/lib/types';
+import type { NetworkIntelligence, DomainBenchmark, CalibrationBucket, TrendPoint, LearningResult } from '@/lib/types';
 
 // ─── Pending Review Types ─────────────────────────────────────────────────────
 
@@ -27,17 +27,25 @@ interface DueReview {
     scheduledFor: string;
     createdAt: string;
   };
+  learning?: LearningResult | null;
 }
 
 // ─── Pending Reviews Panel ────────────────────────────────────────────────────
 
 type ReviewOutcome = 'succeeded' | 'partial' | 'failed';
+type ReviewOutcomeStatus = 'better' | 'expected' | 'worse';
 
 const REVIEW_OUTCOMES: { id: ReviewOutcome; label: string; scoreAccuracy: number; color: string }[] = [
   { id: 'succeeded', label: 'Succeeded', scoreAccuracy: 85, color: 'text-emerald-300' },
   { id: 'partial', label: 'Partial', scoreAccuracy: 50, color: 'text-amber-300' },
   { id: 'failed', label: 'Failed', scoreAccuracy: 15, color: 'text-rose-300' },
 ];
+
+const REVIEW_OUTCOME_STATUS: Record<ReviewOutcome, ReviewOutcomeStatus> = {
+  succeeded: 'better',
+  partial: 'expected',
+  failed: 'worse',
+};
 
 function PendingReviewCard({
   review,
@@ -48,6 +56,7 @@ function PendingReviewCard({
 }) {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [learning, setLearning] = useState<LearningResult | null>(review.learning ?? null);
 
   const log = async (outcome: ReviewOutcome) => {
     setSubmitting(true);
@@ -60,14 +69,17 @@ function PendingReviewCard({
           outcome: {
             actualOutcome: outcome,
             scoreAccuracy: REVIEW_OUTCOMES.find(o => o.id === outcome)!.scoreAccuracy,
+            outcomeStatus: REVIEW_OUTCOME_STATUS[outcome],
             lessons: [],
             recommendations: [],
           },
         }),
       });
       if (!res.ok) throw new Error('Failed to log review outcome');
+      const data = await res.json();
+      setLearning(data.decision?.learning ?? null);
       setDone(true);
-      setTimeout(() => onLogged(review.id), 600);
+      setTimeout(() => onLogged(review.id), 1800);
     } catch {
       setSubmitting(false);
     }
@@ -93,6 +105,16 @@ function PendingReviewCard({
           </button>
         ))}
       </div>
+      {learning && (
+        <div className="mt-3 rounded-lg border border-white/10 bg-black/20 p-3">
+          <div className="text-[8px] font-black uppercase tracking-widest text-slate-500 mb-1">Learning</div>
+          <div className="flex gap-3 text-[9px] font-mono text-slate-400 mb-1">
+            <span>Accuracy {learning.decisionAccuracy}%</span>
+            <span>Calibration {learning.calibrationScore}/100</span>
+          </div>
+          <p className="text-[10px] text-slate-300 leading-relaxed">{learning.learningInsight}</p>
+        </div>
+      )}
     </div>
   );
 }
