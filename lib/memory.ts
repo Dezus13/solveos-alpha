@@ -15,6 +15,7 @@ import { buildMemoryGraph, getMemoryIntelligenceFromHistory } from './memory-gra
 
 const REVIEW_EXPIRY_DAYS = 90;
 const MEMORY_FILE = path.join(process.cwd(), 'data', 'decisions.json');
+const REMOTE_MEMORY_KEY = 'solveos:decisions:v1';
 const CHECKPOINT_HORIZONS = [30, 60, 90] as const;
 
 let memoryStore: DecisionMemoryEntry[] = [];
@@ -28,6 +29,14 @@ function cloneEntry(entry: DecisionMemoryEntry): DecisionMemoryEntry {
 async function writeHistory(history: DecisionMemoryEntry[]): Promise<void> {
   memoryStore = history.map(cloneEntry);
   memoryLoaded = true;
+
+  if (hasRemoteMemoryStore()) {
+    await writeRemoteHistory(memoryStore);
+    return;
+  }
+
+  if (isReadOnlyRuntime()) return;
+
   await fs.mkdir(path.dirname(MEMORY_FILE), { recursive: true });
   await fs.writeFile(MEMORY_FILE, `${JSON.stringify(memoryStore, null, 2)}\n`, 'utf8');
 }
@@ -46,6 +55,65 @@ function clampScore(value: number): number {
 
 function isValidDateString(value: unknown): value is string {
   return typeof value === 'string' && Number.isFinite(new Date(value).getTime());
+}
+
+function isReadOnlyRuntime(): boolean {
+  return process.env.VERCEL === '1' || process.env.VERCEL === 'true';
+}
+
+function remoteStoreUrl(): string | undefined {
+  return process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+}
+
+function remoteStoreToken(): string | undefined {
+  return process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+}
+
+function hasRemoteMemoryStore(): boolean {
+  return Boolean(remoteStoreUrl() && remoteStoreToken());
+}
+
+function normalizeRemoteHistory(value: unknown): DecisionMemoryEntry[] {
+  if (typeof value === 'string' && value.trim()) {
+    try {
+      return normalizeRemoteHistory(JSON.parse(value));
+    } catch {
+      return [];
+    }
+  }
+
+  return Array.isArray(value)
+    ? value.map(normalizeHistoryEntry).filter((entry): entry is DecisionMemoryEntry => Boolean(entry))
+    : [];
+}
+
+async function readRemoteHistory(): Promise<DecisionMemoryEntry[]> {
+  const url = remoteStoreUrl();
+  const token = remoteStoreToken();
+  if (!url || !token) return [];
+
+  const res = await fetch(`${url.replace(/\/$/, '')}/get/${encodeURIComponent(REMOTE_MEMORY_KEY)}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(`Remote decision memory read failed: ${res.status}`);
+
+  const data = await res.json() as unknown;
+  const result = isRecord(data) ? data.result : null;
+  return normalizeRemoteHistory(result);
+}
+
+async function writeRemoteHistory(history: DecisionMemoryEntry[]): Promise<void> {
+  const url = remoteStoreUrl();
+  const token = remoteStoreToken();
+  if (!url || !token) return;
+
+  const res = await fetch(`${url.replace(/\/$/, '')}/set/${encodeURIComponent(REMOTE_MEMORY_KEY)}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(history),
+  });
+  if (!res.ok) throw new Error(`Remote decision memory write failed: ${res.status}`);
 }
 
 function isOutcomeStatus(value: unknown): value is OutcomeStatus {
@@ -246,6 +314,17 @@ async function withMemoryWrite<T>(mutate: (history: DecisionMemoryEntry[]) => Pr
 
 async function readHistory(): Promise<DecisionMemoryEntry[]> {
   if (!memoryLoaded) {
+    if (hasRemoteMemoryStore()) {
+      memoryStore = await readRemoteHistory();
+      memoryLoaded = true;
+      return memoryStore.map(cloneEntry);
+    }
+
+    if (isReadOnlyRuntime()) {
+      memoryLoaded = true;
+      return memoryStore.map(cloneEntry);
+    }
+
     try {
       const raw = await fs.readFile(MEMORY_FILE, 'utf8');
       const parsed = JSON.parse(raw) as unknown;
