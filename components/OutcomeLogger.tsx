@@ -3,7 +3,7 @@
 import { memo, useState } from 'react';
 import { CheckCircle2, XCircle, MinusCircle, Clock, Loader2, BookOpen, Calendar } from 'lucide-react';
 
-type Choice = 'succeeded' | 'partial' | 'failed' | 'unknown';
+type Choice = 'better' | 'expected' | 'worse' | 'unknown';
 type Phase = 'idle' | 'open' | 'scheduling' | 'submitting' | 'done' | 'scheduled' | 'error';
 type OutcomeStatus = 'better' | 'expected' | 'worse';
 
@@ -20,8 +20,8 @@ interface ChoiceDef {
 
 const CHOICES: ChoiceDef[] = [
   {
-    id: 'succeeded',
-    label: 'Succeeded',
+    id: 'better',
+    label: 'Better',
     icon: CheckCircle2,
     scoreAccuracy: 85,
     ringColor: 'ring-emerald-500/60',
@@ -30,8 +30,8 @@ const CHOICES: ChoiceDef[] = [
     borderColor: 'border-emerald-500/30',
   },
   {
-    id: 'partial',
-    label: 'Partial',
+    id: 'expected',
+    label: 'Expected',
     icon: MinusCircle,
     scoreAccuracy: 50,
     ringColor: 'ring-amber-500/60',
@@ -40,8 +40,8 @@ const CHOICES: ChoiceDef[] = [
     borderColor: 'border-amber-500/30',
   },
   {
-    id: 'failed',
-    label: 'Failed',
+    id: 'worse',
+    label: 'Worse',
     icon: XCircle,
     scoreAccuracy: 15,
     ringColor: 'ring-rose-500/60',
@@ -62,9 +62,9 @@ const CHOICES: ChoiceDef[] = [
 ];
 
 const OUTCOME_STATUS_BY_CHOICE: Record<Exclude<Choice, 'unknown'>, OutcomeStatus> = {
-  succeeded: 'better',
-  partial: 'expected',
-  failed: 'worse',
+  better: 'better',
+  expected: 'expected',
+  worse: 'worse',
 };
 
 interface OutcomeLoggerProps {
@@ -99,6 +99,9 @@ function OutcomeLogger({ decisionId, blueprintScore }: OutcomeLoggerProps) {
 
   const submitOutcome = async (outcomeChoice: Exclude<Choice, 'unknown'>) => {
     try {
+      const outcomeScore = outcomeChoice === 'expected'
+        ? blueprintScore
+        : CHOICES.find(c => c.id === outcomeChoice)!.scoreAccuracy;
       const res = await fetch('/api/outcomes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -108,7 +111,7 @@ function OutcomeLogger({ decisionId, blueprintScore }: OutcomeLoggerProps) {
             actualOutcome: notes.trim()
               ? `${outcomeChoice}: ${notes.trim()}`
               : outcomeChoice,
-            scoreAccuracy: CHOICES.find(c => c.id === outcomeChoice)!.scoreAccuracy,
+            scoreAccuracy: outcomeScore,
             outcomeStatus: OUTCOME_STATUS_BY_CHOICE[outcomeChoice],
             lessons: notes.trim() ? [notes.trim()] : [],
             recommendations: [],
@@ -121,6 +124,7 @@ function OutcomeLogger({ decisionId, blueprintScore }: OutcomeLoggerProps) {
       setLoggedChoice(outcomeChoice);
       setPhase('done');
     } catch {
+      setLoggedChoice(null);
       setPhase('error');
     }
   };
@@ -157,7 +161,7 @@ function OutcomeLogger({ decisionId, blueprintScore }: OutcomeLoggerProps) {
   if (phase === 'done' && logged) {
     const Icon = logged.icon;
     return (
-      <div className="mt-5 pt-5 border-t border-white/[0.04]">
+      <div className="relative z-20 mt-5 pt-5 border-t border-white/[0.04] pointer-events-auto">
         <div className={`flex items-center space-x-3 px-4 py-3 rounded-xl ${logged.bgColor} border ${logged.borderColor}`}>
           <Icon className={`w-4 h-4 ${logged.textColor} flex-shrink-0`} />
           <div>
@@ -176,7 +180,7 @@ function OutcomeLogger({ decisionId, blueprintScore }: OutcomeLoggerProps) {
   // ── Scheduled state ──────────────────────────────────────────────────────────
   if (phase === 'scheduled' && scheduledDays) {
     return (
-      <div className="mt-5 pt-5 border-t border-white/[0.04]">
+      <div className="relative z-20 mt-5 pt-5 border-t border-white/[0.04] pointer-events-auto">
         <div className="flex items-center space-x-3 px-4 py-3 rounded-xl bg-slate-500/[0.06] border border-slate-500/20">
           <Calendar className="w-4 h-4 text-slate-400 flex-shrink-0" />
           <div>
@@ -195,7 +199,7 @@ function OutcomeLogger({ decisionId, blueprintScore }: OutcomeLoggerProps) {
   // ── Idle — just the trigger ──────────────────────────────────────────────────
   if (phase === 'idle') {
     return (
-      <div className="mt-5 pt-5 border-t border-white/[0.04] flex items-center justify-between">
+      <div className="relative z-20 mt-5 pt-5 border-t border-white/[0.04] flex items-center justify-between pointer-events-auto">
         <div className="flex items-center space-x-2 opacity-50">
           <div className="w-1 h-1 rounded-full bg-slate-500" />
           <span className="text-[9px] font-bold uppercase text-slate-500 tracking-widest">
@@ -204,6 +208,7 @@ function OutcomeLogger({ decisionId, blueprintScore }: OutcomeLoggerProps) {
         </div>
         <button
           onClick={() => setPhase('open')}
+          type="button"
           className="flex items-center space-x-2 px-4 py-2 rounded-xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.05] hover:border-purple-500/30 transition-all group"
         >
           <BookOpen className="w-3 h-3 text-slate-400 group-hover:text-purple-300 transition-colors" />
@@ -218,7 +223,7 @@ function OutcomeLogger({ decisionId, blueprintScore }: OutcomeLoggerProps) {
   // ── Scheduling state (unknown chosen) ────────────────────────────────────────
   if (phase === 'scheduling') {
     return (
-      <div className="mt-5 pt-5 border-t border-white/[0.04] space-y-4">
+      <div className="relative z-20 mt-5 pt-5 border-t border-white/[0.04] space-y-4 pointer-events-auto">
         <div>
           <span className="text-[9px] font-black uppercase text-slate-300 tracking-widest">
             Schedule a review for when you can evaluate
@@ -230,6 +235,7 @@ function OutcomeLogger({ decisionId, blueprintScore }: OutcomeLoggerProps) {
 
         <div className="grid grid-cols-3 gap-3">
           <button
+            type="button"
             onClick={() => void scheduleReview(30)}
             className="flex flex-col items-start px-4 py-4 rounded-xl border border-slate-500/20 bg-white/[0.02] hover:bg-slate-500/[0.06] hover:border-slate-400/30 transition-all"
           >
@@ -237,6 +243,7 @@ function OutcomeLogger({ decisionId, blueprintScore }: OutcomeLoggerProps) {
             <span className="text-[9px] text-slate-500 mt-1">{formatReviewDate(30)}</span>
           </button>
           <button
+            type="button"
             onClick={() => void scheduleReview(60)}
             className="flex flex-col items-start px-4 py-4 rounded-xl border border-slate-500/20 bg-white/[0.02] hover:bg-slate-500/[0.06] hover:border-slate-400/30 transition-all"
           >
@@ -244,6 +251,7 @@ function OutcomeLogger({ decisionId, blueprintScore }: OutcomeLoggerProps) {
             <span className="text-[9px] text-slate-500 mt-1">{formatReviewDate(60)}</span>
           </button>
           <button
+            type="button"
             onClick={() => void scheduleReview(90)}
             className="flex flex-col items-start px-4 py-4 rounded-xl border border-slate-500/20 bg-white/[0.02] hover:bg-slate-500/[0.06] hover:border-slate-400/30 transition-all"
           >
@@ -253,6 +261,7 @@ function OutcomeLogger({ decisionId, blueprintScore }: OutcomeLoggerProps) {
         </div>
 
         <button
+          type="button"
           onClick={reset}
           className="text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-300 transition-colors"
         >
@@ -264,7 +273,7 @@ function OutcomeLogger({ decisionId, blueprintScore }: OutcomeLoggerProps) {
 
   // ── Open — picker + notes ────────────────────────────────────────────────────
   return (
-    <div className="mt-5 pt-5 border-t border-white/[0.04] space-y-4">
+    <div className="relative z-20 mt-5 pt-5 border-t border-white/[0.04] space-y-4 pointer-events-auto">
       <div className="flex items-center justify-between">
         <span className="text-[9px] font-black uppercase text-slate-300 tracking-widest">
           How did this decision play out?
@@ -282,6 +291,7 @@ function OutcomeLogger({ decisionId, blueprintScore }: OutcomeLoggerProps) {
           return (
             <button
               key={c.id}
+              type="button"
               onClick={() => setChoice(c.id)}
               className={`flex items-center space-x-2 px-4 py-3 rounded-xl border transition-all ${
                 isSelected
@@ -304,6 +314,8 @@ function OutcomeLogger({ decisionId, blueprintScore }: OutcomeLoggerProps) {
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
+            readOnly={false}
+            disabled={false}
             placeholder="What actually happened? What would you do differently? (optional)"
             rows={2}
             className="w-full bg-transparent text-[13px] text-slate-300 placeholder-slate-600 focus:outline-none resize-none font-medium leading-relaxed"
@@ -321,12 +333,14 @@ function OutcomeLogger({ decisionId, blueprintScore }: OutcomeLoggerProps) {
       {/* Actions */}
       <div className="flex items-center space-x-3">
         <button
+          type="button"
           onClick={reset}
           className="px-5 py-2.5 text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-300 transition-colors"
         >
           Cancel
         </button>
         <button
+          type="button"
           onClick={handleContinue}
           disabled={!choice || phase === 'submitting'}
           className={`flex items-center space-x-2 px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all disabled:opacity-30 ${
