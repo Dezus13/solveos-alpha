@@ -280,12 +280,59 @@ export const uiCopy: Record<Exclude<SupportedLanguage, 'auto'>, UiCopy> = {
   },
 };
 
-export function detectInputLanguage(text: string): Exclude<SupportedLanguage, 'auto'> {
+const russianTransliterationStrong = [
+  'privet',
+  'kak dela',
+  'chto',
+  'cto',
+  'delat',
+  'dalshe',
+  'daljshe',
+  'hochu',
+  'hochyu',
+  'nuzhno',
+  'reshenie',
+  'resenie',
+  'pochemu',
+  'spasibo',
+  'biznes reshenie',
+];
+
+const russianTransliterationWeak = [
+  'ya',
+  'mne',
+  'menya',
+  'mozhno',
+  'mozhet',
+  'stoit',
+  'rabota',
+  'dengi',
+  'biznes',
+  'sdelat',
+  'kuda',
+  'kogda',
+];
+
+function hasRussianTransliteration(text: string): boolean {
+  const lower = text.toLowerCase().replace(/[^a-z\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!lower) return false;
+  if (russianTransliterationStrong.some((keyword) => new RegExp(`(^|\\s)${keyword}(\\s|$)`).test(lower))) {
+    return true;
+  }
+  const weakHits = russianTransliterationWeak.filter((keyword) => new RegExp(`(^|\\s)${keyword}(\\s|$)`).test(lower));
+  return weakHits.length >= 2;
+}
+
+export function detectInputLanguage(
+  text: string,
+  fallback: Exclude<SupportedLanguage, 'auto'> = 'English',
+): Exclude<SupportedLanguage, 'auto'> {
   if (/[\u0600-\u06FF]/.test(text)) return 'Arabic';
   if (/[\u4E00-\u9FFF]/.test(text)) return 'Chinese';
   if (/[\u0400-\u04FF]/.test(text)) return 'Russian';
   const lower = text.toLowerCase();
+  if (hasRussianTransliteration(text)) return 'Russian';
   if (/[äöüß]/i.test(text) || /\b(und|oder|nicht|sollten|entscheidung|risiko)\b/.test(lower)) return 'German';
   if (/[áéíóúñ¿¡]/i.test(text) || /\b(deberíamos|riesgo|decisión|crecimiento|próximo)\b/.test(lower)) return 'Spanish';
-  return 'English';
+  return fallback;
 }

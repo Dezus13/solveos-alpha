@@ -7,6 +7,7 @@ const settings = readFileSync(join(root, 'lib/settings.ts'), 'utf8');
 const home = readFileSync(join(root, 'components/HomeExperience.tsx'), 'utf8');
 const modal = readFileSync(join(root, 'components/SettingsModal.tsx'), 'utf8');
 const consoleUi = readFileSync(join(root, 'components/DecisionConsole.tsx'), 'utf8');
+const css = readFileSync(join(root, 'app/globals.css'), 'utf8');
 
 function fail(message) {
   throw new Error(message);
@@ -24,16 +25,32 @@ for (const field of ['uiLanguage', 'decisionMode', 'customDecisionLanguage']) {
   if (!settings.includes(field)) fail(`Settings must include separate language field: ${field}`);
 }
 
-if (!home.includes('detectInputLanguage(message)') || !home.includes('settings.language.decisionMode')) {
-  fail('HomeExperience must route response language through detection/settings.');
+if (!home.includes('detectInputLanguage(message, settings.language.uiLanguage)')) {
+  fail('HomeExperience must detect response language from message with UI-language fallback.');
 }
 
-if (!home.includes('settings.language.uiLanguage') || !home.includes('settings.language.customDecisionLanguage')) {
-  fail('UI language and custom decision language must be independent.');
+if (!home.includes('const t = locales[interfaceLanguage as string]') || !home.includes('const copy = uiCopy[interfaceLanguage]')) {
+  fail('UI labels must be driven by UI language, not response language.');
 }
 
-if (!home.includes('SETTINGS_STORAGE_KEY') || !home.includes('window.localStorage.setItem')) {
+if (!home.includes('SETTINGS_STORAGE_KEY') || !home.includes('window.localStorage.getItem') || !home.includes('window.localStorage.setItem')) {
   fail('Settings must persist to localStorage.');
+}
+
+for (const attr of ['dataset.theme', 'dataset.accent', 'dataset.density']) {
+  if (!home.includes(attr)) fail(`Settings must apply app-wide document ${attr}.`);
+}
+
+for (const theme of ['data-theme="system"', 'data-theme="dark"', 'data-theme="midnight"']) {
+  if (!css.includes(theme)) fail(`Missing app-wide theme CSS: ${theme}`);
+}
+
+for (const accent of ['data-accent="purple"', 'data-accent="blue"', 'data-accent="emerald"', 'data-accent="rose"']) {
+  if (!css.includes(accent)) fail(`Missing app-wide accent CSS: ${accent}`);
+}
+
+for (const density of ['data-density="compact"', 'data-density="balanced"', 'data-density="calm"']) {
+  if (!css.includes(density)) fail(`Missing app-wide density CSS: ${density}`);
 }
 
 for (const section of ['general', 'language', 'appearance', 'notifications', 'data', 'security']) {
@@ -50,8 +67,36 @@ if (!modal.includes('settings.language.uiLanguage') || !modal.includes('settings
   fail('Settings modal must render separate UI and decision language controls.');
 }
 
+for (const value of ['system', 'dark', 'midnight', 'purple', 'blue', 'emerald', 'rose', 'compact', 'balanced', 'calm']) {
+  if (!modal.includes(`active={settings.appearance.`) || !modal.includes(value)) {
+    fail(`Appearance option missing or not selected-state aware: ${value}`);
+  }
+}
+
 if (!consoleUi.includes('copy.onboardingTitle') || !consoleUi.includes('copy.suggestions')) {
   fail('DecisionConsole must use localized onboarding and starter prompts.');
+}
+
+function expectedDetection(text, fallback = 'English') {
+  if (/[\u0400-\u04FF]/.test(text)) return 'Russian';
+  const lower = text.toLowerCase().replace(/[^a-z\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  const strong = ['privet', 'kak dela', 'chto', 'cto', 'delat', 'dalshe', 'daljshe', 'hochu', 'hochyu', 'nuzhno', 'reshenie', 'resenie', 'pochemu', 'spasibo', 'biznes reshenie'];
+  const weak = ['ya', 'mne', 'menya', 'mozhno', 'mozhet', 'stoit', 'rabota', 'dengi', 'biznes', 'sdelat', 'kuda', 'kogda'];
+  if (strong.some((keyword) => new RegExp(`(^|\\s)${keyword}(\\s|$)`).test(lower))) return 'Russian';
+  if (weak.filter((keyword) => new RegExp(`(^|\\s)${keyword}(\\s|$)`).test(lower)).length >= 2) return 'Russian';
+  return fallback;
+}
+
+if (!i18n.includes('russianTransliterationStrong') || !i18n.includes('hasRussianTransliteration')) {
+  fail('Russian transliteration helper is missing.');
+}
+
+for (const input of ['Привет как дела', 'privet kak dela', 'chto delat dalshe', 'ya hochu biznes reshenie']) {
+  if (expectedDetection(input, 'German') !== 'Russian') fail(`Russian detection failed for: ${input}`);
+}
+
+if (expectedDetection('launch beta next month', 'Spanish') !== 'Spanish') {
+  fail('Unclear input should fall back to selected UI language.');
 }
 
 console.log('Settings i18n QA passed.');

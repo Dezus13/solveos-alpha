@@ -11,7 +11,10 @@
     "test:learning": "node scripts/test-learning-loop.mjs",
     "test:outcome-logger": "node scripts/test-outcome-logger-interactions.mjs",
     "test:intent-routing": "node scripts/test-intent-routing.mjs",
-    "test:settings-i18n": "node scripts/test-settings-i18n.mjs"
+    "test:settings-i18n": "node scripts/test-settings-i18n.mjs",
+    "test:user-profile": "node scripts/test-user-profile.mjs",
+    "test:profile-engine": "node scripts/test-profile-engine.mjs",
+    "test:pattern-insight": "node scripts/test-pattern-insight.mjs"
   },
   "dependencies": {
     "@langchain/langgraph": "^1.2.9",

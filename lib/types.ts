@@ -120,12 +120,23 @@ export interface ConversationTurn {
   timestamp: number;
 }
 
+export interface UserProfileData {
+  riskTolerance: number;  // 0–1
+  executionScore: number; // 0–1
+  biasPatterns: string[];
+  totalDecisions: number;
+  userDecisionScore?: number; // 0–100: follows required decision process over time
+  decisionScoreTrend?: 'up' | 'down';
+}
+
 export interface SolveRequest {
   problem: string;
   language?: string;
   mode?: 'Strategy' | 'Risk' | 'Scenarios' | 'Red Team' | 'Review';
   context?: DecisionContext;
   conversationHistory?: Array<{ role: 'user' | 'assistant'; content: string }>;
+  userProfile?: string;           // legacy text description (kept for backwards compat)
+  userProfileData?: UserProfileData; // structured profile for active engine adjustments
 }
 
 export interface DecisionContext {
@@ -262,6 +273,16 @@ export interface DecisionBlueprint {
   // System-level accuracy (populated per-response from historical outcomes)
   decisionAccuracy?: number;
   calibrationScore?: number;
+  // Short explanation of profile-driven adjustments, shown under the verdict
+  profileAdjustment?: string;
+  // Behavioral pattern surfaced from decision history, shown below profileAdjustment
+  patternInsight?: string;
+  // Single mandatory next action derived from the top pattern, shown below patternInsight
+  forcedAction?: string;
+  // User process discipline layer, shown before the verdict
+  decisionScore?: number;
+  decisionScoreTrend?: 'up' | 'down';
+  scoreMessage?: string;
   // Enterprise features
   council?: CouncilMetrics;
   riskMap?: { opportunity: number; risk: number };

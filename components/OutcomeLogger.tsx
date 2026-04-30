@@ -3,6 +3,7 @@
 import { memo, useState } from 'react';
 import { CheckCircle2, XCircle, MinusCircle, Clock, Loader2, BookOpen, Calendar } from 'lucide-react';
 import type { DecisionBlueprint } from '@/lib/types';
+import { updateDecisionScoreOnOutcome, type DecisionScoreOutcome } from '@/lib/userProfile';
 
 type Choice = 'better' | 'expected' | 'worse' | 'unknown';
 type Phase = 'idle' | 'open' | 'scheduling' | 'submitting' | 'done' | 'scheduled' | 'error';
@@ -87,6 +88,7 @@ function OutcomeLogger({ decisionId, blueprintScore, problem, blueprint, default
   const [notes, setNotes] = useState('');
   const [loggedChoice, setLoggedChoice] = useState<Choice | null>(null);
   const [scheduledDays, setScheduledDays] = useState<30 | 60 | 90 | null>(null);
+  const [followedForcedAction, setFollowedForcedAction] = useState(false);
 
   const selected = CHOICES.find(c => c.id === choice);
   const logged = CHOICES.find(c => c.id === loggedChoice);
@@ -135,6 +137,9 @@ function OutcomeLogger({ decisionId, blueprintScore, problem, blueprint, default
         throw new Error(typeof error.error === 'string' ? error.error : 'Failed to log outcome');
       }
 
+      const decisionScoreOutcome: DecisionScoreOutcome =
+        outcomeChoice === 'better' ? 'worked' : outcomeChoice === 'worse' ? 'failed' : 'unclear';
+      updateDecisionScoreOnOutcome(followedForcedAction, decisionScoreOutcome);
       setLoggedChoice(outcomeChoice);
       setPhase('done');
     } catch {
@@ -169,6 +174,7 @@ function OutcomeLogger({ decisionId, blueprintScore, problem, blueprint, default
     setPhase('idle');
     setChoice(null);
     setNotes('');
+    setFollowedForcedAction(false);
   };
 
   // ── Done state ───────────────────────────────────────────────────────────────
@@ -357,6 +363,25 @@ function OutcomeLogger({ decisionId, blueprintScore, problem, blueprint, default
             className="w-full bg-transparent text-[13px] text-slate-300 placeholder-slate-600 focus:outline-none resize-none font-medium leading-relaxed"
           />
         </div>
+      )}
+
+      {choice && choice !== 'unknown' && blueprint?.forcedAction && (
+        <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/[0.06] bg-white/[0.015] px-4 py-3 transition-colors hover:border-purple-400/20">
+          <input
+            type="checkbox"
+            checked={followedForcedAction}
+            onChange={(e) => setFollowedForcedAction(e.target.checked)}
+            className="mt-0.5 h-4 w-4 rounded border-white/20 bg-transparent accent-purple-500"
+          />
+          <span>
+            <span className="block text-[9px] font-black uppercase tracking-widest text-slate-300">
+              Followed forced action
+            </span>
+            <span className="mt-1 line-clamp-2 block text-[10px] leading-snug text-slate-500">
+              {blueprint.forcedAction}
+            </span>
+          </span>
+        </label>
       )}
 
       {/* Unknown hint */}

@@ -3,7 +3,8 @@ import { saveDecision, getDecisionHistory } from '@/lib/memory';
 import { getMemoryIntelligenceFromHistory } from '@/lib/memory-graph';
 import { computeNetworkIntelligence, calibrateScore, buildCalibrationContext, computeDecisionAccuracy, computeCalibrationScore } from '@/lib/benchmarks';
 import { isPlanModeRequest, isReviewModeRequest, semanticVerdictForQuestion, shouldRejectDecisionOutput, detectVerdictLoop, buildForceDiversityInstruction, semanticVerdictExcluding, extractVerdictClass, buildIntentInstruction, enforceIntentRouting, detectSolveRequestIntent, extractLiteralOutput } from '@/lib/semantic-guards';
-import type { CouncilMetrics, CounterfactualPath, DecisionBlueprint, DecisionContext, ExecutionPlanWeek, MilestoneMetric, MilestoneStatus, PreMortemRisk, ScenarioBranch, SecondOrderEffect, SolveRequest, SolveResponse, WarRoomDebate } from '@/lib/types';
+import { buildProfileDirective, applyProfileAdjustments, scoreMessageFor } from '@/lib/profileEngine';
+import type { CouncilMetrics, CounterfactualPath, DecisionBlueprint, DecisionContext, ExecutionPlanWeek, MilestoneMetric, MilestoneStatus, PreMortemRisk, ScenarioBranch, SecondOrderEffect, SolveRequest, SolveResponse, UserProfileData, WarRoomDebate } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -541,6 +542,28 @@ export async function POST(req: Request) {
       );
     }
 
+    // Accept structured profile data (preferred) or fall back to legacy text string
+    const userProfileData: UserProfileData | null = (() => {
+      const raw = body.userProfileData;
+      if (!isRecord(raw)) return null;
+      const d = raw as Record<string, unknown>;
+      if (typeof d.totalDecisions !== 'number' || d.totalDecisions === 0) return null;
+      return {
+        riskTolerance: typeof d.riskTolerance === 'number' ? Math.min(1, Math.max(0, d.riskTolerance)) : 0.5,
+        executionScore: typeof d.executionScore === 'number' ? Math.min(1, Math.max(0, d.executionScore)) : 0.5,
+        biasPatterns: Array.isArray(d.biasPatterns) ? (d.biasPatterns as string[]).filter((s) => typeof s === 'string') : [],
+        totalDecisions: d.totalDecisions,
+        userDecisionScore: typeof d.userDecisionScore === 'number' ? Math.min(100, Math.max(0, Math.round(d.userDecisionScore))) : 50,
+        decisionScoreTrend: d.decisionScoreTrend === 'down' ? 'down' : 'up',
+      };
+    })();
+
+    const userProfileCtx = userProfileData
+      ? `User decision profile (${userProfileData.totalDecisions} tracked): riskTolerance ${Math.round(userProfileData.riskTolerance * 100)}%, executionScore ${Math.round(userProfileData.executionScore * 100)}%, userDecisionScore ${userProfileData.userDecisionScore ?? 50}/100 (${scoreMessageFor(userProfileData.userDecisionScore ?? 50)}).${userProfileData.biasPatterns.length > 0 ? ` Bias patterns: ${userProfileData.biasPatterns.join(', ')}.` : ''}`
+      : (typeof body.userProfile === 'string' && body.userProfile.trim() ? body.userProfile.trim() : '');
+
+    const profileDirective = userProfileData ? buildProfileDirective(userProfileData) : '';
+
     const requestIntent = detectSolveRequestIntent(problem);
     console.info('Solve request intent detected:', {
       intent: requestIntent,
@@ -604,7 +627,7 @@ export async function POST(req: Request) {
       // Continue analysis without memory enrichment.
     }
 
-    const fullContext = [memoryContext, calibrationNote].filter(Boolean).join('\n\n');
+    const fullContext = [memoryContext, calibrationNote, userProfileCtx, profileDirective].filter(Boolean).join('\n\n');
     const { solveDecision } = await import('@/lib/engine');
     const rawBlueprint = await solveDecision(problem, language, fullContext, conversationContext, effectiveMode);
     const blueprint = normalizeBlueprint(rawBlueprint, problem, language, effectiveMode);
@@ -683,12 +706,24 @@ export async function POST(req: Request) {
       evidence: calibration.evidence || [],
     };
 
-    const saved = await saveDecision({ problem, blueprint, context });
+    // Apply profile-driven adjustments deterministically after all other scoring.
+    // This guarantees verdict, confidence, and next move reflect the user's tracked history
+    // regardless of whether the model followed the prompt directive.
+    const finalBlueprint = userProfileData
+      ? applyProfileAdjustments(blueprint, userProfileData)
+      : blueprint;
+    if (!userProfileData) {
+      finalBlueprint.decisionScore = 50;
+      finalBlueprint.decisionScoreTrend = 'up';
+      finalBlueprint.scoreMessage = scoreMessageFor(50);
+    }
+
+    const saved = await saveDecision({ problem, blueprint: finalBlueprint, context });
     const decisionAccuracy = computeDecisionAccuracy(history);
     const calibrationScore = computeCalibrationScore(history);
 
     const response: SolveResponse = {
-      result: blueprint,
+      result: finalBlueprint,
       decisionId: saved.id,
       memoryScore,
       networkScore,

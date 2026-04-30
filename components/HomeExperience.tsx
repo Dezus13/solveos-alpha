@@ -2,16 +2,28 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { ChevronDown, Loader2, MessageSquare, Plus, Settings } from 'lucide-react';
+import Link from 'next/link';
+import { BookOpen, ChevronDown, Loader2, MessageSquare, Plus, Settings } from 'lucide-react';
 import DecisionConsole from '@/components/DecisionConsole';
 import SolveOSSymbol from '@/components/SolveOSSymbol';
-import { detectInputLanguage, uiCopy, type SupportedLanguage, type UiCopy } from '@/lib/i18n';
+import { detectInputLanguage, uiCopy, type SupportedLanguage } from '@/lib/i18n';
 import { defaultSettings, SETTINGS_STORAGE_KEY, type ProductSettings } from '@/lib/settings';
 import type { IntelligenceSnapshot } from '@/components/IntelligenceRail';
 import DecisionJournal from '@/components/DecisionJournal';
 import type { ConversationTurn, DecisionBlueprint, SolveRequest } from '@/lib/types';
+import { getSavedDecisions, saveDecision } from '@/lib/savedDecisions';
+import { getProfile } from '@/lib/userProfile';
+import { generatePatternInsight } from '@/lib/patternInsight';
+import { readActionReminders } from '@/lib/actionReminders';
+import { generateIdentityLabel } from '@/lib/identityEngine';
+import { costOfInaction } from '@/lib/inactionPain';
 
 import en from '@/locales/en/common.json';
+import ar from '@/locales/ar/common.json';
+import de from '@/locales/de/common.json';
+import es from '@/locales/es/common.json';
+import ru from '@/locales/ru/common.json';
+import zh from '@/locales/zh/common.json';
 
 type LocaleDictionary = Record<string, Record<string, string>>;
 
@@ -19,6 +31,11 @@ const initialLocales: LocaleDictionary = {
   auto: en,
   en,
   English: en,
+  Arabic: ar,
+  German: de,
+  Spanish: es,
+  Russian: ru,
+  Chinese: zh,
 };
 
 const localeLoaders: Record<string, () => Promise<Record<string, string>>> = {
@@ -117,42 +134,116 @@ function mergeSettings(value: unknown): ProductSettings {
   };
 }
 
-function buildAssistantAnswer(blueprint: DecisionBlueprint, copy: UiCopy): string {
-  const verdict = blueprint.recommendation || 'Decision analysis completed.';
-  const reasoningTree = [
-    blueprint.diagnosis?.coreProblem ? `1. Core decision: ${blueprint.diagnosis.coreProblem}` : '',
-    blueprint.strategistView?.biggestUpside ? `2. Upside case: ${blueprint.strategistView.biggestUpside}` : '',
-    blueprint.strategistView?.leverageMove ? `3. Leverage point: ${blueprint.strategistView.leverageMove}` : '',
-    blueprint.economistView ? `4. Opportunity cost: ${blueprint.economistView}` : '',
-    blueprint.contrarianInsight?.uncomfortableTruth ? `5. Hard truth: ${blueprint.contrarianInsight.uncomfortableTruth}` : '',
-  ].filter(Boolean).join('\n');
-  const riskTree = [
-    blueprint.diagnosis?.keyRisks ? `- Primary risk: ${blueprint.diagnosis.keyRisks}` : '',
-    blueprint.skepticView?.hiddenFlaw ? `- Hidden flaw: ${blueprint.skepticView.hiddenFlaw}` : '',
-    blueprint.skepticView?.whatCouldBreak ? `- First break point: ${blueprint.skepticView.whatCouldBreak}` : '',
-    blueprint.preMortemRisks?.[0]?.earlyWarningSignal ? `- Early warning signal: ${blueprint.preMortemRisks[0].earlyWarningSignal}` : '',
-  ].filter(Boolean).join('\n');
-  const nextMove = blueprint.actionPlan?.today || blueprint.operatorNextSteps?.[0] || blueprint.actionPlan?.thisWeek;
-  const nextMoveDetail = [
-    nextMove ? `Do this first: ${nextMove}` : '',
-    blueprint.actionPlan?.thisWeek ? `This week: ${blueprint.actionPlan.thisWeek}` : '',
-    blueprint.executionPlan?.[0]?.metric ? `Measure: ${blueprint.executionPlan[0].metric}` : '',
-    blueprint.executionPlan?.[0]?.goNoGoThreshold ? `Decision threshold: ${blueprint.executionPlan[0].goNoGoThreshold}` : '',
-  ].filter(Boolean).join('\n');
-  const redTeam = blueprint.redTeamCritique || blueprint.contrarianInsight?.perspective;
-  const expansion = [
-    blueprint.counterfactualPaths?.[0]?.keyFailureMode ? `Ask next for a deeper expansion on the failure mode: ${blueprint.counterfactualPaths[0].keyFailureMode}` : '',
-    blueprint.executionPlan?.length ? 'Or ask for a full 30-day execution plan with owners, metrics, and kill criteria.' : '',
-  ].filter(Boolean).join('\n');
+const conciseLabels: Record<string, { verdict: string; why: string; next: string; score: string; identity: string; pattern: string; follow: string; ignore: string }> = {
+  English: { verdict: 'Verdict', why: 'Why', next: 'Do this next', score: 'Score', identity: 'Identity', pattern: 'Pattern', follow: 'You follow through', ignore: 'You ignore your own rules' },
+  Russian: { verdict: 'Вердикт', why: 'Почему', next: 'Сделай дальше', score: 'Оценка', identity: 'Идентичность', pattern: 'Паттерн', follow: 'Ты доводишь до конца', ignore: 'Ты игнорируешь свои правила' },
+  German: { verdict: 'Urteil', why: 'Warum', next: 'Als Nächstes tun', score: 'Score', identity: 'Identität', pattern: 'Muster', follow: 'Du setzt konsequent um', ignore: 'Du ignorierst deine eigenen Regeln' },
+  Spanish: { verdict: 'Veredicto', why: 'Por qué', next: 'Haz esto ahora', score: 'Puntuación', identity: 'Identidad', pattern: 'Patrón', follow: 'Cumples lo que decides', ignore: 'Ignoras tus propias reglas' },
+  Arabic: { verdict: 'الحكم', why: 'السبب', next: 'افعل هذا الآن', score: 'النتيجة', identity: 'الهوية', pattern: 'النمط', follow: 'أنت تلتزم بالتنفيذ', ignore: 'أنت تتجاهل قواعدك' },
+  Chinese: { verdict: '结论', why: '原因', next: '下一步', score: '分数', identity: '身份', pattern: '模式', follow: '你会执行到底', ignore: '你忽视自己的规则' },
+};
+
+const identityTranslations: Record<string, Record<string, string>> = {
+  Russian: {
+    'You have not proven follow-through yet': 'Ты еще не доказал, что выполняешь решения',
+    'You ignore your own decisions': 'Ты игнорируешь свои решения',
+    'You hesitate': 'Ты колеблешься',
+    'You execute': 'Ты выполняешь',
+    'You are becoming consistent': 'Ты становишься последовательным',
+    'You act on decisions': 'Ты действуешь по решениям',
+    'You hesitate under pressure': 'Ты колеблешься под давлением',
+  },
+  German: {
+    'You have not proven follow-through yet': 'Du hast Konsequenz noch nicht bewiesen',
+    'You ignore your own decisions': 'Du ignorierst deine eigenen Entscheidungen',
+    'You hesitate': 'Du zögerst',
+    'You execute': 'Du setzt um',
+    'You are becoming consistent': 'Du wirst konsequent',
+    'You act on decisions': 'Du handelst nach Entscheidungen',
+    'You hesitate under pressure': 'Du zögerst unter Druck',
+  },
+  Spanish: {
+    'You have not proven follow-through yet': 'Aún no demuestras seguimiento',
+    'You ignore your own decisions': 'Ignoras tus propias decisiones',
+    'You hesitate': 'Dudas',
+    'You execute': 'Ejecutas',
+    'You are becoming consistent': 'Te estás volviendo consistente',
+    'You act on decisions': 'Actúas sobre tus decisiones',
+    'You hesitate under pressure': 'Dudas bajo presión',
+  },
+  Arabic: {
+    'You have not proven follow-through yet': 'لم تثبت الالتزام بعد',
+    'You ignore your own decisions': 'أنت تتجاهل قراراتك',
+    'You hesitate': 'أنت تتردد',
+    'You execute': 'أنت تنفذ',
+    'You are becoming consistent': 'أنت تصبح أكثر ثباتًا',
+    'You act on decisions': 'أنت تتصرف بناءً على قراراتك',
+    'You hesitate under pressure': 'أنت تتردد تحت الضغط',
+  },
+  Chinese: {
+    'You have not proven follow-through yet': '你还没有证明自己会执行',
+    'You ignore your own decisions': '你在忽视自己的决定',
+    'You hesitate': '你在犹豫',
+    'You execute': '你会执行',
+    'You are becoming consistent': '你正在变得稳定',
+    'You act on decisions': '你会按决定行动',
+    'You hesitate under pressure': '你在压力下犹豫',
+  },
+};
+
+function localizedIdentity(label: string, language: string): string {
+  return identityTranslations[language]?.[label] || label;
+}
+
+function oneLine(value: string | undefined, max = 150): string {
+  const text = (value || '').replace(/\s+/g, ' ').trim();
+  if (!text) return '';
+  const sentence = text.split(/(?<=[.!?。！？])\s+/)[0] || text;
+  return sentence.length > max ? `${sentence.slice(0, max - 3).trim()}...` : sentence;
+}
+
+function actionText(blueprint: DecisionBlueprint, language: string): string {
+  const forced = language === 'English'
+    ? blueprint.forcedAction?.replace(/^Do this next:\s*/i, '').replace(/\s+/g, ' ').trim()
+    : '';
+  return oneLine(forced || blueprint.actionPlan?.today || blueprint.operatorNextSteps?.[0] || blueprint.actionPlan?.thisWeek, 120);
+}
+
+function patternLine(blueprint: DecisionBlueprint, language: string): string {
+  if (!blueprint.patternInsight) return '';
+  if (language !== 'English') return oneLine(blueprint.profileAdjustment || blueprint.diagnosis?.blindSpots, 110);
+  const match = blueprint.patternInsight.match(/Pattern:\s*([^\n]+)/i);
+  return oneLine(match?.[1] || blueprint.patternInsight, 110);
+}
+
+function buildAssistantAnswer(blueprint: DecisionBlueprint): string {
+  const language = blueprint.language || 'English';
+  const labels = conciseLabels[language] || conciseLabels.English;
+  const verdict = oneLine(blueprint.recommendation || 'Decision analysis completed.', 150);
+  const why = [
+    oneLine(blueprint.diagnosis?.coreProblem, 110),
+    oneLine(blueprint.diagnosis?.keyRisks || blueprint.skepticView?.whatCouldBreak, 110),
+  ].filter(Boolean).slice(0, 2);
+  const score = typeof blueprint.decisionScore === 'number'
+    ? `${labels.score}: ${blueprint.decisionScore}/100 ${blueprint.decisionScoreTrend === 'down' ? '↓' : '↑'} - ${
+        blueprint.decisionScore >= 50 ? labels.follow : labels.ignore
+      }`
+    : '';
+  const identityLabel = localizedIdentity(generateIdentityLabel(readActionReminders()), language);
+  const identity = `${labels.identity}: ${identityLabel}`;
+  const pattern = patternLine(blueprint, language);
+  const next = actionText(blueprint, language);
+  const cost = language === 'English' ? `If you do nothing: ${costOfInaction(undefined, blueprint)}` : '';
 
   return [
-    `${copy.verdict}\n${verdict}`,
-    reasoningTree ? `${copy.reasoningHeading}\n${reasoningTree}` : '',
-    riskTree ? `${copy.risks}\n${riskTree}` : '',
-    redTeam ? `${copy.redTeamChallenge}\n${redTeam}` : '',
-    nextMoveDetail ? `${copy.nextMove}\n${nextMoveDetail}` : '',
-    expansion ? `Deeper expansion\n${expansion}` : '',
-  ].filter(Boolean).join('\n\n');
+    score,
+    identity,
+    pattern ? `${labels.pattern}: ${pattern}` : '',
+    `${labels.verdict}: ${verdict}`,
+    cost,
+    why.length ? `${labels.why}: ${why.join(' ')}` : '',
+    `${labels.next}: ${next || verdict}`,
+  ].filter(Boolean).join('\n');
 }
 
 function buildIntelligenceSnapshot(
@@ -251,8 +342,7 @@ export default function HomeExperience() {
   }, [thread]);
 
   const interfaceLanguage = settings.language.uiLanguage;
-  const currentLang = latestBlueprint?.language || interfaceLanguage;
-  const t = locales[currentLang as string] || locales.English;
+  const t = locales[interfaceLanguage as string] || locales.English;
   const copy = uiCopy[interfaceLanguage] || uiCopy.English;
 
   const ensureLocale = useCallback(
@@ -288,6 +378,35 @@ export default function HomeExperience() {
     setAdvancedOpen(false);
   }, []);
 
+  const handleSaveDecision = useCallback((turnId: string) => {
+    const currentThread = threadRef.current;
+    const turnIndex = currentThread.findIndex((t) => t.id === turnId);
+    if (turnIndex === -1) return;
+    const turn = currentThread[turnIndex];
+    if (!turn.blueprint) return;
+    // find the preceding user message
+    let question = '';
+    for (let i = turnIndex - 1; i >= 0; i--) {
+      if (currentThread[i].role === 'user') { question = currentThread[i].content; break; }
+    }
+    const risks = [
+      turn.blueprint.diagnosis?.keyRisks,
+      turn.blueprint.skepticView?.hiddenFlaw,
+      turn.blueprint.skepticView?.whatCouldBreak,
+    ].filter((r): r is string => typeof r === 'string' && r.length > 0);
+
+    saveDecision({
+      id: turnId,
+      question: question || 'Untitled decision',
+      verdict: turn.blueprint.recommendation || '',
+      confidence: turn.blueprint.confidenceScore ?? turn.blueprint.score,
+      keyRisks: risks,
+      timestamp: new Date(turn.timestamp).toISOString(),
+      status: 'pending',
+      forcedAction: turn.blueprint.forcedAction,
+    });
+  }, [threadRef]);
+
   const handleSubmit = useCallback(
     async (message: string, mode = 'Strategy') => {
       // Preload heavy chunks
@@ -312,12 +431,8 @@ export default function HomeExperience() {
       const submitGen = fetchGenRef.current;
 
       try {
-        const detected = detectInputLanguage(message);
-        const requestLanguage = settings.language.decisionMode === 'detected'
-          ? detected
-          : settings.language.decisionMode === 'ui'
-            ? settings.language.uiLanguage
-            : settings.language.customDecisionLanguage;
+        const requestLanguage = detectInputLanguage(message, settings.language.uiLanguage);
+        const currentProfile = getProfile();
         const body: SolveRequest = {
           problem: message,
           language: requestLanguage,
@@ -326,6 +441,16 @@ export default function HomeExperience() {
             role: t.role,
             content: t.role === 'assistant' ? (t.blueprint?.recommendation || t.content) : t.content,
           })),
+          ...(currentProfile.totalDecisions > 0 ? {
+            userProfileData: {
+              riskTolerance: currentProfile.riskTolerance,
+              executionScore: currentProfile.executionScore,
+              biasPatterns: currentProfile.biasPatterns,
+              totalDecisions: currentProfile.totalDecisions,
+              userDecisionScore: currentProfile.userDecisionScore,
+              decisionScoreTrend: currentProfile.decisionScoreTrend,
+            },
+          } : {}),
         };
 
         const response = await fetch('/api/solve', {
@@ -354,6 +479,15 @@ export default function HomeExperience() {
         const blueprint = data?.result as DecisionBlueprint | undefined;
         if (!blueprint) throw new Error(data?.error || 'Decision engine returned no result.');
         blueprint.language = blueprint.language || 'English';
+        const insightResult = generatePatternInsight(getSavedDecisions(), blueprint.score);
+        if (insightResult) {
+          blueprint.patternInsight = insightResult.patternInsight;
+          blueprint.forcedAction = insightResult.forcedAction;
+        }
+        const latestProfile = getProfile();
+        blueprint.decisionScore = latestProfile.userDecisionScore;
+        blueprint.decisionScoreTrend = latestProfile.decisionScoreTrend;
+        blueprint.scoreMessage = latestProfile.userDecisionScore >= 50 ? 'You follow through' : 'You ignore your own rules';
         if (typeof data.decisionId === 'string') setLatestDecisionId(data.decisionId);
         if (blueprint.language) void ensureLocale(blueprint.language);
         setAdvancedOpen(settings.general.advancedByDefault);
@@ -361,7 +495,7 @@ export default function HomeExperience() {
         const assistantTurn: ConversationTurn = {
           id: crypto.randomUUID(),
           role: 'assistant',
-          content: buildAssistantAnswer(blueprint, uiCopy[requestLanguage] || copy),
+          content: buildAssistantAnswer(blueprint),
           blueprint,
           timestamp: Date.now(),
         };
@@ -400,19 +534,15 @@ export default function HomeExperience() {
         setLoading(false);
       }
     },
-    [copy, ensureLocale, settings.general.advancedByDefault, settings.language.customDecisionLanguage, settings.language.decisionMode, settings.language.uiLanguage],
+    [ensureLocale, settings.general.advancedByDefault, settings.language.uiLanguage],
   );
 
   const fetchModeBlueprint = useCallback(async (problem: string, fetchMode: string) => {
     const gen = fetchGenRef.current;
     setModesLoading(prev => ({ ...prev, [fetchMode]: true }));
     try {
-      const detected = detectInputLanguage(problem);
-      const requestLanguage = settings.language.decisionMode === 'detected'
-        ? detected
-        : settings.language.decisionMode === 'ui'
-          ? settings.language.uiLanguage
-          : settings.language.customDecisionLanguage;
+      const requestLanguage = detectInputLanguage(problem, settings.language.uiLanguage);
+      const currentProfile = getProfile();
       const body: SolveRequest = {
         problem,
         language: requestLanguage,
@@ -421,6 +551,16 @@ export default function HomeExperience() {
           role: t.role,
           content: t.role === 'assistant' ? (t.blueprint?.recommendation || t.content) : t.content,
         })),
+        ...(currentProfile.totalDecisions > 0 ? {
+          userProfileData: {
+            riskTolerance: currentProfile.riskTolerance,
+            executionScore: currentProfile.executionScore,
+            biasPatterns: currentProfile.biasPatterns,
+            totalDecisions: currentProfile.totalDecisions,
+            userDecisionScore: currentProfile.userDecisionScore,
+            decisionScoreTrend: currentProfile.decisionScoreTrend,
+          },
+        } : {}),
       };
       const response = await fetch('/api/solve', {
         method: 'POST',
@@ -433,6 +573,15 @@ export default function HomeExperience() {
       if (data.result && fetchGenRef.current === gen) {
         const bp = data.result as DecisionBlueprint;
         bp.language = bp.language || 'English';
+        const bpInsightResult = generatePatternInsight(getSavedDecisions(), bp.score);
+        if (bpInsightResult) {
+          bp.patternInsight = bpInsightResult.patternInsight;
+          bp.forcedAction = bpInsightResult.forcedAction;
+        }
+        const latestProfile = getProfile();
+        bp.decisionScore = latestProfile.userDecisionScore;
+        bp.decisionScoreTrend = latestProfile.decisionScoreTrend;
+        bp.scoreMessage = latestProfile.userDecisionScore >= 50 ? 'You follow through' : 'You ignore your own rules';
         setModeBlueprints(prev => ({ ...prev, [fetchMode]: bp }));
       }
     } catch {
@@ -440,7 +589,7 @@ export default function HomeExperience() {
     } finally {
       setModesLoading(prev => ({ ...prev, [fetchMode]: false }));
     }
-  }, [settings.language.decisionMode, settings.language.uiLanguage, settings.language.customDecisionLanguage, threadRef]);
+  }, [settings.language.uiLanguage, threadRef]);
 
   const handleModeChange = useCallback((mode: string) => {
     setActiveMode(mode);
@@ -472,7 +621,7 @@ export default function HomeExperience() {
   }, [thread]);
 
   return (
-    <div className="relative z-10 flex h-screen w-full overflow-hidden">
+    <div className="solveos-app-shell relative z-10 flex h-screen w-full overflow-hidden">
       <aside className={`hidden flex-shrink-0 flex-col border-r border-white/10 bg-[#080D1A]/88 p-4 backdrop-blur-xl md:flex ${settings.appearance.density === 'compact' ? 'w-64' : 'w-72'}`}>
         <div className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -516,7 +665,16 @@ export default function HomeExperience() {
           </>
         )}
 
-        <div className="mb-2 px-2 text-[10px] font-black uppercase tracking-widest text-slate-600">Decision Journal</div>
+        <div className="mb-2 flex items-center justify-between px-2">
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-600">Decision Journal</span>
+          <Link
+            href="/journal"
+            className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold text-slate-500 transition-colors hover:bg-white/[0.05] hover:text-purple-300"
+          >
+            <BookOpen className="h-3 w-3" />
+            View all
+          </Link>
+        </div>
         <DecisionJournal
           refreshTrigger={latestDecisionId}
           currentDecisionId={latestDecisionId}
@@ -551,6 +709,7 @@ export default function HomeExperience() {
           onModeChange={handleModeChange}
           modesLoading={modesLoading}
           loadedModes={loadedModes}
+          onSaveDecision={handleSaveDecision}
         />
 
         {latestBlueprint && (() => {

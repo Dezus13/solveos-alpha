@@ -1,11 +1,14 @@
 "use client";
 
-import { memo, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { Crown, Gauge, Sparkles, Activity } from 'lucide-react';
 import type { DecisionBlueprint } from '@/lib/types';
 import type { IntelligenceSnapshot } from '@/components/IntelligenceRail';
 import OutcomeLogger from '@/components/OutcomeLogger';
+import { ACTION_REMINDER_EVENT, readActionReminders } from '@/lib/actionReminders';
+import { generateIdentityLabel } from '@/lib/identityEngine';
+import { costOfInaction } from '@/lib/inactionPain';
 
 const ResultSkeleton = ({ label }: { label: string }) => (
   <div className="w-full max-w-5xl mt-8 rounded-3xl border border-white/10 bg-[#0B1020]/60 p-8">
@@ -54,6 +57,13 @@ interface SimulationResultsProps {
 
 type TabId = 'blueprint' | 'warroom' | 'debate' | 'action' | 'memory' | 'enterprise';
 
+function compactLine(value: string | undefined, max = 140): string {
+  const text = (value || '').replace(/\s+/g, ' ').trim();
+  if (!text) return '';
+  const sentence = text.split(/(?<=[.!?。！？])\s+/)[0] || text;
+  return sentence.length > max ? `${sentence.slice(0, max - 3).trim()}...` : sentence;
+}
+
 function SimulationResults({
   result,
   intelligence,
@@ -71,6 +81,16 @@ function SimulationResults({
 }: SimulationResultsProps) {
   const [activeTab, setActiveTab] = useState<TabId>('blueprint');
   const [showBoard, setShowBoard] = useState(initialShowBoard);
+  const [identity, setIdentity] = useState(() => generateIdentityLabel(readActionReminders()));
+
+  const refreshIdentity = useCallback(() => {
+    setIdentity(generateIdentityLabel(readActionReminders()));
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener(ACTION_REMINDER_EVENT, refreshIdentity);
+    return () => window.removeEventListener(ACTION_REMINDER_EVENT, refreshIdentity);
+  }, [refreshIdentity]);
 
   const verdictMetrics = useMemo(() => [
     { label: 'Success', value: intelligence.successProbability, tone: 'text-emerald-400' },
@@ -293,12 +313,43 @@ function SimulationResults({
     { id: 'memory', label: memoryScore && memoryScore > 0 ? `Memory · ${memoryScore}` : 'Memory' },
     { id: 'enterprise', label: networkScore && networkScore > 0 ? `Enterprise · ${networkScore}` : 'Enterprise' },
   ];
+  const compactVerdict = compactLine(result.recommendation || intelligence.verdict, 150);
+  const compactWhy = [
+    compactLine(result.diagnosis?.coreProblem, 105),
+    compactLine(result.diagnosis?.keyRisks || result.skepticView?.whatCouldBreak, 105),
+  ].filter(Boolean).slice(0, 2);
+  const compactNext = compactLine(result.actionPlan?.today || result.operatorNextSteps?.[0] || result.actionPlan?.thisWeek, 115);
+  const compactCost = result.language === 'English' ? costOfInaction(submittedProblem, result) : '';
+  const compactPattern = result.language === 'English' && result.patternInsight
+    ? compactLine(result.patternInsight.match(/Pattern:\s*([^\n]+)/i)?.[1] || result.patternInsight, 90)
+    : '';
 
   return (
     <>
       <div className="mt-8 w-full rounded-3xl border border-white/10 bg-[#0B1020]/80 p-6 shadow-[0_28px_90px_rgba(0,0,0,0.35),0_0_46px_rgba(168,85,247,0.08)] backdrop-blur-xl">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-2xl">
+            {typeof result.decisionScore === 'number' && (
+              <div className="mb-4 rounded-2xl border border-blue-500/15 bg-blue-500/[0.025] p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <div className="text-[10px] font-black uppercase tracking-widest text-blue-300">Your Decision Score</div>
+                    <div className="mt-1 text-2xl font-black text-[#F8FAFF]">
+                      {result.decisionScore}<span className="text-sm text-slate-600 ml-0.5">/100</span>
+                    </div>
+                    <div className="mt-1 text-xs font-black text-white">Identity: {identity}</div>
+                  </div>
+                  <div className="text-left sm:text-right">
+                    <div className={`text-xl font-black ${result.decisionScoreTrend === 'down' ? 'text-rose-300' : 'text-emerald-300'}`}>
+                      {result.decisionScoreTrend === 'down' ? '↓' : '↑'}
+                    </div>
+                    <div className="text-xs font-semibold text-slate-300">
+                      {result.scoreMessage || (result.decisionScore >= 50 ? 'You follow through' : 'You ignore your own rules')}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="mb-3 flex items-center space-x-2">
               <Gauge className="h-4 w-4 text-purple-400" />
               <span className="text-[10px] font-black uppercase text-slate-400">Decision Verdict</span>
@@ -316,8 +367,26 @@ function SimulationResults({
                 </span>
               )}
             </div>
-            <h2 className="text-2xl font-black text-[#F8FAFF]">{intelligence.recommendedPath}</h2>
-            <p className="mt-3 text-sm leading-relaxed text-slate-300">{intelligence.verdict}</p>
+            {compactPattern && (
+              <div className="mb-3 text-xs font-semibold text-slate-400">
+                Pattern: {compactPattern}
+              </div>
+            )}
+            <h2 className="text-2xl font-black text-[#F8FAFF]">{compactVerdict}</h2>
+            {compactCost && (
+              <div className="mt-3 rounded-xl border border-rose-500/15 bg-rose-500/[0.045] px-3 py-2 text-xs font-black text-rose-200">
+                If you do nothing: {compactCost}
+              </div>
+            )}
+            {compactWhy.length > 0 && (
+              <p className="mt-3 text-sm leading-relaxed text-slate-300">
+                Why: {compactWhy.join(' ')}
+              </p>
+            )}
+            <div className="mt-4 rounded-2xl border border-purple-500/20 bg-purple-500/[0.06] px-4 py-3">
+              <div className="text-[10px] font-black uppercase tracking-widest text-purple-300">Do this next</div>
+              <p className="mt-1 text-sm font-semibold text-white">{compactNext || compactVerdict}</p>
+            </div>
             <div className="mt-5 rounded-2xl border border-emerald-500/15 bg-emerald-500/[0.025] p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>

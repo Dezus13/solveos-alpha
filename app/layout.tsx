@@ -1,4 +1,5 @@
 import './globals.css';
+import PersistentActionBanner from '@/components/PersistentActionBanner';
 
 export const metadata = {
   title: 'SolveOS',
@@ -18,6 +19,7 @@ export default function RootLayout({
  return (
    <html lang="en">
       <body>
+         <PersistentActionBanner />
          {children}
       </body>
    </html>
