@@ -4,6 +4,27 @@ This file tracks what we change, why we change it, and what we do next.
 
 ---
 
+## 2026-05-03 — Hydration fix and hidden sidebar score
+
+### Changed
+
+- `components/PersistentActionBanner.tsx`: Added a mounted gate so the banner renders `null` until client mount.
+- `components/PersistentActionBanner.tsx`: Moved `localStorage`, `Date.now()`, `window`, and active reminder reads behind `mounted === true`.
+- `components/HomeExperience.tsx`: Removed the large Decision Score card from the sidebar UI.
+- `components/HomeExperience.tsx`: Kept Decision Score logic, localStorage, and score-derived blueprint labels intact.
+- Specs updated to document client-only banner rendering and hidden internal score state.
+
+### Why
+
+- The banner was reading client-only state during initial render, causing a Next.js hydration mismatch.
+- The sidebar score card was visually noisy; the score should remain internal for now while Action History stays visible.
+
+### Next
+
+- Commit: `fix: resolve hydration error and hide sidebar score card`
+
+---
+
 ## 2026-05-03 — Action history and accountability
 
 ### Changed

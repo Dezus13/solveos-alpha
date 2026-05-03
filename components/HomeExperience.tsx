@@ -13,7 +13,7 @@ import DecisionJournal from '@/components/DecisionJournal';
 import ActionHistory from '@/components/ActionHistory';
 import type { ConversationTurn, DecisionBlueprint, SolveRequest } from '@/lib/types';
 import { getSavedDecisions, saveDecision } from '@/lib/savedDecisions';
-import { getProfile, getIdentityLabel, PROFILE_UPDATED_EVENT } from '@/lib/userProfile';
+import { getProfile, getIdentityLabel } from '@/lib/userProfile';
 import { generatePatternInsight } from '@/lib/patternInsight';
 import { ensureActionReminder } from '@/lib/actionReminders';
 
@@ -246,10 +246,6 @@ export default function HomeExperience() {
   const [activeMode, setActiveMode] = useState('Strategy');
   const [modeBlueprints, setModeBlueprints] = useState<Record<string, DecisionBlueprint>>({});
   const [modesLoading, setModesLoading] = useState<Record<string, boolean>>({});
-  const [userScore, setUserScore] = useState(() => {
-    if (typeof window === 'undefined') return 50;
-    return getProfile().userDecisionScore;
-  });
   const fetchGenRef = useRef(0);
 
   // Keep a stable ref to thread so handleSubmit always sees the latest value
@@ -262,12 +258,6 @@ export default function HomeExperience() {
     document.documentElement.dataset.accent = settings.appearance.accent;
     document.documentElement.dataset.density = settings.appearance.density;
   }, [settings]);
-
-  useEffect(() => {
-    const refresh = () => setUserScore(getProfile().userDecisionScore);
-    window.addEventListener(PROFILE_UPDATED_EVENT, refresh);
-    return () => window.removeEventListener(PROFILE_UPDATED_EVENT, refresh);
-  }, []);
 
   const latestBlueprint = useMemo(() => {
     for (let i = thread.length - 1; i >= 0; i--) {
@@ -616,22 +606,6 @@ export default function HomeExperience() {
         </button>
 
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto pb-2">
-          {/* Score */}
-          <div className="mb-4 rounded-xl border border-white/10 bg-white/[0.025] px-3 py-3">
-            <div className="mb-1 text-[10px] font-black uppercase tracking-widest text-slate-600">Decision Score</div>
-            <div className="flex items-baseline gap-1">
-              <span className={`text-xl font-black ${userScore >= 90 ? 'text-purple-300' : userScore >= 70 ? 'text-emerald-300' : userScore >= 40 ? 'text-amber-300' : 'text-rose-300'}`}>{userScore}</span>
-              <span className="text-xs text-slate-600">/100</span>
-            </div>
-            <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-white/[0.08]">
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${userScore >= 90 ? 'bg-purple-400' : userScore >= 70 ? 'bg-emerald-400' : userScore >= 40 ? 'bg-amber-400' : 'bg-rose-400'}`}
-                style={{ width: `${userScore}%` }}
-              />
-            </div>
-            <div className="mt-1.5 text-[11px] font-semibold text-slate-400">{getIdentityLabel(userScore)}</div>
-          </div>
-
           {/* Action History */}
           <div className="mb-4">
             <div className="mb-2 px-1 text-[10px] font-black uppercase tracking-widest text-slate-600">Action History</div>

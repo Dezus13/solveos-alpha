@@ -75,6 +75,12 @@ History is computed from `solveos_action_pressure_v1` at read time:
 - last_action_time: `createdAt` of the active ActionReminder.
 - reset_time: `createdAt` after `restartWithSmallerAction` is called.
 
+### User Profile (`solveos_user_profile`)
+
+- userDecisionScore: internal behavior score (0–100).
+- decisionScoreTrend: internal direction of last score change.
+- The score remains stored and used by Decision context, but the large sidebar Decision Score card is hidden from the UI for now.
+
 ## 6. Edge cases
 
 - File storage unavailable: use remote storage if configured.

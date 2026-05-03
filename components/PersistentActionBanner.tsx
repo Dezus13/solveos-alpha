@@ -45,23 +45,32 @@ function completionEmotion(streak: number): string {
 }
 
 export default function PersistentActionBanner() {
-  const [active, setActive] = useState<[string, ActionReminderRecord] | null>(() => readActive());
-  const [now, setNow] = useState(() => Date.now());
+  const [mounted, setMounted] = useState(false);
+  const [active, setActive] = useState<[string, ActionReminderRecord] | null>(null);
+  const [now, setNow] = useState(0);
   const [completionMessage, setCompletionMessage] = useState<string | null>(null);
   // Keyed by reminder ID so it resets automatically when the active reminder changes
   const [categoryById, setCategoryById] = useState<{ id: string; category: BlockerCategory } | null>(null);
   const selectedCategory = categoryById !== null && categoryById.id === active?.[0] ? categoryById.category : null;
 
+  useEffect(() => {
+    const id = window.setTimeout(() => setMounted(true), 0);
+    return () => window.clearTimeout(id);
+  }, []);
+
   const refresh = useCallback(() => {
+    if (!mounted) return;
     try {
       setActive(readActive());
       setNow(Date.now());
     } catch {
       // ignore
     }
-  }, []);
+  }, [mounted]);
 
   useEffect(() => {
+    if (!mounted) return undefined;
+    const initialRefreshId = window.setTimeout(refresh, 0);
     const onStorage = (event: StorageEvent) => {
       if (!event.key || event.key === 'solveos_action_pressure_v1') refresh();
     };
@@ -71,18 +80,21 @@ export default function PersistentActionBanner() {
     return () => {
       window.removeEventListener(ACTION_REMINDER_EVENT, refresh);
       window.removeEventListener('storage', onStorage);
+      window.clearTimeout(initialRefreshId);
       window.clearInterval(id);
     };
-  }, [refresh]);
+  }, [mounted, refresh]);
 
   const pressureState = useMemo(() => {
+    if (!mounted) return 'normal' as const;
     if (!active) return 'normal' as const;
     return getPressureState(active[1], now);
-  }, [active, now]);
+  }, [active, mounted, now]);
 
   const isOverdue = pressureState === 'overdue';
 
   useEffect(() => {
+    if (!mounted) return;
     if (!isOverdue || !active) return;
     const [id, reminder] = active;
     if (reminder.overdueScorePenaltyApplied) return;
@@ -93,9 +105,10 @@ export default function PersistentActionBanner() {
       status: 'overdue',
       overdueScorePenaltyApplied: true,
     });
-  }, [isOverdue, active]);
+  }, [isOverdue, active, mounted]);
 
   const markDone = useCallback(() => {
+    if (!mounted) return;
     if (!active) return;
     updateDecisionScoreOnActionCompletion();
     updateActionReminder(active[0], {
@@ -108,7 +121,7 @@ export default function PersistentActionBanner() {
     setCompletionMessage(completionEmotion(doneCount));
     window.setTimeout(() => setCompletionMessage(null), 2200);
     refresh();
-  }, [active, refresh]);
+  }, [active, mounted, refresh]);
 
   const handlePickCategory = useCallback((category: BlockerCategory) => {
     if (!active) return;
@@ -116,15 +129,18 @@ export default function PersistentActionBanner() {
   }, [active]);
 
   const handleRestartSmaller = useCallback(() => {
+    if (!mounted) return;
     if (!active || !selectedCategory) return;
     const next = restartWithSmallerAction(active[0], active[1].action, selectedCategory);
     setActive(getActiveReminder(next));
     setCategoryById(null);
-  }, [active, selectedCategory]);
+  }, [active, mounted, selectedCategory]);
 
   const handleBackCategory = useCallback(() => {
     setCategoryById(null);
   }, []);
+
+  if (!mounted) return null;
 
   if (!active && completionMessage) {
     return (

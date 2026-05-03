@@ -22,6 +22,7 @@
 - PersistentActionBanner: where active Action stays visible.
 - Decision Journal: where saved Decisions appear.
 - SettingsModal: where user settings appear.
+- ActionHistory: sidebar list of Action results and accountability metrics.
 
 ## 4. Logic (step-by-step)
 
@@ -30,9 +31,10 @@
 3. User enters a Decision.
 4. Console submits request.
 5. Results show Verdict and Action.
-6. Banner shows pending Action.
+6. Banner waits until client mount, then reads localStorage and shows pending Action.
 7. Decision Journal shows saved Decisions.
 8. Settings control language and preferences.
+9. Decision Score stays internal for now and is not shown as a sidebar card.
 
 ## 5. Stored data
 
@@ -49,6 +51,8 @@
 - No saved decisions: show empty journal state.
 - Missing locale: use English fallback.
 - Mobile layout: keep controls readable.
+- Persistent banner hydration: render nothing until mounted on the client, then read `localStorage`, `Date.now()`, `window`, and reminder state.
+- Sidebar score noise: keep Decision Score logic and storage active, but hide the large score card from the sidebar.
 
 ## 7. Files involved
 
