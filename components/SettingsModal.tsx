@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { concreteLanguageOptions, type UiCopy } from '@/lib/i18n';
 import type { ProductSettings } from '@/lib/settings';
+import { updateSettings as updateAppearanceSettings } from '@/lib/settingsStore';
 import type { ConversationTurn } from '@/lib/types';
 
 interface SettingsModalProps {
@@ -88,7 +89,7 @@ export default function SettingsModal({
   ], [copy]);
 
   const update = (next: DeepPartial<ProductSettings>) => {
-    onSettingsChange({
+    const merged = {
       ...settings,
       ...next,
       general: { ...settings.general, ...next.general },
@@ -97,7 +98,9 @@ export default function SettingsModal({
       notifications: { ...settings.notifications, ...next.notifications },
       data: { ...settings.data, ...next.data },
       security: { ...settings.security, ...next.security },
-    });
+    };
+    if (next.appearance) updateAppearanceSettings(merged.appearance);
+    onSettingsChange(merged);
   };
 
   const exportConversations = () => {

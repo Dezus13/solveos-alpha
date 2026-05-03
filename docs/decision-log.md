@@ -4,6 +4,30 @@ This file tracks what we change, why we change it, and what we do next.
 
 ---
 
+## 2026-05-03 — Central settings system
+
+### Changed
+
+- `lib/settingsStore.ts`: Added central appearance settings store using `solveos_settings`.
+- `lib/settingsStore.ts`: Exposes `getSettings()`, `saveSettings()`, `updateSettings()`, and `applySettingsToDocument()`.
+- `lib/settingsStore.ts`: Dispatches `SETTINGS_UPDATED` after every saved change.
+- `lib/settings.ts`: Delegates theme, accent, and density to `settingsStore` while keeping existing non-appearance product settings.
+- `components/SettingsHydrator.tsx`: Applies saved appearance settings from `settingsStore` after client mount.
+- `components/SettingsModal.tsx`: Appearance buttons now update the central store immediately.
+- `components/HomeExperience.tsx`: Listens for `SETTINGS_UPDATED` and keeps mounted UI state synchronized.
+- Specs updated for the new central settings source of truth.
+
+### Why
+
+- Theme, accent, and density needed one global source of truth with safe client-only localStorage access.
+- Appearance changes must update live, persist after refresh, and avoid hydration mismatches.
+
+### Next
+
+- Commit: `feat: add central settings system`
+
+---
+
 ## 2026-05-03 — Fully functional settings
 
 ### Changed

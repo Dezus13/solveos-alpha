@@ -83,15 +83,23 @@ History is computed from `solveos_action_pressure_v1` at read time:
 - decisionScoreTrend: internal direction of last score change.
 - The score remains stored and used by Decision context, but the large sidebar Decision Score card is hidden from the UI for now.
 
-### ProductSettings (`solveos.productSettings.v1`)
+### Appearance Settings (`solveos_settings`)
 
-- Stored in localStorage through `lib/settings.ts`.
-- `readSettings()`: safely reads and merges settings on the client.
-- `writeSettings()`: persists settings and applies them immediately.
-- `applySettings()`: sets `data-theme`, `data-accent`, and `data-density` on `document.documentElement`.
+- Managed by `lib/settingsStore.ts`.
+- Stores only global appearance settings: `theme`, `accent`, and `density`.
+- `getSettings()`: safely reads settings on the client and falls back to defaults on the server.
+- `saveSettings()`: persists the full appearance settings object, applies it to the document, and dispatches `SETTINGS_UPDATED`.
+- `updateSettings()`: merges a partial appearance update into the current settings.
+- `applySettingsToDocument()`: sets `data-theme`, `data-accent`, and `data-density` on `document.documentElement`.
+- Defaults: `theme: system`, `accent: purple`, `density: balanced`.
 - theme: `system`, `dark`, or `midnight`.
 - accent: `purple`, `blue`, `emerald`, or `rose`.
 - density: `compact`, `balanced`, or `calm`.
+
+### ProductSettings (`solveos.productSettings.v1`)
+
+- Stored in localStorage through `lib/settings.ts` for non-appearance product preferences.
+- Appearance values are delegated to `solveos_settings` so theme, accent, and density have one source of truth.
 - Invalid or missing settings fall back to `defaultSettings`.
 
 ## 6. Edge cases
@@ -112,5 +120,6 @@ History is computed from `solveos_action_pressure_v1` at read time:
 - `lib/actionReminders.ts`
 - `lib/userProfile.ts`
 - `lib/settings.ts`
+- `lib/settingsStore.ts`
 - `app/api/memory/route.ts`
 - `app/api/outcomes/route.ts`

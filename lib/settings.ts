@@ -1,10 +1,18 @@
 import type { SupportedLanguage } from './i18n';
+import {
+  applySettingsToDocument,
+  getSettings,
+  saveSettings,
+  type AccentSetting,
+  type DensitySetting,
+  type ThemeSetting,
+} from './settingsStore';
 
 export type UiLanguage = Exclude<SupportedLanguage, 'auto'>;
 export type DecisionLanguageMode = 'detected' | 'ui' | 'custom';
-export type ThemeMode = 'system' | 'dark' | 'midnight';
-export type AccentColor = 'purple' | 'blue' | 'emerald' | 'rose';
-export type DensityMode = 'compact' | 'balanced' | 'calm';
+export type ThemeMode = ThemeSetting;
+export type AccentColor = AccentSetting;
+export type DensityMode = DensitySetting;
 export type NotificationLevel = 'none' | 'critical' | 'all';
 export type ModelProvider = 'openai' | 'anthropic' | 'local';
 
@@ -55,7 +63,7 @@ export const defaultSettings: ProductSettings = {
     customDecisionLanguage: 'English',
   },
   appearance: {
-    theme: 'midnight',
+    theme: 'system',
     accent: 'purple',
     density: 'balanced',
   },
@@ -111,21 +119,18 @@ export function readSettings(): ProductSettings {
   if (typeof window === 'undefined') return defaultSettings;
   try {
     const stored = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
-    return stored ? mergeSettings(JSON.parse(stored)) : defaultSettings;
+    return { ...(stored ? mergeSettings(JSON.parse(stored)) : defaultSettings), appearance: getSettings() };
   } catch {
-    return defaultSettings;
+    return { ...defaultSettings, appearance: getSettings() };
   }
 }
 
 export function applySettings(settings: ProductSettings): void {
-  if (typeof document === 'undefined') return;
-  document.documentElement.dataset.theme = settings.appearance.theme;
-  document.documentElement.dataset.accent = settings.appearance.accent;
-  document.documentElement.dataset.density = settings.appearance.density;
+  applySettingsToDocument(settings.appearance);
 }
 
 export function writeSettings(settings: ProductSettings): void {
   if (typeof window === 'undefined') return;
   window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
-  applySettings(settings);
+  saveSettings(settings.appearance);
 }

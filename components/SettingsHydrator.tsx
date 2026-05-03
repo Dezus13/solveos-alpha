@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect } from 'react';
-import { applySettings, readSettings } from '@/lib/settings';
+import { applySettingsToDocument, getSettings } from '@/lib/settingsStore';
 
 export default function SettingsHydrator() {
   useEffect(() => {
-    applySettings(readSettings());
+    applySettingsToDocument(getSettings());
   }, []);
 
   return null;

@@ -8,6 +8,7 @@ import DecisionConsole from '@/components/DecisionConsole';
 import SolveOSSymbol from '@/components/SolveOSSymbol';
 import { detectInputLanguage, uiCopy } from '@/lib/i18n';
 import { readSettings, type ProductSettings, writeSettings } from '@/lib/settings';
+import { SETTINGS_UPDATED, type AppSettings } from '@/lib/settingsStore';
 import type { IntelligenceSnapshot } from '@/components/IntelligenceRail';
 import DecisionJournal from '@/components/DecisionJournal';
 import type { ConversationTurn, DecisionBlueprint, SolveRequest } from '@/lib/types';
@@ -220,6 +221,25 @@ export default function HomeExperience() {
   useEffect(() => {
     writeSettings(settings);
   }, [settings]);
+
+  useEffect(() => {
+    const syncAppearance = (event: Event) => {
+      const next = (event as CustomEvent<AppSettings>).detail;
+      if (!next) return;
+      setSettings((current) => {
+        if (
+          current.appearance.theme === next.theme &&
+          current.appearance.accent === next.accent &&
+          current.appearance.density === next.density
+        ) {
+          return current;
+        }
+        return { ...current, appearance: next };
+      });
+    };
+    window.addEventListener(SETTINGS_UPDATED, syncAppearance);
+    return () => window.removeEventListener(SETTINGS_UPDATED, syncAppearance);
+  }, []);
 
   const latestBlueprint = useMemo(() => {
     for (let i = thread.length - 1; i >= 0; i--) {
