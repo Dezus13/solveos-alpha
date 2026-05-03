@@ -2,6 +2,7 @@ import type { SavedDecision } from './savedDecisions';
 
 const PROFILE_KEY = 'solveos_user_profile';
 const STEP = 0.05;
+export const PROFILE_UPDATED_EVENT = 'solveos-profile-updated';
 
 export interface UserDecisionProfile {
   riskTolerance: number;  // 0–1
@@ -45,6 +46,14 @@ export function getProfile(): UserDecisionProfile {
 
 function saveProfile(profile: UserDecisionProfile): void {
   window.localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+  window.dispatchEvent(new Event(PROFILE_UPDATED_EVENT));
+}
+
+export function getIdentityLabel(score: number): string {
+  if (score >= 90) return 'You are highly reliable';
+  if (score >= 70) return 'You act on decisions';
+  if (score >= 40) return 'You are inconsistent';
+  return 'You avoid decisions';
 }
 
 function clamp(v: number): number {
@@ -58,7 +67,7 @@ function clampScore(v: number): number {
 export type DecisionScoreOutcome = 'worked' | 'failed' | 'unclear';
 
 export function scoreMessageFor(score: number): string {
-  return score >= 50 ? 'You follow through' : 'You ignore your own rules';
+  return getIdentityLabel(score);
 }
 
 export function computeDecisionScoreDelta(
@@ -104,6 +113,19 @@ export function updateDecisionScoreOnActionCompletion(): UserDecisionProfile {
 }
 
 export function updateDecisionScoreOnActionSkip(): UserDecisionProfile {
+  const current = getProfile();
+  const updated: UserDecisionProfile = {
+    ...current,
+    userDecisionScore: clampScore(current.userDecisionScore - 5),
+    decisionScoreTrend: 'down',
+    updatedAt: new Date().toISOString(),
+  };
+
+  saveProfile(updated);
+  return updated;
+}
+
+export function updateDecisionScoreOnActionOverdue(): UserDecisionProfile {
   const current = getProfile();
   const updated: UserDecisionProfile = {
     ...current,

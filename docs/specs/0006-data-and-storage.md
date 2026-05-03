@@ -46,6 +46,7 @@
 - updatedAt: time of last write.
 - blockerCategory: selected blocker category (`fear`, `unclear`, `lazy`, `external`).
 - smallerAction: reduced action text stored after blockerCategory is picked.
+- overdueScorePenaltyApplied: boolean flag set to true after the −10 overdue penalty is applied. Prevents double-deduction.
 
 ### Decision (`solveos_saved_decisions`)
 

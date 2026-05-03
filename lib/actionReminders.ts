@@ -19,6 +19,7 @@ export interface ActionReminderRecord {
   completedAt?: string;
   skippedAt?: string;
   updatedAt: string;
+  overdueScorePenaltyApplied?: boolean;
 }
 
 export type ActionReminderStore = Record<string, ActionReminderRecord>;

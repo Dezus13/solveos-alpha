@@ -1,4 +1,5 @@
 import type { ActionReminderRecord, ActionReminderStore } from './actionReminders';
+import { getProfile, getIdentityLabel } from './userProfile';
 
 export interface IdentitySignals {
   executionStreak: number;
@@ -52,6 +53,6 @@ export function identityLabel(signals: IdentitySignals): string {
   return 'You hesitate under pressure';
 }
 
-export function generateIdentityLabel(store: ActionReminderStore, now = Date.now()): string {
-  return identityLabel(computeIdentitySignals(store, now));
+export function generateIdentityLabel(): string {
+  return getIdentityLabel(getProfile().userDecisionScore);
 }

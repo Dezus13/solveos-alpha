@@ -40,6 +40,9 @@
 - actionPlan: next Action.
 - milestoneTable: review points when present.
 - language: response language.
+- decisionScore: user follow-through score (0–100) attached to each result.
+- decisionScoreTrend: direction of score ('up' | 'down').
+- scoreMessage: identity label derived from decisionScore.
 
 ## 6. Edge cases
 

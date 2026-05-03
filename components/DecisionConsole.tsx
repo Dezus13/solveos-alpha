@@ -7,7 +7,7 @@ import type { UiCopy } from '@/lib/i18n';
 import type { ProductSettings } from '@/lib/settings';
 import type { ConversationTurn } from '@/lib/types';
 import { isDecisionSaved } from '@/lib/savedDecisions';
-import { updateDecisionScoreOnActionCompletion, updateDecisionScoreOnActionSkip } from '@/lib/userProfile';
+import { updateDecisionScoreOnActionCompletion, updateDecisionScoreOnActionSkip, getProfile, getIdentityLabel, PROFILE_UPDATED_EVENT } from '@/lib/userProfile';
 import {
   countFollowThrough,
   ensureActionReminder,
@@ -22,7 +22,6 @@ import {
   type ActionReminderStore,
   type BlockerCategory,
 } from '@/lib/actionReminders';
-import { generateIdentityLabel } from '@/lib/identityEngine';
 import { skipPainLine } from '@/lib/inactionPain';
 
 interface DecisionConsoleProps {
@@ -95,11 +94,17 @@ function ExecutionPressure({ turn }: { turn: ConversationTurn }) {
   const action = actionFromTurn(turn);
   const [store, setStore] = useState<ActionReminderStore>(() => ensureActionReminder(turn.id, action));
   const [category, setCategory] = useState<BlockerCategory | null>(() => store[turn.id]?.blockerCategory || null);
+  const [score, setScore] = useState(() => getProfile().userDecisionScore);
   const record = store[turn.id];
   const status = record?.status || 'pending';
   const streak = countFollowThrough(store);
-  const identity = generateIdentityLabel(store);
   const pressureState = record ? getPressureState(record) : 'normal' as const;
+
+  useEffect(() => {
+    const refresh = () => setScore(getProfile().userDecisionScore);
+    window.addEventListener(PROFILE_UPDATED_EVENT, refresh);
+    return () => window.removeEventListener(PROFILE_UPDATED_EVENT, refresh);
+  }, []);
   const pressureLabel = pressureState !== 'normal' ? getPressureMessage(pressureState) : 'Do this within 24h';
 
   const persist = useCallback((patch: Partial<ActionReminderRecord> & { action: string }) => {
@@ -145,8 +150,8 @@ function ExecutionPressure({ turn }: { turn: ConversationTurn }) {
           <div className="mt-1 text-[11px] font-semibold text-amber-200">
             {record?.dueAt ? formatCountdown(record.dueAt) : '24h left'}
           </div>
-          <div className="mt-1 text-[11px] font-semibold text-slate-300">Follow-through: {streak}×</div>
-          <div className="mt-1 text-[11px] font-black text-white">Identity: {identity}</div>
+          <div className="mt-1 text-[11px] font-semibold text-slate-300">Score: <span className={score >= 70 ? 'text-emerald-300' : score >= 40 ? 'text-amber-300' : 'text-rose-300'}>{score}</span>/100</div>
+          <div className="mt-1 text-[11px] font-semibold text-slate-400">{getIdentityLabel(score)}</div>
         </div>
         {status === 'done' ? (
           <div className="action-complete-pulse rounded-xl border border-emerald-500/25 bg-emerald-500/[0.1] px-3 py-2 text-[11px] font-black uppercase tracking-widest text-emerald-200">

@@ -40,6 +40,30 @@
 
 - `generateSmallerAction(action, category)`: returns a reduced action string based on BlockerCategory. No API call.
 - `restartWithSmallerAction(id, action, category)`: saves the smaller action over the existing reminder, resets `createdAt` and `dueAt` to a new 24h window, sets status back to `pending`.
+- `updateDecisionScoreOnActionCompletion()`: +5 to score.
+- `updateDecisionScoreOnActionSkip()`: −5 to score.
+- `updateDecisionScoreOnActionOverdue()`: −10 to score. Called once per action via `overdueScorePenaltyApplied` flag.
+- `getIdentityLabel(score)`: returns the identity label for a given score (0–39 / 40–69 / 70–89 / 90–100).
+
+## 5a. Score rules
+
+| Event   | Delta |
+|---------|-------|
+| Done    | +5    |
+| Not yet | 0     |
+| Skip    | −5    |
+| Overdue | −10   |
+
+Score starts at 50. Clamped 0–100. Stored in `solveos_user_profile` (localStorage).
+
+## 5b. Identity labels (score-based)
+
+| Range  | Label                    |
+|--------|--------------------------|
+| 0–39   | "You avoid decisions"    |
+| 40–69  | "You are inconsistent"   |
+| 70–89  | "You act on decisions"   |
+| 90–100 | "You are highly reliable"|
 
 ## 6. Stored data
 

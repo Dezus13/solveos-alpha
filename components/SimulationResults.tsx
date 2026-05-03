@@ -6,7 +6,7 @@ import { Crown, Gauge, Sparkles, Activity } from 'lucide-react';
 import type { DecisionBlueprint } from '@/lib/types';
 import type { IntelligenceSnapshot } from '@/components/IntelligenceRail';
 import OutcomeLogger from '@/components/OutcomeLogger';
-import { ACTION_REMINDER_EVENT, readActionReminders } from '@/lib/actionReminders';
+import { ACTION_REMINDER_EVENT } from '@/lib/actionReminders';
 import { generateIdentityLabel } from '@/lib/identityEngine';
 import { costOfInaction } from '@/lib/inactionPain';
 
@@ -81,10 +81,10 @@ function SimulationResults({
 }: SimulationResultsProps) {
   const [activeTab, setActiveTab] = useState<TabId>('blueprint');
   const [showBoard, setShowBoard] = useState(initialShowBoard);
-  const [identity, setIdentity] = useState(() => generateIdentityLabel(readActionReminders()));
+  const [identity, setIdentity] = useState(() => generateIdentityLabel());
 
   const refreshIdentity = useCallback(() => {
-    setIdentity(generateIdentityLabel(readActionReminders()));
+    setIdentity(generateIdentityLabel());
   }, []);
 
   useEffect(() => {

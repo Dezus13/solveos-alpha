@@ -4,6 +4,45 @@ This file tracks what we change, why we change it, and what we do next.
 
 ---
 
+## 2026-05-03 — Decision score system
+
+### Changed
+
+- `lib/userProfile.ts`: Added `PROFILE_UPDATED_EVENT` — dispatched from `saveProfile()` so all UI can react to score changes without a page reload
+- `lib/userProfile.ts`: Fixed `updateDecisionScoreOnActionSkip()` delta: −10 → −5
+- `lib/userProfile.ts`: Added `updateDecisionScoreOnActionOverdue()` (delta −10)
+- `lib/userProfile.ts`: Added `getIdentityLabel(score)` — 4-tier label: 0–39 "You avoid decisions", 40–69 "You are inconsistent", 70–89 "You act on decisions", 90–100 "You are highly reliable"
+- `lib/userProfile.ts`: Updated `scoreMessageFor()` to delegate to `getIdentityLabel()`
+- `lib/identityEngine.ts`: `generateIdentityLabel()` now returns `getIdentityLabel(getProfile().userDecisionScore)` — consistent with profile-based labels
+- `lib/actionReminders.ts`: Added `overdueScorePenaltyApplied?: boolean` to `ActionReminderRecord` — prevents overdue penalty from firing more than once per action
+- `components/PersistentActionBanner.tsx`: Added `useEffect` that calls `updateDecisionScoreOnActionOverdue()` exactly once when action becomes overdue (guarded by `overdueScorePenaltyApplied` flag)
+- `components/DecisionConsole.tsx` (`ExecutionPressure`): Replaced `Follow-through × / Identity` display with `Score: X/100` + `getIdentityLabel(score)`; added reactive `score` state driven by `PROFILE_UPDATED_EVENT`
+- `components/HomeExperience.tsx` sidebar: Added Decision Score widget — shows score/100, colored progress bar, identity label; reactive via `PROFILE_UPDATED_EVENT`
+- `components/HomeExperience.tsx`: Updated `blueprint.scoreMessage` assignments to use `getIdentityLabel()` instead of hardcoded 2-tier labels
+
+### Why
+
+- Users needed to see how their follow-through affects their score in real time
+- Skip and overdue had wrong deltas (both were −10); now skip is −5, overdue is −10
+- Single source of truth for identity labels — all UI reads from `getIdentityLabel(score)` in `userProfile.ts`
+
+### Problem solved
+
+- Score is now visible in the sidebar and in every result card
+- Score updates live (no page reload required) via custom event
+- Overdue penalty fires exactly once per action regardless of how many re-renders occur
+
+### Not done
+
+- Score not yet synced to a backend or remote store — localStorage only
+
+### Next
+
+- Run: `npm run lint && npm run build`
+- Commit: `feat: add decision score system`
+
+---
+
 ## 2026-05-03 — Sync execution pressure system with specs
 
 ### Changed

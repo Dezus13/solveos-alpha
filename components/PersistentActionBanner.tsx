@@ -15,7 +15,7 @@ import {
   type ActionReminderRecord,
   type BlockerCategory,
 } from '@/lib/actionReminders';
-import { updateDecisionScoreOnActionCompletion } from '@/lib/userProfile';
+import { updateDecisionScoreOnActionCompletion, updateDecisionScoreOnActionOverdue } from '@/lib/userProfile';
 import { generateIdentityLabel } from '@/lib/identityEngine';
 
 const CATEGORY_LABELS: Record<BlockerCategory, string> = {
@@ -82,6 +82,14 @@ export default function PersistentActionBanner() {
 
   const isOverdue = pressureState === 'overdue';
 
+  useEffect(() => {
+    if (!isOverdue || !active) return;
+    const [id, reminder] = active;
+    if (reminder.overdueScorePenaltyApplied) return;
+    updateDecisionScoreOnActionOverdue();
+    updateActionReminder(id, { ...reminder, action: reminder.action, overdueScorePenaltyApplied: true });
+  }, [isOverdue, active]);
+
   const markDone = useCallback(() => {
     if (!active) return;
     updateDecisionScoreOnActionCompletion();
@@ -124,7 +132,7 @@ export default function PersistentActionBanner() {
   if (!active) return null;
 
   const [, reminder] = active;
-  const identity = generateIdentityLabel(readActionReminders(), now);
+  const identity = generateIdentityLabel();
   const headerMessage = getPressureMessage(pressureState);
 
   const bannerBg = isOverdue
