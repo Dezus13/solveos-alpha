@@ -57,7 +57,7 @@ export const uiCopy: Record<Exclude<SupportedLanguage, 'auto'>, UiCopy> = {
     newChat: 'New chat',
     history: 'History',
     noDecisions: 'No decisions yet',
-    onboardingTitle: 'Think through hard decisions with an AI decision partner.',
+    onboardingTitle: 'What decision are we thinking through?',
     onboardingSubtext: 'Stress-test options, surface risks, and get a clear next move.',
     suggestions: ['Launch beta?', 'Find hidden risks', '30-day scorecard'],
     suggestionPrompts: [
@@ -95,7 +95,7 @@ export const uiCopy: Record<Exclude<SupportedLanguage, 'auto'>, UiCopy> = {
     newChat: 'Neuer Chat',
     history: 'Verlauf',
     noDecisions: 'Noch keine Entscheidungen',
-    onboardingTitle: 'Durchdenken Sie schwierige Entscheidungen mit einem KI-Entscheidungspartner.',
+    onboardingTitle: 'Welche Entscheidung denken wir gerade durch?',
     onboardingSubtext: 'Optionen stress-testen, Risiken sichtbar machen und den nächsten klaren Schritt erhalten.',
     suggestions: ['Beta starten?', 'Risiken finden', '30-Tage-Scorecard'],
     suggestionPrompts: [
@@ -133,7 +133,7 @@ export const uiCopy: Record<Exclude<SupportedLanguage, 'auto'>, UiCopy> = {
     newChat: 'Новый чат',
     history: 'История',
     noDecisions: 'Решений пока нет',
-    onboardingTitle: 'Продумывайте сложные решения с AI-партнёром.',
+    onboardingTitle: 'Какое решение мы сейчас продумываем?',
     onboardingSubtext: 'Проверяйте варианты, находите риски и получайте ясный следующий шаг.',
     suggestions: ['Запуск beta?', 'Найти риски', 'Скоркард 30 дней'],
     suggestionPrompts: [
@@ -171,7 +171,7 @@ export const uiCopy: Record<Exclude<SupportedLanguage, 'auto'>, UiCopy> = {
     newChat: 'محادثة جديدة',
     history: 'السجل',
     noDecisions: 'لا توجد قرارات بعد',
-    onboardingTitle: 'فكّر في القرارات الصعبة مع شريك قرار ذكي.',
+    onboardingTitle: 'ما القرار الذي نفكر فيه الآن؟',
     onboardingSubtext: 'اختبر الخيارات، اكشف المخاطر، واحصل على خطوة تالية واضحة.',
     suggestions: ['إطلاق بيتا؟', 'كشف المخاطر', 'بطاقة 30 يومًا'],
     suggestionPrompts: [
@@ -209,7 +209,7 @@ export const uiCopy: Record<Exclude<SupportedLanguage, 'auto'>, UiCopy> = {
     newChat: 'Nuevo chat',
     history: 'Historial',
     noDecisions: 'Aún no hay decisiones',
-    onboardingTitle: 'Piensa decisiones difíciles con un socio de decisión de IA.',
+    onboardingTitle: '¿Qué decisión estamos analizando ahora?',
     onboardingSubtext: 'Pon a prueba opciones, descubre riesgos y obtén un próximo paso claro.',
     suggestions: ['¿Lanzar beta?', 'Encontrar riesgos', 'Scorecard 30 días'],
     suggestionPrompts: [
@@ -247,7 +247,7 @@ export const uiCopy: Record<Exclude<SupportedLanguage, 'auto'>, UiCopy> = {
     newChat: '新聊天',
     history: '历史',
     noDecisions: '还没有决策',
-    onboardingTitle: '和 AI 决策伙伴一起思考艰难选择。',
+    onboardingTitle: '我们正在思考哪个决策？',
     onboardingSubtext: '压力测试选项，暴露风险，并得到清晰的下一步。',
     suggestions: ['发布 beta？', '找隐藏风险', '30 天评分卡'],
     suggestionPrompts: [

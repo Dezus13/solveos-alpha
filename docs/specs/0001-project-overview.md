@@ -66,4 +66,18 @@ It is a system that:
 - tracks behavior
 - builds momentum
 
-The goal is not thinking - the goal is Action.
+The goal is not thinking — the goal is Action.
+
+## 8. UI principle
+
+The interface is minimal, not decorative.
+
+- The UI clears the path to Action.
+- The layout is focused like Claude — clean, direct, no noise.
+- But the product behavior is SolveOS-specific, not general chat.
+- Score and history are internal behavior systems, not always-visible UI blocks.
+- Pressure appears only when the user has an unfinished Action.
+- The first view asks one question: "What decision are we thinking through?"
+
+SolveOS is not a general chat clone.
+SolveOS is a decision-to-action system.

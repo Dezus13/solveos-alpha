@@ -327,28 +327,27 @@ function AssistantMessage({ turn, isLatest, copy, onSaveDecision }: {
 
 function EmptyState({ onPick, copy, showSuggestions }: { onPick: (prompt: string) => void; copy: UiCopy; showSuggestions: boolean }) {
   return (
-    <div className="mx-auto flex max-w-xl flex-1 flex-col items-center justify-center px-4 text-center">
-      <div className="mb-4 inline-flex items-center rounded-full border border-white/8 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold text-slate-400">
-        {copy.appName}
-      </div>
-      <h1 className="text-2xl font-medium tracking-tight text-[#F8FAFF] sm:text-3xl">
+    <div className="mx-auto flex max-w-2xl flex-1 flex-col items-center justify-center px-6 text-center">
+      <h1 className="text-3xl font-semibold tracking-tight text-[#F8FAFF] sm:text-4xl">
         {copy.onboardingTitle}
       </h1>
-      <p className="mt-3 max-w-lg text-sm leading-relaxed text-slate-400">
+      <p className="mt-4 max-w-md text-sm leading-relaxed text-slate-500">
         {copy.onboardingSubtext}
       </p>
-      {showSuggestions && <div className="mt-7 flex w-full flex-wrap justify-center gap-2">
-        {copy.suggestions.map((example, index) => (
-          <button
-            key={example}
-            type="button"
-            onClick={() => onPick(copy.suggestionPrompts[index])}
-            className="rounded-full border border-white/10 bg-white/[0.025] px-4 py-2 text-sm text-slate-400 transition-colors hover:border-purple-400/25 hover:bg-white/[0.05] hover:text-slate-100"
-          >
-            {example}
-          </button>
-        ))}
-      </div>}
+      {showSuggestions && (
+        <div className="mt-8 flex w-full flex-wrap justify-center gap-2">
+          {copy.suggestions.map((example, index) => (
+            <button
+              key={example}
+              type="button"
+              onClick={() => onPick(copy.suggestionPrompts[index])}
+              className="rounded-full border border-white/8 bg-white/[0.025] px-4 py-2 text-sm text-slate-400 transition-colors hover:border-[rgba(var(--accent-rgb),0.28)] hover:bg-white/[0.05] hover:text-slate-100"
+            >
+              {example}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

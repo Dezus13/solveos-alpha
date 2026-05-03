@@ -4,6 +4,34 @@ This file tracks what we change, why we change it, and what we do next.
 
 ---
 
+## 2026-05-03 — Simplify UI while preserving SolveOS identity
+
+### Changed
+
+- `lib/i18n.ts`: Updated `onboardingTitle` for all 6 languages to question form — English: "What decision are we thinking through?", Russian: "Какое решение мы сейчас продумываем?", and matching translations for German, Spanish, Arabic, Chinese.
+- `components/DecisionConsole.tsx` (`EmptyState`): Removed the "SolveOS" pill badge. Made the h1 title larger (`text-3xl sm:text-4xl`). Wider max-width container. Cleaner spacing.
+- `docs/specs/0007-ui-structure.md`: Added "UI Direction" section explaining that the layout is minimal like Claude but behavior is SolveOS-specific. Documented sidebar contents (logo, New chat, Journal only). Clarified that Score and History are internal systems, not always-visible UI blocks. Documented that pressure appears only when an unfinished Action exists.
+- `docs/specs/0001-project-overview.md`: Added "UI principle" section. States that SolveOS is not a general chat clone. States that the interface is minimal but product behavior is SolveOS-specific. Documents the "What decision are we thinking through?" first-view principle.
+
+### Why
+
+- The UI should be minimal and focused — one clear question, one input, one action.
+- The old pill badge ("SolveOS" chip above the title) added noise without identity value.
+- The title was passive ("Think through hard decisions with an AI partner") — the new form is active and direct ("What decision are we thinking through?").
+- Score and history are not removed — they remain active internal systems. They are simply not visible UI blocks on the home screen.
+- Pressure banner logic is unchanged — it already shows only when the user has an unfinished action and never on first visit.
+- The settings modal is unchanged — it already uses a compact Claude-like sidebar-nav layout with full support for all settings through the central `settingsStore`.
+
+### Not done
+
+- Decision engine, pressure system, score logic, action history logic, localStorage, and specs workflow are all preserved unchanged.
+
+### Next
+
+- Commit: `refactor: simplify UI while preserving SolveOS identity`
+
+---
+
 ## 2026-05-03 — Central settings system
 
 ### Changed
