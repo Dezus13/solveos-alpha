@@ -150,7 +150,7 @@ export default function PersistentActionBanner() {
     );
   }
 
-  if (!active) return null;
+  if (!active || pressureState === 'normal') return null;
 
   const [, reminder] = active;
   const identity = generateIdentityLabel();

@@ -4,6 +4,31 @@ This file tracks what we change, why we change it, and what we do next.
 
 ---
 
+## 2026-05-03 — Escalating execution pressure system
+
+### Changed
+
+- `components/PersistentActionBanner.tsx`: Banner now hides completely when `pressureState === 'normal'` (0–2h after commitment). Previously it rendered as amber from the moment the action was created. Amber banner now starts at 2h, orange at 12h, red at 24h — matching the pressure escalation table. Overdue state already had blocker buttons + smaller action + clock reset; no change to that logic.
+- `docs/specs/0005-identity-and-pressure.md`: Updated pressure states table to include "Banner shown" column. Added note that `normal` state intentionally hides the banner.
+- `docs/specs/0004-action-system.md`: Added edge case documenting that the banner is hidden during the normal (0–2h) state.
+
+### Why
+
+- Showing the banner immediately after a commitment adds noise, not pressure. The user just committed — nagging them within 2 hours signals low trust, not accountability.
+- Real pressure starts when the user has had time to act and hasn't. 2 hours is the first signal.
+- The escalation sequence (amber → orange → red) is only meaningful when each state represents a real failure to act. Showing amber at t=0 devalues the signal.
+
+### Not done
+
+- No change to score logic, localStorage format, or identity engine.
+- The 2h / 12h / 24h thresholds are unchanged.
+
+### Next
+
+- No immediate follow-up. Both pressure tasks are complete.
+
+---
+
 ## 2026-05-03 — Execution pressure entry flow
 
 ### Changed

@@ -26,12 +26,14 @@
 
 ## 4. Pressure States
 
-| State         | Trigger         | Message shown                      |
-|---------------|-----------------|------------------------------------|
-| normal        | 0–2 hours       | "You have a pending action"        |
-| pressure_2h   | 2–12 hours      | "Still not done?"                  |
-| pressure_12h  | 12–24 hours     | "You are avoiding this"            |
-| overdue       | 24+ hours       | "You missed your deadline. Why?"   |
+| State         | Trigger         | Banner shown | Message shown                      |
+|---------------|-----------------|--------------|------------------------------------|
+| normal        | 0–2 hours       | No           | —                                  |
+| pressure_2h   | 2–12 hours      | Yes (amber)  | "Still not done?"                  |
+| pressure_12h  | 12–24 hours     | Yes (orange) | "You are avoiding this"            |
+| overdue       | 24+ hours       | Yes (red)    | "You missed your deadline. Why?"   |
+
+The banner is intentionally hidden during the normal state (0–2h). This avoids noise immediately after a commitment and preserves the signal-to-noise ratio of the pressure system.
 
 ## 5. Overdue Behavior
 

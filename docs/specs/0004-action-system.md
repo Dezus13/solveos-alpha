@@ -104,6 +104,7 @@ Score starts at 50. Clamped 0–100. Stored in `solveos_user_profile` (localStor
 - Blocked Action: store blockerCategory.
 - New Decision blocked: user must finish or the active Action must be overdue before submitting a new one.
 - PersistentActionBanner: do not render until mounted on the client; all `localStorage`, `window`, `Date.now()`, and reminder reads happen after mount to avoid hydration mismatch.
+- PersistentActionBanner normal state (0–2h): hide banner entirely. Show nothing for the first 2 hours to avoid noise immediately after a commitment.
 
 ## 7a. History and accountability
 
