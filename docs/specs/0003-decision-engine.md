@@ -43,6 +43,7 @@
 - decisionScore: user follow-through score (0–100) attached to each result.
 - decisionScoreTrend: direction of score ('up' | 'down').
 - scoreMessage: identity label derived from decisionScore.
+- decisionText: the original question stored with the ActionReminder to power the history display.
 
 ## 6. Edge cases
 

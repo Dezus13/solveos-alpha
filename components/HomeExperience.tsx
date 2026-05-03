@@ -10,6 +10,7 @@ import { detectInputLanguage, uiCopy, type SupportedLanguage } from '@/lib/i18n'
 import { defaultSettings, SETTINGS_STORAGE_KEY, type ProductSettings } from '@/lib/settings';
 import type { IntelligenceSnapshot } from '@/components/IntelligenceRail';
 import DecisionJournal from '@/components/DecisionJournal';
+import ActionHistory from '@/components/ActionHistory';
 import type { ConversationTurn, DecisionBlueprint, SolveRequest } from '@/lib/types';
 import { getSavedDecisions, saveDecision } from '@/lib/savedDecisions';
 import { getProfile, getIdentityLabel, PROFILE_UPDATED_EVENT } from '@/lib/userProfile';
@@ -461,7 +462,7 @@ export default function HomeExperience() {
           forcedAction: actionForReminder || undefined,
         });
         if (actionForReminder) {
-          ensureActionReminder(assistantTurn.id, actionForReminder);
+          ensureActionReminder(assistantTurn.id, actionForReminder, message);
         }
 
         if (!blueprint.isReviewMode && fetchGenRef.current === submitGen) {
@@ -614,49 +615,60 @@ export default function HomeExperience() {
           {copy.newChat}
         </button>
 
-        <div className="mb-4 rounded-xl border border-white/10 bg-white/[0.025] px-3 py-3">
-          <div className="mb-1 text-[10px] font-black uppercase tracking-widest text-slate-600">Decision Score</div>
-          <div className="flex items-baseline gap-1">
-            <span className={`text-xl font-black ${userScore >= 90 ? 'text-purple-300' : userScore >= 70 ? 'text-emerald-300' : userScore >= 40 ? 'text-amber-300' : 'text-rose-300'}`}>{userScore}</span>
-            <span className="text-xs text-slate-600">/100</span>
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto pb-2">
+          {/* Score */}
+          <div className="mb-4 rounded-xl border border-white/10 bg-white/[0.025] px-3 py-3">
+            <div className="mb-1 text-[10px] font-black uppercase tracking-widest text-slate-600">Decision Score</div>
+            <div className="flex items-baseline gap-1">
+              <span className={`text-xl font-black ${userScore >= 90 ? 'text-purple-300' : userScore >= 70 ? 'text-emerald-300' : userScore >= 40 ? 'text-amber-300' : 'text-rose-300'}`}>{userScore}</span>
+              <span className="text-xs text-slate-600">/100</span>
+            </div>
+            <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-white/[0.08]">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${userScore >= 90 ? 'bg-purple-400' : userScore >= 70 ? 'bg-emerald-400' : userScore >= 40 ? 'bg-amber-400' : 'bg-rose-400'}`}
+                style={{ width: `${userScore}%` }}
+              />
+            </div>
+            <div className="mt-1.5 text-[11px] font-semibold text-slate-400">{getIdentityLabel(userScore)}</div>
           </div>
-          <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-white/[0.08]">
-            <div
-              className={`h-full rounded-full transition-all duration-500 ${userScore >= 90 ? 'bg-purple-400' : userScore >= 70 ? 'bg-emerald-400' : userScore >= 40 ? 'bg-amber-400' : 'bg-rose-400'}`}
-              style={{ width: `${userScore}%` }}
-            />
-          </div>
-          <div className="mt-1.5 text-[11px] font-semibold text-slate-400">{getIdentityLabel(userScore)}</div>
-        </div>
 
-        {thread.length > 0 && (
-          <>
-            <div className="mb-2 px-2 text-[10px] font-black uppercase tracking-widest text-slate-600">{copy.history}</div>
-            <button
-              type="button"
-              className="flex w-full items-start gap-2 rounded-xl bg-purple-500/[0.08] px-3 py-3 text-left text-sm text-slate-200 mb-4"
+          {/* Action History */}
+          <div className="mb-4">
+            <div className="mb-2 px-1 text-[10px] font-black uppercase tracking-widest text-slate-600">Action History</div>
+            <ActionHistory />
+          </div>
+
+          {/* Current conversation */}
+          {thread.length > 0 && (
+            <>
+              <div className="mb-2 px-2 text-[10px] font-black uppercase tracking-widest text-slate-600">{copy.history}</div>
+              <button
+                type="button"
+                className="mb-4 flex w-full items-start gap-2 rounded-xl bg-purple-500/[0.08] px-3 py-3 text-left text-sm text-slate-200"
+              >
+                <MessageSquare className="mt-0.5 h-4 w-4 flex-shrink-0 text-purple-300" />
+                <span className="line-clamp-2">{conversationTitle}</span>
+              </button>
+            </>
+          )}
+
+          {/* Decision Journal */}
+          <div className="mb-2 flex items-center justify-between px-2">
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-600">Decision Journal</span>
+            <Link
+              href="/journal"
+              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold text-slate-500 transition-colors hover:bg-white/[0.05] hover:text-purple-300"
             >
-              <MessageSquare className="mt-0.5 h-4 w-4 flex-shrink-0 text-purple-300" />
-              <span className="line-clamp-2">{conversationTitle}</span>
-            </button>
-          </>
-        )}
-
-        <div className="mb-2 flex items-center justify-between px-2">
-          <span className="text-[10px] font-black uppercase tracking-widest text-slate-600">Decision Journal</span>
-          <Link
-            href="/journal"
-            className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold text-slate-500 transition-colors hover:bg-white/[0.05] hover:text-purple-300"
-          >
-            <BookOpen className="h-3 w-3" />
-            View all
-          </Link>
+              <BookOpen className="h-3 w-3" />
+              View all
+            </Link>
+          </div>
+          <DecisionJournal
+            refreshTrigger={latestDecisionId}
+            currentDecisionId={latestDecisionId}
+            onReview={(problem) => void handleSubmit(`Revisit: ${problem}`)}
+          />
         </div>
-        <DecisionJournal
-          refreshTrigger={latestDecisionId}
-          currentDecisionId={latestDecisionId}
-          onReview={(problem) => void handleSubmit(`Revisit: ${problem}`)}
-        />
       </aside>
 
       <section className="flex min-w-0 flex-1 flex-col">

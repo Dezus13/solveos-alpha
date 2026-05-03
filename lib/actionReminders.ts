@@ -11,6 +11,7 @@ export type PressureState = 'normal' | 'pressure_2h' | 'pressure_12h' | 'overdue
 export interface ActionReminderRecord {
   status: ActionStatus;
   action: string;
+  decisionText?: string;
   blocker?: string;
   blockerCategory?: BlockerCategory;
   smallerAction?: string;
@@ -41,22 +42,23 @@ export function writeActionReminders(store: ActionReminderStore): void {
   window.dispatchEvent(new Event(ACTION_REMINDER_EVENT));
 }
 
-export function createReminderRecord(action: string, status: ActionStatus = 'pending'): ActionReminderRecord {
+export function createReminderRecord(action: string, status: ActionStatus = 'pending', decisionText?: string): ActionReminderRecord {
   const now = new Date();
   const createdAt = now.toISOString();
   return {
     status,
     action,
+    decisionText,
     createdAt,
     dueAt: new Date(now.getTime() + ACTION_REMINDER_WINDOW_MS).toISOString(),
     updatedAt: createdAt,
   };
 }
 
-export function ensureActionReminder(id: string, action: string): ActionReminderStore {
+export function ensureActionReminder(id: string, action: string, decisionText?: string): ActionReminderStore {
   const store = readActionReminders();
   if (!action || store[id]) return store;
-  const next = { ...store, [id]: createReminderRecord(action) };
+  const next = { ...store, [id]: createReminderRecord(action, 'pending', decisionText) };
   writeActionReminders(next);
   return next;
 }
@@ -139,4 +141,39 @@ export function restartWithSmallerAction(id: string, originalAction: string, cat
     createdAt: now.toISOString(),
     dueAt: new Date(now.getTime() + ACTION_REMINDER_WINDOW_MS).toISOString(),
   });
+}
+
+export function getHistoryRecords(store = readActionReminders()): [string, ActionReminderRecord][] {
+  const now = Date.now();
+  return Object.entries(store)
+    .filter(([, record]) => {
+      if (record.status === 'done' || record.status === 'skipped') return true;
+      return (record.status === 'pending' || record.status === 'blocked') && new Date(record.dueAt).getTime() <= now;
+    })
+    .sort((a, b) => new Date(b[1].updatedAt).getTime() - new Date(a[1].updatedAt).getTime());
+}
+
+export function getActionMetrics(store = readActionReminders()): { successRate: number; streak: number } {
+  const history = getHistoryRecords(store);
+  const last7 = history.slice(0, 7);
+  const doneCount = last7.filter(([, r]) => r.status === 'done').length;
+  const successRate = last7.length > 0 ? Math.round((doneCount / last7.length) * 100) : 0;
+
+  let streak = 0;
+  for (const [, record] of history) {
+    if (record.status === 'done') streak++;
+    else break;
+  }
+
+  return { successRate, streak };
+}
+
+export function formatTimeAgo(timestamp: string): string {
+  const ms = Date.now() - new Date(timestamp).getTime();
+  const minutes = Math.floor(ms / 60_000);
+  const hours = Math.floor(ms / 3_600_000);
+  const days = Math.floor(hours / 24);
+  if (days >= 1) return `${days}d ago`;
+  if (hours >= 1) return `${hours}h ago`;
+  return minutes >= 1 ? `${minutes}m ago` : 'just now';
 }

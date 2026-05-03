@@ -4,6 +4,42 @@ This file tracks what we change, why we change it, and what we do next.
 
 ---
 
+## 2026-05-03 — Action history and accountability
+
+### Changed
+
+- `lib/actionReminders.ts`: Added `decisionText?: string` to `ActionReminderRecord` — stores the original question when an action is created
+- `lib/actionReminders.ts`: Updated `createReminderRecord()` and `ensureActionReminder()` to accept optional `decisionText`
+- `lib/actionReminders.ts`: Added `getHistoryRecords()` — returns all resolved records (done, skipped, overdue) sorted by `updatedAt` descending. No new storage key; derived from existing `solveos_action_pressure_v1`
+- `lib/actionReminders.ts`: Added `getActionMetrics()` — returns `{ successRate, streak }` for last 7 resolved actions
+- `lib/actionReminders.ts`: Added `formatTimeAgo()` — human-readable relative timestamp
+- `components/ActionHistory.tsx`: New component. Shows metrics row (last 7 success rate, streak) + last 8 resolved actions. Each item: decision text (if any), action text, status badge (Done/Skipped/Overdue), time ago. Listens to `ACTION_REMINDER_EVENT` to refresh live
+- `components/HomeExperience.tsx`: Now passes `message` as `decisionText` to `ensureActionReminder()` so history has question context
+- `components/HomeExperience.tsx`: Added `ActionHistory` section to sidebar between the score widget and the Decision Journal
+- `components/HomeExperience.tsx`: Sidebar content below the new-chat button wrapped in `flex-1 overflow-y-auto min-h-0` — prevents overflow when history grows
+
+### Why
+
+- Users needed to see their behavior over time
+- The `solveos_action_pressure_v1` store already had all the data; it only needed read-side functions and a UI layer
+- No new storage key — history is derived at read time from existing records
+
+### Problem solved
+
+- Users can now see past actions, their outcomes, success rate, and current streak in the sidebar
+- This creates accountability: skipped actions are visible, not forgotten
+
+### Not done
+
+- History not paginated (shows last 8 items)
+- No filter by status (done / skipped / overdue)
+
+### Next
+
+- Commit: `feat: add action history and accountability tracking`
+
+---
+
 ## 2026-05-03 — Decision score system
 
 ### Changed

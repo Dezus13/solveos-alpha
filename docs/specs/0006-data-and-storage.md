@@ -44,9 +44,17 @@
 - completedAt: time Action was completed.
 - skippedAt: time Action was skipped.
 - updatedAt: time of last write.
+- decisionText: the original question text stored when the ActionReminder is created. Used to show context in history.
 - blockerCategory: selected blocker category (`fear`, `unclear`, `lazy`, `external`).
 - smallerAction: reduced action text stored after blockerCategory is picked.
 - overdueScorePenaltyApplied: boolean flag set to true after the −10 overdue penalty is applied. Prevents double-deduction.
+
+### ActionHistory (derived, not a separate store)
+
+History is computed from `solveos_action_pressure_v1` at read time:
+- A record is "history" when: `status === 'done'`, `status === 'skipped'`, or `status === 'pending'/'blocked'` with `dueAt` in the past.
+- `getHistoryRecords()` returns resolved records sorted by `updatedAt` descending.
+- `getActionMetrics()` returns `successRate` (% done in last 7) and `streak` (consecutive done from newest).
 
 ### Decision (`solveos_saved_decisions`)
 

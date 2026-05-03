@@ -86,10 +86,18 @@ Score starts at 50. Clamped 0–100. Stored in `solveos_user_profile` (localStor
 - Blocked Action: store blockerCategory.
 - New Decision blocked: user must finish or the active Action must be overdue before submitting a new one.
 
+## 7a. History and accountability
+
+- `getHistoryRecords()`: returns all resolved ActionReminders (done, skipped, overdue) sorted newest-first.
+- `getActionMetrics()`: computes `successRate` (% done in last 7 records) and `streak` (consecutive done from newest).
+- `formatTimeAgo(timestamp)`: converts ISO timestamp to human-readable relative time ("2h ago", "3d ago").
+- `ActionHistory` component: displays metrics + last 8 resolved actions in the sidebar. Reacts to `ACTION_REMINDER_EVENT`.
+
 ## 8. Files involved
 
 - `components/DecisionConsole.tsx`
 - `components/PersistentActionBanner.tsx`
+- `components/ActionHistory.tsx`
 - `lib/actionReminders.ts`
 - `lib/userProfile.ts`
 - `lib/identityEngine.ts`
