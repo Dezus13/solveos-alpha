@@ -5,19 +5,21 @@ import {
   ACTION_REMINDER_EVENT,
   formatTimeAgo,
   getActionMetrics,
+  getActionResultStatus,
+  getActionResultTimestamp,
   getHistoryRecords,
   type ActionReminderRecord,
 } from '@/lib/actionReminders';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  done:     { label: 'Done',    color: 'text-emerald-400' },
-  skipped:  { label: 'Skipped', color: 'text-rose-400'    },
-  pending:  { label: 'Overdue', color: 'text-rose-400'    },
-  blocked:  { label: 'Overdue', color: 'text-rose-400'    },
+  done: { label: 'Done', color: 'text-emerald-400' },
+  'not yet': { label: 'Not yet', color: 'text-amber-300' },
+  skipped: { label: 'Skipped', color: 'text-rose-400' },
+  overdue: { label: 'Overdue', color: 'text-rose-400' },
 };
 
 function resolvedStatus(record: ActionReminderRecord): { label: string; color: string } {
-  return STATUS_CONFIG[record.status] ?? STATUS_CONFIG.skipped;
+  return STATUS_CONFIG[getActionResultStatus(record)] ?? STATUS_CONFIG.skipped;
 }
 
 export default function ActionHistory() {
@@ -36,7 +38,7 @@ export default function ActionHistory() {
 
   if (records.length === 0) {
     return (
-      <div className="px-1 py-2 text-[11px] text-slate-600">No completed actions yet.</div>
+      <div className="px-1 py-2 text-[11px] text-slate-600">No actions tracked yet.</div>
     );
   }
 
@@ -63,13 +65,15 @@ export default function ActionHistory() {
       {/* Action list */}
       {records.slice(0, 8).map(([id, record]) => {
         const { label, color } = resolvedStatus(record);
-        const timestamp = record.completedAt || record.skippedAt || record.updatedAt;
+        const timestamp = getActionResultTimestamp(record);
         return (
           <div key={id} className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-2">
             {record.decisionText && (
               <div className="mb-0.5 line-clamp-1 text-[10px] text-slate-600">{record.decisionText}</div>
             )}
-            <div className="line-clamp-2 text-[11px] font-semibold leading-tight text-slate-300">{record.action}</div>
+            <div className="line-clamp-2 text-[11px] font-semibold leading-tight text-slate-300">
+              Result: {record.action}
+            </div>
             <div className="mt-1 flex items-center justify-between">
               <span className={`text-[10px] font-black uppercase tracking-wider ${color}`}>{label}</span>
               <span className="text-[10px] text-slate-600">{formatTimeAgo(timestamp)}</span>

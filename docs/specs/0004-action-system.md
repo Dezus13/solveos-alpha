@@ -18,6 +18,7 @@
 - Decision: source of the Action.
 - ActionReminder: saved record for one Action.
 - ActionStatus: current state of the Action.
+- ActionResultStatus: accountability state shown in history: `done`, `not yet`, `skipped`, or `overdue`.
 - BlockerCategory: reason the user did not act (`fear`, `unclear`, `lazy`, `external`).
 - UserState: behavior record after Done or overdue.
 - Pressure Layer: reminder and escalation system.
@@ -26,20 +27,22 @@
 
 1. System receives an Action from the Decision Engine.
 2. System creates an ActionReminder.
-3. ActionReminder starts as `pending`.
+3. ActionReminder starts as `not yet`.
 4. Banner shows the Action.
 5. User chooses Done.
-6. System marks ActionStatus as `done`, updates score.
-7. If user does not act — Pressure Layer escalates at 2h, 12h, 24h.
-8. At overdue: user picks BlockerCategory.
-9. System calls `generateSmallerAction(action, category)` — client-side, no API.
-10. User accepts smaller action via "I'll do this now".
-11. System calls `restartWithSmallerAction(id, action, category)` — resets same reminder with fresh 24h clock.
+6. System marks ActionStatus as `done`, updates score, and the history list updates.
+7. If user chooses Not yet, the Action stays active with status `not yet`; the history list updates immediately.
+8. If user skips to start a new Decision, the ActionStatus becomes `skipped`, score decreases, and the history list updates.
+9. If user does not act — Pressure Layer escalates at 2h, 12h, 24h.
+10. At overdue: ActionStatus becomes `overdue` when the overdue penalty is applied; user picks BlockerCategory.
+11. System calls `generateSmallerAction(action, category)` — client-side, no API.
+12. User accepts smaller action via "I'll do this now".
+13. System calls `restartWithSmallerAction(id, action, category)` — resets same reminder with fresh 24h clock and status `not yet`.
 
 ## 5. Key functions
 
 - `generateSmallerAction(action, category)`: returns a reduced action string based on BlockerCategory. No API call.
-- `restartWithSmallerAction(id, action, category)`: saves the smaller action over the existing reminder, resets `createdAt` and `dueAt` to a new 24h window, sets status back to `pending`.
+- `restartWithSmallerAction(id, action, category)`: saves the smaller action over the existing reminder, resets `createdAt` and `dueAt` to a new 24h window, sets status back to `not yet`.
 - `updateDecisionScoreOnActionCompletion()`: +5 to score.
 - `updateDecisionScoreOnActionSkip()`: −5 to score.
 - `updateDecisionScoreOnActionOverdue()`: −10 to score. Called once per action via `overdueScorePenaltyApplied` flag.
@@ -68,7 +71,8 @@ Score starts at 50. Clamped 0–100. Stored in `solveos_user_profile` (localStor
 ## 6. Stored data
 
 - action: text of the Action (may be replaced by smaller action after reset).
-- status: `pending`, `done`, `blocked`, or `skipped`.
+- decisionText: original Decision text that produced the Action.
+- status: `not yet`, `done`, `skipped`, or `overdue`. Legacy records may contain `pending` or `blocked` and are treated as `not yet` until due.
 - createdAt: time reminder was created (reset when smaller action is accepted).
 - dueAt: 24-hour deadline (reset when smaller action is accepted).
 - completedAt: time Action was completed.
@@ -88,10 +92,12 @@ Score starts at 50. Clamped 0–100. Stored in `solveos_user_profile` (localStor
 
 ## 7a. History and accountability
 
-- `getHistoryRecords()`: returns all resolved ActionReminders (done, skipped, overdue) sorted newest-first.
-- `getActionMetrics()`: computes `successRate` (% done in last 7 records) and `streak` (consecutive done from newest).
+- `getHistoryRecords()`: returns all ActionReminders (done, not yet, skipped, overdue) sorted newest-first.
+- `getActionResultStatus()`: normalizes current and legacy records into `done`, `not yet`, `skipped`, or `overdue`.
+- `getActionResultTimestamp()`: picks the timestamp used for "time passed" in the history row.
+- `getActionMetrics()`: computes `successRate` (% done in last 7 action records) and `streak` (consecutive done from newest).
 - `formatTimeAgo(timestamp)`: converts ISO timestamp to human-readable relative time ("2h ago", "3d ago").
-- `ActionHistory` component: displays metrics + last 8 resolved actions in the sidebar. Reacts to `ACTION_REMINDER_EVENT`.
+- `ActionHistory` component: displays metrics + last 8 actions in the sidebar. Reacts to `ACTION_REMINDER_EVENT`.
 
 ## 8. Files involved
 

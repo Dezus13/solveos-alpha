@@ -1,4 +1,4 @@
-import type { ActionReminderRecord, ActionReminderStore } from './actionReminders';
+import { getActionResultStatus, type ActionReminderRecord, type ActionReminderStore } from './actionReminders';
 import { getProfile, getIdentityLabel } from './userProfile';
 
 export interface IdentitySignals {
@@ -22,10 +22,7 @@ export function computeIdentitySignals(store: ActionReminderStore, now = Date.no
 
   const completed = records.filter((record) => record.status === 'done').length;
   const skipped = records.filter((record) => record.status === 'skipped').length;
-  const delayed = records.filter((record) => (
-    record.status === 'blocked' ||
-    (record.status === 'pending' && new Date(record.dueAt).getTime() <= now)
-  )).length;
+  const delayed = records.filter((record) => getActionResultStatus(record, now) === 'overdue').length;
 
   let executionStreak = 0;
   const newestFirst = records.slice().sort((a, b) => recordTime(b) - recordTime(a));

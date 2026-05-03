@@ -4,7 +4,8 @@ export const ACTION_REMINDER_KEY = 'solveos_action_pressure_v1';
 export const ACTION_REMINDER_EVENT = 'solveos-action-reminders-updated';
 export const ACTION_REMINDER_WINDOW_MS = 24 * 60 * 60 * 1000;
 
-export type ActionStatus = 'pending' | 'done' | 'blocked' | 'skipped';
+export type ActionStatus = 'not yet' | 'done' | 'skipped' | 'overdue' | 'pending' | 'blocked';
+export type ActionResultStatus = 'done' | 'not yet' | 'skipped' | 'overdue';
 export type BlockerCategory = 'fear' | 'unclear' | 'lazy' | 'external';
 export type PressureState = 'normal' | 'pressure_2h' | 'pressure_12h' | 'overdue';
 
@@ -42,7 +43,7 @@ export function writeActionReminders(store: ActionReminderStore): void {
   window.dispatchEvent(new Event(ACTION_REMINDER_EVENT));
 }
 
-export function createReminderRecord(action: string, status: ActionStatus = 'pending', decisionText?: string): ActionReminderRecord {
+export function createReminderRecord(action: string, status: ActionStatus = 'not yet', decisionText?: string): ActionReminderRecord {
   const now = new Date();
   const createdAt = now.toISOString();
   return {
@@ -58,7 +59,7 @@ export function createReminderRecord(action: string, status: ActionStatus = 'pen
 export function ensureActionReminder(id: string, action: string, decisionText?: string): ActionReminderStore {
   const store = readActionReminders();
   if (!action || store[id]) return store;
-  const next = { ...store, [id]: createReminderRecord(action, 'pending', decisionText) };
+  const next = { ...store, [id]: createReminderRecord(action, 'not yet', decisionText) };
   writeActionReminders(next);
   return next;
 }
@@ -81,7 +82,7 @@ export function updateActionReminder(id: string, patch: Partial<ActionReminderRe
 }
 
 export function isIncompleteAction(record: ActionReminderRecord): boolean {
-  return record.status === 'pending' || record.status === 'blocked';
+  return record.status === 'not yet' || record.status === 'pending' || record.status === 'blocked' || record.status === 'overdue';
 }
 
 export function getActiveReminder(store = readActionReminders()): [string, ActionReminderRecord] | null {
@@ -104,6 +105,7 @@ export function formatCountdown(dueAt: string, now = Date.now()): string {
 }
 
 export function getPressureState(record: ActionReminderRecord, now = Date.now()): PressureState {
+  if (record.status === 'overdue') return 'overdue';
   const elapsedHours = (now - new Date(record.createdAt).getTime()) / 3_600_000;
   if (elapsedHours >= 24) return 'overdue';
   if (elapsedHours >= 12) return 'pressure_12h';
@@ -137,20 +139,15 @@ export function restartWithSmallerAction(id: string, originalAction: string, cat
     action: smaller,
     smallerAction: smaller,
     blockerCategory: category,
-    status: 'pending',
+    status: 'not yet',
     createdAt: now.toISOString(),
     dueAt: new Date(now.getTime() + ACTION_REMINDER_WINDOW_MS).toISOString(),
   });
 }
 
 export function getHistoryRecords(store = readActionReminders()): [string, ActionReminderRecord][] {
-  const now = Date.now();
   return Object.entries(store)
-    .filter(([, record]) => {
-      if (record.status === 'done' || record.status === 'skipped') return true;
-      return (record.status === 'pending' || record.status === 'blocked') && new Date(record.dueAt).getTime() <= now;
-    })
-    .sort((a, b) => new Date(b[1].updatedAt).getTime() - new Date(a[1].updatedAt).getTime());
+    .sort((a, b) => new Date(getActionResultTimestamp(b[1])).getTime() - new Date(getActionResultTimestamp(a[1])).getTime());
 }
 
 export function getActionMetrics(store = readActionReminders()): { successRate: number; streak: number } {
@@ -166,6 +163,17 @@ export function getActionMetrics(store = readActionReminders()): { successRate: 
   }
 
   return { successRate, streak };
+}
+
+export function getActionResultStatus(record: ActionReminderRecord, now = Date.now()): ActionResultStatus {
+  if (record.status === 'done') return 'done';
+  if (record.status === 'skipped') return 'skipped';
+  if (record.status === 'overdue' || new Date(record.dueAt).getTime() <= now) return 'overdue';
+  return 'not yet';
+}
+
+export function getActionResultTimestamp(record: ActionReminderRecord): string {
+  return record.completedAt || record.skippedAt || record.updatedAt || record.createdAt;
 }
 
 export function formatTimeAgo(timestamp: string): string {

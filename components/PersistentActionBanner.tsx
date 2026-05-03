@@ -87,7 +87,12 @@ export default function PersistentActionBanner() {
     const [id, reminder] = active;
     if (reminder.overdueScorePenaltyApplied) return;
     updateDecisionScoreOnActionOverdue();
-    updateActionReminder(id, { ...reminder, action: reminder.action, overdueScorePenaltyApplied: true });
+    updateActionReminder(id, {
+      ...reminder,
+      action: reminder.action,
+      status: 'overdue',
+      overdueScorePenaltyApplied: true,
+    });
   }, [isOverdue, active]);
 
   const markDone = useCallback(() => {

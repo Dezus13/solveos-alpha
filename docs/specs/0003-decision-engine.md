@@ -44,6 +44,7 @@
 - decisionScoreTrend: direction of score ('up' | 'down').
 - scoreMessage: identity label derived from decisionScore.
 - decisionText: the original question stored with the ActionReminder to power the history display.
+- actionHistoryContext: previous ActionReminder results can pressure future decisions by showing whether the user usually finishes, delays, skips, or goes overdue.
 
 ## 6. Edge cases
 

@@ -8,12 +8,17 @@ This file tracks what we change, why we change it, and what we do next.
 
 ### Changed
 
+- `lib/actionReminders.ts`: Changed new ActionReminders to start as `status: "not yet"` instead of `pending`; legacy `pending`/`blocked` records remain readable
+- `lib/actionReminders.ts`: Added `ActionResultStatus`, `getActionResultStatus()`, and `getActionResultTimestamp()` so history uses the required result states: done / not yet / skipped / overdue
+- `lib/actionReminders.ts`: `getHistoryRecords()` now returns every ActionReminder, including active not-yet actions, not only resolved records
+- `components/DecisionConsole.tsx`: The Not yet button now stores `status: "not yet"` and updates history immediately while still opening the blocker/smaller-action flow
+- `components/PersistentActionBanner.tsx`: Overdue actions are marked `status: "overdue"` when the one-time overdue penalty is applied
+- `components/ActionHistory.tsx`: History rows now show live not-yet items, overdue normalization, the Action result text, and the relevant time passed
 - `lib/actionReminders.ts`: Added `decisionText?: string` to `ActionReminderRecord` — stores the original question when an action is created
 - `lib/actionReminders.ts`: Updated `createReminderRecord()` and `ensureActionReminder()` to accept optional `decisionText`
-- `lib/actionReminders.ts`: Added `getHistoryRecords()` — returns all resolved records (done, skipped, overdue) sorted by `updatedAt` descending. No new storage key; derived from existing `solveos_action_pressure_v1`
-- `lib/actionReminders.ts`: Added `getActionMetrics()` — returns `{ successRate, streak }` for last 7 resolved actions
+- `lib/actionReminders.ts`: Added `getActionMetrics()` — returns `{ successRate, streak }` for the last 7 action records
 - `lib/actionReminders.ts`: Added `formatTimeAgo()` — human-readable relative timestamp
-- `components/ActionHistory.tsx`: New component. Shows metrics row (last 7 success rate, streak) + last 8 resolved actions. Each item: decision text (if any), action text, status badge (Done/Skipped/Overdue), time ago. Listens to `ACTION_REMINDER_EVENT` to refresh live
+- `components/ActionHistory.tsx`: New component. Shows metrics row (last 7 success rate, streak) + last 8 actions. Each item: decision text, result action, status badge, time ago. Listens to `ACTION_REMINDER_EVENT` to refresh live
 - `components/HomeExperience.tsx`: Now passes `message` as `decisionText` to `ensureActionReminder()` so history has question context
 - `components/HomeExperience.tsx`: Added `ActionHistory` section to sidebar between the score widget and the Decision Journal
 - `components/HomeExperience.tsx`: Sidebar content below the new-chat button wrapped in `flex-1 overflow-y-auto min-h-0` — prevents overflow when history grows
@@ -27,12 +32,12 @@ This file tracks what we change, why we change it, and what we do next.
 ### Problem solved
 
 - Users can now see past actions, their outcomes, success rate, and current streak in the sidebar
-- This creates accountability: skipped actions are visible, not forgotten
+- This creates accountability: not-yet, skipped, and overdue actions are visible, not forgotten
 
 ### Not done
 
 - History not paginated (shows last 8 items)
-- No filter by status (done / skipped / overdue)
+- No filter by status (done / not yet / skipped / overdue)
 
 ### Next
 

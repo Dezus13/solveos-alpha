@@ -94,9 +94,10 @@ function ExecutionPressure({ turn }: { turn: ConversationTurn }) {
   const action = actionFromTurn(turn);
   const [store, setStore] = useState<ActionReminderStore>(() => ensureActionReminder(turn.id, action));
   const [category, setCategory] = useState<BlockerCategory | null>(() => store[turn.id]?.blockerCategory || null);
+  const [showNotYetReasons, setShowNotYetReasons] = useState(() => store[turn.id]?.status === 'blocked');
   const [score, setScore] = useState(() => getProfile().userDecisionScore);
   const record = store[turn.id];
-  const status = record?.status || 'pending';
+  const status = record?.status || 'not yet';
   const streak = countFollowThrough(store);
   const pressureState = record ? getPressureState(record) : 'normal' as const;
 
@@ -117,16 +118,19 @@ function ExecutionPressure({ turn }: { turn: ConversationTurn }) {
     if (status !== 'done') updateDecisionScoreOnActionCompletion();
     persist({ status: 'done', action, completedAt: new Date().toISOString() });
     setCategory(null);
+    setShowNotYetReasons(false);
   }, [action, persist, status]);
 
   const markBlocked = useCallback(() => {
     if (!action) return;
-    persist({ status: 'blocked', action });
+    setShowNotYetReasons(true);
+    persist({ status: 'not yet', action });
   }, [action, persist]);
 
   const handlePickCategory = useCallback((cat: BlockerCategory) => {
     setCategory(cat);
-    persist({ status: 'blocked', action, blockerCategory: cat });
+    setShowNotYetReasons(true);
+    persist({ status: 'not yet', action, blockerCategory: cat });
   }, [action, persist]);
 
   const handleRestartSmaller = useCallback(() => {
@@ -134,6 +138,7 @@ function ExecutionPressure({ turn }: { turn: ConversationTurn }) {
     const next = restartWithSmallerAction(turn.id, action, category);
     setStore(next);
     setCategory(null);
+    setShowNotYetReasons(false);
   }, [action, category, turn.id]);
 
   if (!action) return null;
@@ -168,7 +173,7 @@ function ExecutionPressure({ turn }: { turn: ConversationTurn }) {
               >
                 Yes
               </button>
-              {status !== 'blocked' && (
+              {!showNotYetReasons && status !== 'blocked' && (
                 <button
                   type="button"
                   onClick={markBlocked}
@@ -183,7 +188,7 @@ function ExecutionPressure({ turn }: { turn: ConversationTurn }) {
       </div>
 
       {/* Why not done? — category selection */}
-      {status === 'blocked' && !category && (
+      {(showNotYetReasons || status === 'blocked') && !category && status !== 'done' && (
         <div className="mt-3 border-t border-white/[0.06] pt-3">
           <div className="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-400">Why not done?</div>
           <div className="flex flex-wrap gap-1.5">
@@ -202,7 +207,7 @@ function ExecutionPressure({ turn }: { turn: ConversationTurn }) {
       )}
 
       {/* Smaller action after category picked */}
-      {status === 'blocked' && smallerPreview && (
+      {(showNotYetReasons || status === 'blocked') && smallerPreview && status !== 'done' && (
         <div className="mt-3 border-t border-white/[0.06] pt-3">
           <div className="mb-1 text-[10px] font-black uppercase tracking-widest text-slate-400">Smaller step</div>
           <div className="text-sm font-semibold text-white">{smallerPreview}</div>
