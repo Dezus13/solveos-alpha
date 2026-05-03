@@ -58,6 +58,41 @@ The banner is intentionally hidden during the normal state (0–2h). This avoids
 | lazy     | "First step only: {action}"          |
 | external | "Name what is blocking: {action}"    |
 
+## 6a. Identity Feedback System
+
+The Identity Feedback System turns the score into a behavioral label and shows it in the sidebar. It is not a game. It is not a reward. It is a mirror.
+
+### What is shown
+
+- **Behavior Score**: score / 100, displayed as a number with a thin progress bar.
+- **Identity label**: one of the four confrontational labels derived from the score.
+- **Progress bar color**: reflects score range — rose (0–39), amber (40–69), emerald (70+).
+
+### Where it is shown
+
+- Sidebar widget (`components/IdentityWidget.tsx`), pinned at the bottom of the sidebar below the Decision Journal. Visible on `md:` and larger screens.
+
+### Tone rules
+
+- Do NOT celebrate. No congratulations, no streaks, no badges.
+- Do NOT soften. "You avoid decisions" is correct. Do not euphemize it.
+- The label is a statement of current behavior, not a permanent identity.
+- The score changes on every action event — it is live, not historical.
+
+### Live update mechanism
+
+`IdentityWidget` listens to `PROFILE_UPDATED_EVENT`. Any action that changes the score (`done`, `skip`, `overdue`) dispatches this event. The widget re-reads the profile and updates the score and label without a page reload.
+
+### Score triggers (connected systems)
+
+| Event               | Delta | Dispatcher                                   |
+|---------------------|-------|----------------------------------------------|
+| Action marked done  | +5    | `updateDecisionScoreOnActionCompletion()`    |
+| Action skipped      | −5    | `updateDecisionScoreOnActionSkip()`          |
+| Action overdue      | −10   | `updateDecisionScoreOnActionOverdue()`       |
+
+The overdue penalty is applied once per action via `overdueScorePenaltyApplied` flag to prevent double-deduction.
+
 ## 7. Logic (step-by-step)
 
 1. System reads ActionStatus.
@@ -95,5 +130,6 @@ The banner is intentionally hidden during the normal state (0–2h). This avoids
 - `lib/userProfile.ts`
 - `lib/actionReminders.ts`
 - `components/DecisionConsole.tsx`
+- `components/IdentityWidget.tsx`
 - `components/PersistentActionBanner.tsx`
 - `components/HomeExperience.tsx`

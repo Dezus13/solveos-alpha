@@ -79,9 +79,21 @@ History is computed from `solveos_action_pressure_v1` at read time:
 
 ### User Profile (`solveos_user_profile`)
 
-- userDecisionScore: internal behavior score (0–100).
-- decisionScoreTrend: internal direction of last score change.
-- The score remains stored and used by Decision context, but the large sidebar Decision Score card is hidden from the UI for now.
+- userDecisionScore: behavior score (0–100). Starts at 50. Updated on every action event (+5 done, −5 skip, −10 overdue). Clamped 0–100.
+- decisionScoreTrend: direction of the last score change (`up` or `down`).
+- updatedAt: ISO timestamp of the last profile write.
+- riskTolerance: 0–1 float updated by decision outcomes.
+- executionScore: 0–1 float updated by decision outcomes.
+- biasPatterns: array of detected behavior patterns.
+- totalDecisions: count of tracked decisions.
+
+The `userDecisionScore` drives `getIdentityLabel(score)` which returns one of four confrontational labels:
+- 0–39: "You avoid decisions"
+- 40–69: "You are inconsistent"
+- 70–89: "You act on decisions"
+- 90–100: "You are highly reliable"
+
+The score is displayed in the sidebar via `components/IdentityWidget.tsx`. Updates are pushed live through `PROFILE_UPDATED_EVENT`.
 
 ### Appearance Settings (`solveos_settings`)
 
@@ -121,5 +133,6 @@ History is computed from `solveos_action_pressure_v1` at read time:
 - `lib/userProfile.ts`
 - `lib/settings.ts`
 - `lib/settingsStore.ts`
+- `components/IdentityWidget.tsx`
 - `app/api/memory/route.ts`
 - `app/api/outcomes/route.ts`

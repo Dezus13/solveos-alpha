@@ -4,6 +4,34 @@ This file tracks what we change, why we change it, and what we do next.
 
 ---
 
+## 2026-05-04 — Identity-based behavior system
+
+### Changed
+
+- `components/IdentityWidget.tsx` (new): Sidebar widget showing behavior score (0–100), a thin progress bar, and the confrontational identity label. Mounts client-side only. Listens to `PROFILE_UPDATED_EVENT` for live updates. Bar is rose for 0–39, amber for 40–69, emerald for 70+. Tone is minimal and direct — no celebration, no badges.
+- `components/HomeExperience.tsx`: Imported and added `<IdentityWidget />` at the bottom of the sidebar, pinned below the Decision Journal's scrollable area.
+- `lib/userProfile.ts`: No changes — `userDecisionScore`, `getIdentityLabel`, `PROFILE_UPDATED_EVENT`, and all score update functions were already correct and fully integrated with the action system.
+- `docs/specs/0005-identity-and-pressure.md`: Added "Identity Feedback System" section (6a) documenting widget design, tone rules, live update mechanism, and connected score triggers table.
+- `docs/specs/0006-data-and-storage.md`: Expanded `solveos_user_profile` documentation to include all fields, score rules, identity labels, and widget reference.
+
+### Why
+
+- Score existed in the system but was invisible to the user. Behavior only changes when users can see the pattern.
+- The sidebar is the persistent surface — it's always there, not inside a conversation turn. Identity belongs there.
+- The confrontational labels ("You avoid decisions", "You are inconsistent") are the point. Softening them would defeat the purpose.
+- Live updates via `PROFILE_UPDATED_EVENT` mean the label changes the moment the user marks an action done or gets flagged overdue. Immediate feedback matters.
+
+### Not done
+
+- No change to score math or event dispatch — the system was already wired correctly.
+- No change to the mobile sidebar (widget is `md:` and above only, consistent with the rest of the sidebar).
+
+### Next
+
+- Potential: show score delta inline when it changes ("+5" flash on done). Deferred — evaluate after seeing usage.
+
+---
+
 ## 2026-05-03 — Escalating execution pressure system
 
 ### Changed
