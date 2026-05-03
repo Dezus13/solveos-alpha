@@ -12,6 +12,7 @@ import {
 } from '@/lib/actionReminders';
 import { updateDecisionScoreOnActionCompletion } from '@/lib/userProfile';
 import { generateIdentityLabel } from '@/lib/identityEngine';
+import { getSavedDecisions } from '@/lib/savedDecisions';
 
 function readActive(): [string, ActionReminderRecord] | null {
   try {
@@ -100,6 +101,8 @@ export default function PersistentActionBanner() {
     window.setTimeout(() => setCompletionMessage(null), 2200);
     refresh();
   }, [active, refresh]);
+
+  if (getSavedDecisions().length === 0) return null;
 
   if (!active && completionMessage) {
     return (

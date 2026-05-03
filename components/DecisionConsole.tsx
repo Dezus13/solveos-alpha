@@ -6,7 +6,7 @@ import { detectSolveRequestIntent } from '@/lib/semantic-guards';
 import type { UiCopy } from '@/lib/i18n';
 import type { ProductSettings } from '@/lib/settings';
 import type { ConversationTurn } from '@/lib/types';
-import { isDecisionSaved } from '@/lib/savedDecisions';
+import { getSavedDecisions, isDecisionSaved } from '@/lib/savedDecisions';
 import { updateDecisionScoreOnActionCompletion, updateDecisionScoreOnActionSkip } from '@/lib/userProfile';
 import {
   countFollowThrough,
@@ -340,7 +340,7 @@ function DecisionConsole({ thread, loading, onSubmit, copy, settings, mode, onMo
       setError(`${copy.shortPromptError} (${text.length}/20)`);
       return;
     }
-    const active = getActiveReminder();
+    const active = getSavedDecisions().length > 0 ? getActiveReminder() : null;
     if (active) {
       setBlockedReminder(active);
       setSkipMessage(null);
