@@ -25,6 +25,20 @@
 
 ## 4. Logic (step-by-step)
 
+### Path A — Execution Entry Flow (first input)
+
+1. User submits first decision (no existing thread).
+2. System intercepts before calling the AI.
+3. User sees "Why is this not done?" + their decision text.
+4. User picks a BlockerCategory (fear / unclear / lazy / external).
+5. System calls `generateSmallerAction(decision, category)` — client-side, no API.
+6. User sees the micro-action and taps "I will do this now".
+7. System calls `ensureActionReminder(id, microAction, decision)` — creates ActionReminder with fresh 24h clock.
+8. `PersistentActionBanner` appears automatically on next render.
+9. Entry flow shows "Committed. 24h window started." briefly, then clears.
+
+### Path B — Standard Flow (second input onward)
+
 1. System receives an Action from the Decision Engine.
 2. System creates an ActionReminder.
 3. ActionReminder starts as `not yet`.

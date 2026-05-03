@@ -212,6 +212,7 @@ export default function HomeExperience() {
   const [activeMode, setActiveMode] = useState('Strategy');
   const [modeBlueprints, setModeBlueprints] = useState<Record<string, DecisionBlueprint>>({});
   const [modesLoading, setModesLoading] = useState<Record<string, boolean>>({});
+  const [resetKey, setResetKey] = useState(0);
   const fetchGenRef = useRef(0);
 
   // Keep a stable ref to thread so handleSubmit always sees the latest value
@@ -290,6 +291,7 @@ export default function HomeExperience() {
     setModeBlueprints({});
     setModesLoading({});
     setAdvancedOpen(false);
+    setResetKey((k) => k + 1);
   }, []);
 
   const handleSaveDecision = useCallback((turnId: string) => {
@@ -649,6 +651,7 @@ export default function HomeExperience() {
           modesLoading={modesLoading}
           loadedModes={loadedModes}
           onSaveDecision={handleSaveDecision}
+          key={resetKey}
         />
 
         {latestBlueprint && (() => {

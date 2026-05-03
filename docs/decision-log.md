@@ -4,6 +4,35 @@ This file tracks what we change, why we change it, and what we do next.
 
 ---
 
+## 2026-05-03 — Execution pressure entry flow
+
+### Changed
+
+- `lib/i18n.ts`: Added 8 new fields to `UiCopy` interface for all 6 languages: `executionWhyNotDone`, `executionDoThisNow`, `executionCommit`, `executionCommitted`, `executionBlockerFear`, `executionBlockerUnclear`, `executionBlockerNoEnergy`, `executionBlockerExternal`.
+- `components/DecisionConsole.tsx`: Added `EntryPhase` type and `resetKey?: number` prop to `DecisionConsoleProps`. Added `ExecutionEntryFlow` component with 3 phases: `blocker_selection` (why not done + 4 category buttons), `micro_action` (do this now + commit button), `committed` (brief confirmation). Added entry flow state (`entryDecision`, `entryPhase`, `entryMicroAction`) + `resetKey` effect + `handlePickCategory` + `handleCommit` inside `DecisionConsole`. Modified `submitText` to intercept first input and launch entry flow instead of calling the API. Hides the input bar and shows `ExecutionEntryFlow` while flow is active.
+- `components/HomeExperience.tsx`: Added `resetKey` state. Increments on `handleReset`. Passes `resetKey` to `<DecisionConsole />` so entry flow clears when user starts a new session.
+- `docs/specs/0002-user-flow.md`: Added "Execution Entry Flow" as section 4 (first-input path). Renumbered remaining sections.
+- `docs/specs/0004-action-system.md`: Split logic section into Path A (Execution Entry Flow) and Path B (Standard Flow). Entry flow is now the primary action trigger for first-time users.
+
+### Why
+
+- The first moment is the highest-leverage point in the user's session. Showing a chat response wastes it.
+- Users already know what they need to do. The barrier is not knowledge — it is action.
+- Intercepting the first input and routing it directly into "why is this not done?" forces naming the blocker before the AI gives any analysis.
+- `generateSmallerAction` produces a concrete, 5-minute step with no API latency. The user commits in under 30 seconds.
+- `ensureActionReminder` starts the 24h clock immediately. The accountability system runs from the first interaction.
+
+### Not done
+
+- No change to the AI engine, pressure escalation, or score logic.
+- Entry flow uses `generateSmallerAction` only — no API call, no streaming.
+
+### Next
+
+- Implement escalating pressure loop: `PersistentActionBanner` hidden at normal state, amber at 2h, orange at 12h, red + blocker buttons at overdue.
+
+---
+
 ## 2026-05-03 — Strong first experience flow
 
 ### Changed

@@ -33,6 +33,14 @@ export interface UiCopy {
   risks: string;
   nextMove: string;
   redTeamChallenge: string;
+  executionWhyNotDone: string;
+  executionDoThisNow: string;
+  executionCommit: string;
+  executionCommitted: string;
+  executionBlockerFear: string;
+  executionBlockerUnclear: string;
+  executionBlockerNoEnergy: string;
+  executionBlockerExternal: string;
 }
 
 export const languageOptions: Array<{ id: SupportedLanguage; label: string; nativeLabel: string }> = [
@@ -87,6 +95,14 @@ export const uiCopy: Record<Exclude<SupportedLanguage, 'auto'>, UiCopy> = {
     risks: 'Risks',
     nextMove: 'Next move',
     redTeamChallenge: 'Red-team challenge',
+    executionWhyNotDone: 'Why is this not done?',
+    executionDoThisNow: 'Do this now:',
+    executionCommit: 'I will do this now',
+    executionCommitted: 'Committed. 24h window started.',
+    executionBlockerFear: 'Fear',
+    executionBlockerUnclear: 'Not clear',
+    executionBlockerNoEnergy: 'No energy',
+    executionBlockerExternal: 'Blocked externally',
   },
   German: {
     appName: 'SolveOS',
@@ -125,6 +141,14 @@ export const uiCopy: Record<Exclude<SupportedLanguage, 'auto'>, UiCopy> = {
     risks: 'Risiken',
     nextMove: 'Nächster Schritt',
     redTeamChallenge: 'Red-Team-Prüfung',
+    executionWhyNotDone: 'Warum ist das noch nicht erledigt?',
+    executionDoThisNow: 'Tu das jetzt:',
+    executionCommit: 'Ich mache das jetzt',
+    executionCommitted: 'Verpflichtet. 24h-Fenster gestartet.',
+    executionBlockerFear: 'Angst',
+    executionBlockerUnclear: 'Unklar',
+    executionBlockerNoEnergy: 'Kein Antrieb',
+    executionBlockerExternal: 'Extern blockiert',
   },
   Russian: {
     appName: 'SolveOS',
@@ -163,6 +187,14 @@ export const uiCopy: Record<Exclude<SupportedLanguage, 'auto'>, UiCopy> = {
     risks: 'Риски',
     nextMove: 'Следующий шаг',
     redTeamChallenge: 'Red-team проверка',
+    executionWhyNotDone: 'Почему это ещё не сделано?',
+    executionDoThisNow: 'Сделай это сейчас:',
+    executionCommit: 'Я сделаю это сейчас',
+    executionCommitted: 'Обязательство принято. 24-часовой таймер запущен.',
+    executionBlockerFear: 'Страх',
+    executionBlockerUnclear: 'Непонятно',
+    executionBlockerNoEnergy: 'Нет энергии',
+    executionBlockerExternal: 'Внешние блокеры',
   },
   Arabic: {
     appName: 'SolveOS',
@@ -201,6 +233,14 @@ export const uiCopy: Record<Exclude<SupportedLanguage, 'auto'>, UiCopy> = {
     risks: 'المخاطر',
     nextMove: 'الخطوة التالية',
     redTeamChallenge: 'تحدي الفريق الأحمر',
+    executionWhyNotDone: 'لماذا لم يُنجز هذا بعد؟',
+    executionDoThisNow: 'افعل هذا الآن:',
+    executionCommit: 'سأفعل هذا الآن',
+    executionCommitted: 'التزمت. نافذة 24 ساعة بدأت.',
+    executionBlockerFear: 'خوف',
+    executionBlockerUnclear: 'غير واضح',
+    executionBlockerNoEnergy: 'لا طاقة',
+    executionBlockerExternal: 'محجوب خارجياً',
   },
   Spanish: {
     appName: 'SolveOS',
@@ -239,6 +279,14 @@ export const uiCopy: Record<Exclude<SupportedLanguage, 'auto'>, UiCopy> = {
     risks: 'Riesgos',
     nextMove: 'Próximo paso',
     redTeamChallenge: 'Desafío red-team',
+    executionWhyNotDone: '¿Por qué esto no está hecho?',
+    executionDoThisNow: 'Haz esto ahora:',
+    executionCommit: 'Lo haré ahora mismo',
+    executionCommitted: 'Comprometido. Ventana de 24h iniciada.',
+    executionBlockerFear: 'Miedo',
+    executionBlockerUnclear: 'No está claro',
+    executionBlockerNoEnergy: 'Sin energía',
+    executionBlockerExternal: 'Bloqueado externamente',
   },
   Chinese: {
     appName: 'SolveOS',
@@ -277,6 +325,14 @@ export const uiCopy: Record<Exclude<SupportedLanguage, 'auto'>, UiCopy> = {
     risks: '风险',
     nextMove: '下一步',
     redTeamChallenge: '红队挑战',
+    executionWhyNotDone: '为什么这件事还没做？',
+    executionDoThisNow: '现在做这件事：',
+    executionCommit: '我现在就去做',
+    executionCommitted: '已承诺。24小时倒计时开始。',
+    executionBlockerFear: '恐惧',
+    executionBlockerUnclear: '不清楚',
+    executionBlockerNoEnergy: '没有动力',
+    executionBlockerExternal: '外部阻碍',
   },
 };
 
