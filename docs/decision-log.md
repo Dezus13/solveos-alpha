@@ -4,6 +4,36 @@ This file tracks what we change, why we change it, and what we do next.
 
 ---
 
+## 2026-05-03 — Strong first experience flow
+
+### Changed
+
+- `lib/i18n.ts`: Updated `onboardingTitle` for all 6 languages to confrontational form — English: "What decision are you avoiding right now?", Russian: "Какое решение ты сейчас откладываешь?", and matching translations for German, Spanish, Arabic, Chinese.
+- `lib/i18n.ts`: Updated `onboardingSubtext` for all 6 languages to punchier, pressure-focused copy — English: "No more circles. Get a verdict and a next step."
+- `components/DecisionConsole.tsx` (`EmptyState`): Added pulsing accent dot + "SOLVEOS" label above the title. Signals the system is live and waiting, not idle. Made the h1 `font-bold` (was `font-semibold`).
+- `components/DecisionConsole.tsx` (`submitText`): Bypassed the 20-char minimum for first input (`thread.length === 0`). Short first decisions ("quit my job", "launch?", "hire him") now enter the decision engine without a validation error. Follow-up inputs in an existing thread still require 20 chars.
+- `app/api/solve/route.ts`: First input (detected by `conversationHistory.length === 0`) uses a 5-char minimum instead of 20. Error message for short first inputs is SolveOS-toned: "Describe the decision. A few words is enough to start."
+- `docs/specs/0007-ui-structure.md`: Added "First Experience Flow" section (section 2). Documents entry point behavior, length rules table, and what does not change. Renumbered all subsequent sections.
+
+### Why
+
+- SolveOS is a decision-to-action system, not a chatbot. The first moment must communicate that.
+- "What decision are you avoiding right now?" is confrontational on purpose — it forces the user to name something real instead of browsing or greeting.
+- The 20-char barrier was blocking valid first decisions. "Quit my job" (11 chars) is a real decision. Lowering the floor for first input removes friction without compromising follow-up quality.
+- The pulsing dot signals the system is running, not waiting passively for a chat opener.
+- The subtext "No more circles. Get a verdict and a next step." tells the user exactly what SolveOS does in one line.
+
+### Not done
+
+- No change to the decision engine, pressure system, score logic, or localStorage.
+- No casual mode added — all input routes to the full decision engine.
+
+### Next
+
+- Commit: `feat: implement strong first experience flow`
+
+---
+
 ## 2026-05-03 — Simplify UI while preserving SolveOS identity
 
 ### Changed

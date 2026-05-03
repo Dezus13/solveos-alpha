@@ -328,7 +328,11 @@ function AssistantMessage({ turn, isLatest, copy, onSaveDecision }: {
 function EmptyState({ onPick, copy, showSuggestions }: { onPick: (prompt: string) => void; copy: UiCopy; showSuggestions: boolean }) {
   return (
     <div className="mx-auto flex max-w-2xl flex-1 flex-col items-center justify-center px-6 text-center">
-      <h1 className="text-3xl font-semibold tracking-tight text-[#F8FAFF] sm:text-4xl">
+      <div className="mb-5 flex items-center justify-center gap-2">
+        <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)] animate-pulse" />
+        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">SolveOS</span>
+      </div>
+      <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
         {copy.onboardingTitle}
       </h1>
       <p className="mt-4 max-w-md text-sm leading-relaxed text-slate-500">
@@ -380,7 +384,8 @@ function DecisionConsole({ thread, loading, onSubmit, copy, settings, mode, onMo
       setError(copy.emptyPromptError);
       return;
     }
-    if (intent === 'normal_decision' && text.length < 20) {
+    const isFirstInput = thread.length === 0;
+    if (!isFirstInput && intent === 'normal_decision' && text.length < 20) {
       setError(`${copy.shortPromptError} (${text.length}/20)`);
       return;
     }
@@ -397,7 +402,7 @@ function DecisionConsole({ thread, loading, onSubmit, copy, settings, mode, onMo
     setBlockedReminder(null);
     setInput('');
     onSubmit(text, mode);
-  }, [copy.emptyPromptError, copy.shortPromptError, mode, onSubmit]);
+  }, [copy.emptyPromptError, copy.shortPromptError, mode, onSubmit, thread.length]);
 
   const skipBlockedReminder = useCallback(() => {
     if (!blockedReminder) return;
