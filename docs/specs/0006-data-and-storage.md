@@ -21,6 +21,7 @@
 - UserState: saved behavior state.
 - Decision Journal: saved list of past Decisions.
 - Outcome: recorded result of a past Decision.
+- ProductSettings: local UI preference object.
 
 ## 4. Logic (step-by-step)
 
@@ -82,6 +83,17 @@ History is computed from `solveos_action_pressure_v1` at read time:
 - decisionScoreTrend: internal direction of last score change.
 - The score remains stored and used by Decision context, but the large sidebar Decision Score card is hidden from the UI for now.
 
+### ProductSettings (`solveos.productSettings.v1`)
+
+- Stored in localStorage through `lib/settings.ts`.
+- `readSettings()`: safely reads and merges settings on the client.
+- `writeSettings()`: persists settings and applies them immediately.
+- `applySettings()`: sets `data-theme`, `data-accent`, and `data-density` on `document.documentElement`.
+- theme: `system`, `dark`, or `midnight`.
+- accent: `purple`, `blue`, `emerald`, or `rose`.
+- density: `compact`, `balanced`, or `calm`.
+- Invalid or missing settings fall back to `defaultSettings`.
+
 ## 6. Edge cases
 
 - File storage unavailable: use remote storage if configured.
@@ -89,6 +101,7 @@ History is computed from `solveos_action_pressure_v1` at read time:
 - Browser storage missing: return empty state.
 - Invalid JSON: ignore bad data and continue.
 - Decision not found: return safe API error.
+- Settings localStorage unavailable: use defaults and keep the app usable.
 
 ## 7. Files involved
 
@@ -98,5 +111,6 @@ History is computed from `solveos_action_pressure_v1` at read time:
 - `lib/savedDecisions.ts`
 - `lib/actionReminders.ts`
 - `lib/userProfile.ts`
+- `lib/settings.ts`
 - `app/api/memory/route.ts`
 - `app/api/outcomes/route.ts`

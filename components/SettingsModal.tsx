@@ -37,7 +37,7 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (checked: b
     <button
       type="button"
       onClick={() => onChange(!checked)}
-      className={`relative h-6 w-11 rounded-full transition-colors ${checked ? 'bg-purple-400' : 'bg-white/10'}`}
+      className={`relative h-6 w-11 rounded-full transition-colors ${checked ? 'bg-[var(--accent)]' : 'bg-white/10'}`}
     >
       <span className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-transform ${checked ? 'translate-x-5' : 'translate-x-1'}`} />
     </button>
@@ -58,7 +58,7 @@ function OptionButton({
       type="button"
       onClick={onClick}
       className={`rounded-xl border px-3 py-2 text-sm transition-colors ${
-        active ? 'border-purple-400/40 bg-purple-500/[0.12] text-white' : 'border-white/10 bg-white/[0.025] text-slate-400 hover:text-slate-100'
+        active ? 'border-[rgba(var(--accent-rgb),0.45)] bg-[rgba(var(--accent-rgb),0.14)] text-white' : 'border-white/10 bg-white/[0.025] text-slate-400 hover:text-slate-100'
       }`}
     >
       {children}
@@ -142,7 +142,7 @@ export default function SettingsModal({
                     type="button"
                     onClick={() => setActiveTab(item.id)}
                     className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors ${
-                      activeTab === item.id ? 'bg-white/[0.08] text-white' : 'text-slate-500 hover:bg-white/[0.04] hover:text-slate-200'
+                      activeTab === item.id ? 'bg-[rgba(var(--accent-rgb),0.14)] text-white' : 'text-slate-500 hover:bg-white/[0.04] hover:text-slate-200'
                     }`}
                   >
                     <item.icon className="h-4 w-4" />
@@ -169,7 +169,7 @@ export default function SettingsModal({
                     key={item.id}
                     type="button"
                     onClick={() => setActiveTab(item.id)}
-                    className={`rounded-full px-3 py-1.5 text-xs ${activeTab === item.id ? 'bg-white/[0.1] text-white' : 'bg-white/[0.03] text-slate-500'}`}
+                    className={`rounded-full px-3 py-1.5 text-xs ${activeTab === item.id ? 'bg-[rgba(var(--accent-rgb),0.14)] text-white' : 'bg-white/[0.03] text-slate-500'}`}
                   >
                     {item.label}
                   </button>
@@ -253,7 +253,12 @@ export default function SettingsModal({
                   </SettingGroup>
                   <SettingGroup label="Accent">
                     {(['purple', 'blue', 'emerald', 'rose'] as const).map((accent) => (
-                      <OptionButton key={accent} active={settings.appearance.accent === accent} onClick={() => update({ appearance: { accent } })}>{accent}</OptionButton>
+                      <OptionButton key={accent} active={settings.appearance.accent === accent} onClick={() => update({ appearance: { accent } })}>
+                        <span className="inline-flex items-center gap-2">
+                          <span className={`h-2.5 w-2.5 rounded-full accent-swatch-${accent}`} />
+                          {accent}
+                        </span>
+                      </OptionButton>
                     ))}
                   </SettingGroup>
                   <SettingGroup label="Density">

@@ -6,8 +6,8 @@ import Link from 'next/link';
 import { BookOpen, ChevronDown, Loader2, MessageSquare, Plus, Settings } from 'lucide-react';
 import DecisionConsole from '@/components/DecisionConsole';
 import SolveOSSymbol from '@/components/SolveOSSymbol';
-import { detectInputLanguage, uiCopy, type SupportedLanguage } from '@/lib/i18n';
-import { defaultSettings, SETTINGS_STORAGE_KEY, type ProductSettings } from '@/lib/settings';
+import { detectInputLanguage, uiCopy } from '@/lib/i18n';
+import { readSettings, type ProductSettings, writeSettings } from '@/lib/settings';
 import type { IntelligenceSnapshot } from '@/components/IntelligenceRail';
 import DecisionJournal from '@/components/DecisionJournal';
 import type { ConversationTurn, DecisionBlueprint, SolveRequest } from '@/lib/types';
@@ -106,32 +106,6 @@ function readableThreadTitle(message: string): string {
   return title.length > 42 ? `${title.slice(0, 42)}...` : title;
 }
 
-function mergeSettings(value: unknown): ProductSettings {
-  if (!value || typeof value !== 'object') return defaultSettings;
-  const incoming = value as Partial<ProductSettings>;
-  const legacyLanguage = (incoming.language as Partial<ProductSettings['language']> & {
-    selected?: SupportedLanguage;
-    responseMode?: 'detected' | 'chosen';
-  }) || {};
-  const legacyConcrete = legacyLanguage.selected && legacyLanguage.selected !== 'auto'
-    ? legacyLanguage.selected
-    : defaultSettings.language.uiLanguage;
-  return {
-    general: { ...defaultSettings.general, ...incoming.general },
-    language: {
-      ...defaultSettings.language,
-      ...incoming.language,
-      uiLanguage: legacyLanguage.uiLanguage || legacyConcrete,
-      decisionMode: legacyLanguage.decisionMode || (legacyLanguage.responseMode === 'chosen' ? 'custom' : 'detected'),
-      customDecisionLanguage: legacyLanguage.customDecisionLanguage || legacyConcrete,
-    },
-    appearance: { ...defaultSettings.appearance, ...incoming.appearance },
-    notifications: { ...defaultSettings.notifications, ...incoming.notifications },
-    data: { ...defaultSettings.data, ...incoming.data },
-    security: { ...defaultSettings.security, ...incoming.security },
-  };
-}
-
 const conciseLabels: Record<string, { verdict: string; why: string; next: string; score: string; identity: string; pattern: string; follow: string; ignore: string; deadline: string }> = {
   English: { verdict: 'Verdict', why: 'Why', next: 'Do this next', score: 'Score', identity: 'Identity', pattern: 'Pattern', follow: 'You follow through', ignore: 'You ignore your own rules', deadline: 'Deadline' },
   Russian: { verdict: 'Вердикт', why: 'Почему', next: 'Сделай дальше', score: 'Оценка', identity: 'Идентичность', pattern: 'Паттерн', follow: 'Ты доводишь до конца', ignore: 'Ты игнорируешь свои правила', deadline: 'Дедлайн' },
@@ -221,15 +195,7 @@ function buildIntelligenceSnapshot(
 export default function HomeExperience() {
   const [thread, setThread] = useState<ConversationTurn[]>([]);
   const [loading, setLoading] = useState(false);
-  const [settings, setSettings] = useState<ProductSettings>(() => {
-    if (typeof window === 'undefined') return defaultSettings;
-    try {
-      const stored = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
-      return stored ? mergeSettings(JSON.parse(stored)) : defaultSettings;
-    } catch {
-      return defaultSettings;
-    }
-  });
+  const [settings, setSettings] = useState<ProductSettings>(() => readSettings());
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [intelligence, setIntelligence] = useState<IntelligenceSnapshot>(idleSnapshot);
@@ -252,10 +218,7 @@ export default function HomeExperience() {
   useEffect(() => { threadRef.current = thread; }, [thread]);
 
   useEffect(() => {
-    window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
-    document.documentElement.dataset.theme = settings.appearance.theme;
-    document.documentElement.dataset.accent = settings.appearance.accent;
-    document.documentElement.dataset.density = settings.appearance.density;
+    writeSettings(settings);
   }, [settings]);
 
   const latestBlueprint = useMemo(() => {

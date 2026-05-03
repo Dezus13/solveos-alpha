@@ -5,8 +5,11 @@
   --foreground: #F8FAFF;
   --accent: #a855f7;
   --accent-rgb: 168, 85, 247;
+  --accent-soft: rgba(168, 85, 247, 0.12);
+  --accent-border: rgba(168, 85, 247, 0.34);
   --surface: rgba(11, 16, 32, 0.78);
   --surface-strong: rgba(9, 14, 29, 0.92);
+  --surface-muted: rgba(255, 255, 255, 0.03);
   --border: rgba(248, 250, 255, 0.1);
   --app-density-scale: 1;
 }
@@ -24,9 +27,10 @@
 }
 
 html[data-theme="dark"] {
-  --background: #0B1020;
+  --background: #0A0F1D;
   --surface: rgba(15, 23, 42, 0.82);
   --surface-strong: rgba(15, 23, 42, 0.94);
+  --surface-muted: rgba(255, 255, 255, 0.035);
   --border: rgba(226, 232, 240, 0.12);
 }
 
@@ -34,36 +38,54 @@ html[data-theme="midnight"] {
   --background: #070B16;
   --surface: rgba(11, 16, 32, 0.78);
   --surface-strong: rgba(9, 14, 29, 0.92);
+  --surface-muted: rgba(255, 255, 255, 0.028);
   --border: rgba(248, 250, 255, 0.1);
 }
 
 @media (prefers-color-scheme: light) {
   html[data-theme="system"] {
-    --background: #111827;
-    --surface: rgba(17, 24, 39, 0.78);
-    --surface-strong: rgba(17, 24, 39, 0.92);
+    --background: #121826;
+    --surface: rgba(21, 29, 45, 0.8);
+    --surface-strong: rgba(20, 27, 42, 0.94);
+    --surface-muted: rgba(255, 255, 255, 0.04);
     --border: rgba(255, 255, 255, 0.14);
   }
+}
+
+html[data-theme="system"] {
+  --background: #101827;
+  --surface: rgba(16, 24, 39, 0.82);
+  --surface-strong: rgba(14, 21, 34, 0.94);
+  --surface-muted: rgba(255, 255, 255, 0.035);
+  --border: rgba(226, 232, 240, 0.12);
 }
 
 html[data-accent="purple"] {
   --accent: #a855f7;
   --accent-rgb: 168, 85, 247;
+  --accent-soft: rgba(168, 85, 247, 0.12);
+  --accent-border: rgba(168, 85, 247, 0.34);
 }
 
 html[data-accent="blue"] {
   --accent: #3b82f6;
   --accent-rgb: 59, 130, 246;
+  --accent-soft: rgba(59, 130, 246, 0.13);
+  --accent-border: rgba(59, 130, 246, 0.36);
 }
 
 html[data-accent="emerald"] {
   --accent: #10b981;
   --accent-rgb: 16, 185, 129;
+  --accent-soft: rgba(16, 185, 129, 0.13);
+  --accent-border: rgba(16, 185, 129, 0.34);
 }
 
 html[data-accent="rose"] {
   --accent: #f43f5e;
   --accent-rgb: 244, 63, 94;
+  --accent-soft: rgba(244, 63, 94, 0.13);
+  --accent-border: rgba(244, 63, 94, 0.34);
 }
 
 html[data-density="compact"] {
@@ -82,20 +104,96 @@ html[data-density="calm"] {
   background: var(--background);
 }
 
-.solveos-app-shell .text-purple-300,
-.solveos-app-shell .text-purple-400,
-.solveos-app-shell .text-purple-500 {
+.solveos-app-shell [class*="text-purple-"] {
   color: var(--accent) !important;
 }
 
-.solveos-app-shell .bg-purple-400,
-.solveos-app-shell .bg-purple-500 {
-  background-color: var(--accent) !important;
+.solveos-app-shell [class*="bg-purple-"] {
+  background-color: var(--accent-soft) !important;
 }
 
-.solveos-app-shell .border-purple-400,
-.solveos-app-shell .border-purple-500 {
-  border-color: rgba(var(--accent-rgb), 0.55) !important;
+.solveos-app-shell [class*="border-purple-"] {
+  border-color: var(--accent-border) !important;
+}
+
+.solveos-app-shell [class*="from-purple-"],
+.solveos-app-shell [class*="via-purple-"],
+.solveos-app-shell [class*="to-purple-"] {
+  --tw-gradient-from: rgba(var(--accent-rgb), 0.2) var(--tw-gradient-from-position) !important;
+  --tw-gradient-via: rgba(var(--accent-rgb), 0.16) var(--tw-gradient-via-position) !important;
+  --tw-gradient-to: rgba(var(--accent-rgb), 0.08) var(--tw-gradient-to-position) !important;
+}
+
+.solveos-app-shell [class*="bg-[#080D1A]"],
+.solveos-app-shell [class*="bg-[#090E1B]"],
+.solveos-app-shell [class*="bg-[#0B1020]"],
+.solveos-app-shell [class*="bg-neutral-900"] {
+  background-color: var(--surface-strong) !important;
+}
+
+.solveos-app-shell [class*="border-white/10"],
+.solveos-app-shell [class*="border-white/[0.10]"],
+.solveos-app-shell [class*="border-white/8"] {
+  border-color: var(--border) !important;
+}
+
+.solveos-app-shell ::selection {
+  background: rgba(var(--accent-rgb), 0.32);
+}
+
+.accent-swatch-purple { background: #a855f7; }
+.accent-swatch-blue { background: #3b82f6; }
+.accent-swatch-emerald { background: #10b981; }
+.accent-swatch-rose { background: #f43f5e; }
+
+html[data-density="compact"] .solveos-app-shell [class~="p-6"],
+html[data-density="compact"] .solveos-app-shell [class~="p-5"],
+html[data-density="compact"] .solveos-app-shell [class~="p-4"] {
+  padding: 0.85rem !important;
+}
+
+html[data-density="compact"] .solveos-app-shell [class~="px-5"],
+html[data-density="compact"] .solveos-app-shell [class~="px-4"] {
+  padding-left: 0.85rem !important;
+  padding-right: 0.85rem !important;
+}
+
+html[data-density="compact"] .solveos-app-shell [class~="py-5"],
+html[data-density="compact"] .solveos-app-shell [class~="py-4"],
+html[data-density="compact"] .solveos-app-shell [class~="py-3"] {
+  padding-top: 0.7rem !important;
+  padding-bottom: 0.7rem !important;
+}
+
+html[data-density="compact"] .solveos-app-shell [class~="gap-6"],
+html[data-density="compact"] .solveos-app-shell [class~="gap-5"],
+html[data-density="compact"] .solveos-app-shell [class~="gap-4"] {
+  gap: 0.75rem !important;
+}
+
+html[data-density="calm"] .solveos-app-shell [class~="p-6"],
+html[data-density="calm"] .solveos-app-shell [class~="p-5"],
+html[data-density="calm"] .solveos-app-shell [class~="p-4"] {
+  padding: 1.35rem !important;
+}
+
+html[data-density="calm"] .solveos-app-shell [class~="px-5"],
+html[data-density="calm"] .solveos-app-shell [class~="px-4"] {
+  padding-left: 1.35rem !important;
+  padding-right: 1.35rem !important;
+}
+
+html[data-density="calm"] .solveos-app-shell [class~="py-5"],
+html[data-density="calm"] .solveos-app-shell [class~="py-4"],
+html[data-density="calm"] .solveos-app-shell [class~="py-3"] {
+  padding-top: 1.15rem !important;
+  padding-bottom: 1.15rem !important;
+}
+
+html[data-density="calm"] .solveos-app-shell [class~="gap-6"],
+html[data-density="calm"] .solveos-app-shell [class~="gap-5"],
+html[data-density="calm"] .solveos-app-shell [class~="gap-4"] {
+  gap: 1.35rem !important;
 }
 
 html[data-density="compact"] .solveos-app-shell {

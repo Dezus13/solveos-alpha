@@ -4,6 +4,29 @@ This file tracks what we change, why we change it, and what we do next.
 
 ---
 
+## 2026-05-03 — Fully functional settings
+
+### Changed
+
+- `lib/settings.ts`: Added central `mergeSettings()`, `readSettings()`, `writeSettings()`, and `applySettings()` helpers.
+- `components/SettingsHydrator.tsx`: Added a client-only hydrator that applies saved appearance settings before the full home experience loads.
+- `components/HomeExperience.tsx`: Uses the central settings source of truth and writes settings through `writeSettings()`.
+- `components/SettingsModal.tsx`: Appearance controls now use the selected accent visually and update live.
+- `components/DecisionConsole.tsx`: Mode tabs and send button now use the global accent.
+- `app/globals.css`: Added global theme, accent, and density styling through `data-theme`, `data-accent`, and `data-density`.
+- Specs updated for settings storage, hydration, and global UI application.
+
+### Why
+
+- Settings buttons needed to visibly change the app immediately and persist after refresh.
+- Appearance state needed one safe client-side source of truth instead of scattered localStorage and DOM logic.
+
+### Next
+
+- Commit: `feat: make settings fully functional`
+
+---
+
 ## 2026-05-03 — Hide sidebar action history
 
 ### Changed

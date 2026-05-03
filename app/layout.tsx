@@ -1,5 +1,6 @@
 import './globals.css';
 import PersistentActionBanner from '@/components/PersistentActionBanner';
+import SettingsHydrator from '@/components/SettingsHydrator';
 
 export const metadata = {
   title: 'SolveOS',
@@ -19,6 +20,7 @@ export default function RootLayout({
  return (
    <html lang="en">
       <body>
+         <SettingsHydrator />
          <PersistentActionBanner />
          {children}
       </body>
