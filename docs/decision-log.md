@@ -4,6 +4,70 @@ This file tracks what we change, why we change it, and what we do next.
 
 ---
 
+## 2026-05-03 — Execution pressure loop
+
+### Changed
+
+- `lib/actionReminders.ts`: Added `BlockerCategory` ('fear' | 'unclear' | 'lazy' | 'external'), `PressureState` ('normal' | 'pressure_2h' | 'pressure_12h' | 'overdue') types
+- `lib/actionReminders.ts`: Added `blockerCategory?` and `smallerAction?` fields to `ActionReminderRecord`
+- `lib/actionReminders.ts`: Added `getPressureState()` — computes pressure level from elapsed time (2h / 12h / 24h thresholds)
+- `lib/actionReminders.ts`: Added `getPressureMessage()` — returns "Still not done?" / "You are avoiding this" / "You missed your deadline. Why?"
+- `lib/actionReminders.ts`: Added `generateSmallerAction()` — produces a micro-step based on blocker category (no API call)
+- `lib/actionReminders.ts`: Added `restartWithSmallerAction()` — resets the same reminder to the smaller action with a fresh 24h clock
+- `PersistentActionBanner.tsx`: Full pressure state system — amber → orange → red banner as time passes; overdue triggers "Why not done?" with 4 category buttons; after category → smaller action preview + "I'll do this now"; fixed `refresh()` to always call `setActive(data)` (was only updating on truthy)
+- `DecisionConsole.tsx` `ExecutionPressure`: Replaced free-text blocker input with category buttons; after category → smaller action + "I'll do this now"; pressure state label updates header text
+- `DecisionConsole.tsx` blocked input message: Now shows pressure state message ("Still not done? — finish your previous action first")
+
+### Why
+
+- User must not escape after receiving an action
+- Free-text blocker was ignored — categories force reflection and generate a concrete next step
+- Pressure escalates visually over time to create urgency without requiring a page reload
+- Smaller action removes the "too big" excuse by auto-generating a micro-step
+
+### Not done
+
+- Pressure state does not yet escalate in `ExecutionPressure` inline (color only, no ticking clock) — the persistent banner handles live updates
+
+### Next
+
+- Test: submit decision → wait 2h → verify "Still not done?" in banner
+- Test: overdue → pick "Fear" → verify smaller action generated → verify 24h clock resets
+
+---
+
+## 2026-05-03 — Core behavioral response loop
+
+### Changed
+
+- `HomeExperience.tsx`: Simplified `buildAssistantAnswer()` to 5 lines: Score, Verdict, Why (max 2), Do this next, Deadline 24h
+- `HomeExperience.tsx`: Auto-save every decision to `solveos_saved_decisions` (localStorage) immediately after API response
+- `HomeExperience.tsx`: Call `ensureActionReminder` immediately after response so the persistent banner fires without waiting for component mount
+- `HomeExperience.tsx`: Removed identity, pattern, and "cost of inaction" lines from the response — too much noise
+- `HomeExperience.tsx`: Added `deadline` label to all 6 languages
+- `PersistentActionBanner.tsx`: Removed broken `getSavedDecisions()` guard — original `if (!active) return null` is the correct first-visit protection (action reminders only exist after a decision is made)
+- `DecisionConsole.tsx`: Restored original `getActiveReminder()` call — the `getSavedDecisions()` guard was wrong and prevented the blocked-action gate from working on repeat visits
+
+### Why
+
+- SolveOS must force one action, not just answer
+- The response was too long — users were reading, not acting
+- Auto-save ensures the pressure system fires after every decision
+- The banner's first-visit protection was broken by the previous `getSavedDecisions()` fix — it was using the wrong store
+
+### Not done
+
+- Done / Not yet buttons are in `ExecutionPressure` (inline) and `PersistentActionBanner` (top bar) — both wired
+- Follow-through score updates on Done via `updateDecisionScoreOnActionCompletion`
+- Blocked reason captured via `ExecutionPressure` blocker input
+
+### Next
+
+- Test full loop: submit → compact response → banner → Done → score increase
+- Verify first-visit: no banner on fresh localStorage
+
+---
+
 ## 2026-05-03
 
 ### Changed

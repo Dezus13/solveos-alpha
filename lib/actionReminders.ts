@@ -5,11 +5,15 @@ export const ACTION_REMINDER_EVENT = 'solveos-action-reminders-updated';
 export const ACTION_REMINDER_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export type ActionStatus = 'pending' | 'done' | 'blocked' | 'skipped';
+export type BlockerCategory = 'fear' | 'unclear' | 'lazy' | 'external';
+export type PressureState = 'normal' | 'pressure_2h' | 'pressure_12h' | 'overdue';
 
 export interface ActionReminderRecord {
   status: ActionStatus;
   action: string;
   blocker?: string;
+  blockerCategory?: BlockerCategory;
+  smallerAction?: string;
   createdAt: string;
   dueAt: string;
   completedAt?: string;
@@ -94,4 +98,44 @@ export function formatCountdown(dueAt: string, now = Date.now()): string {
   const hours = Math.floor(remaining / 3_600_000);
   const minutes = Math.max(0, Math.floor((remaining % 3_600_000) / 60_000));
   return `${hours}h ${minutes}m left`;
+}
+
+export function getPressureState(record: ActionReminderRecord, now = Date.now()): PressureState {
+  const elapsedHours = (now - new Date(record.createdAt).getTime()) / 3_600_000;
+  if (elapsedHours >= 24) return 'overdue';
+  if (elapsedHours >= 12) return 'pressure_12h';
+  if (elapsedHours >= 2) return 'pressure_2h';
+  return 'normal';
+}
+
+export function getPressureMessage(state: PressureState): string {
+  switch (state) {
+    case 'overdue': return 'You missed your deadline. Why?';
+    case 'pressure_12h': return 'You are avoiding this';
+    case 'pressure_2h': return 'Still not done?';
+    default: return 'You have a pending action';
+  }
+}
+
+export function generateSmallerAction(action: string, category: BlockerCategory): string {
+  const text = action.length > 80 ? `${action.slice(0, 80)}...` : action;
+  switch (category) {
+    case 'fear': return `5 minutes only: ${text}`;
+    case 'unclear': return `Write what is unclear about: ${text}`;
+    case 'lazy': return `First step only: ${text}`;
+    case 'external': return `Name what is blocking: ${text}`;
+  }
+}
+
+export function restartWithSmallerAction(id: string, originalAction: string, category: BlockerCategory): ActionReminderStore {
+  const smaller = generateSmallerAction(originalAction, category);
+  const now = new Date();
+  return updateActionReminder(id, {
+    action: smaller,
+    smallerAction: smaller,
+    blockerCategory: category,
+    status: 'pending',
+    createdAt: now.toISOString(),
+    dueAt: new Date(now.getTime() + ACTION_REMINDER_WINDOW_MS).toISOString(),
+  });
 }

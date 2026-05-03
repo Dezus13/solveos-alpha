@@ -6,19 +6,24 @@ import { detectSolveRequestIntent } from '@/lib/semantic-guards';
 import type { UiCopy } from '@/lib/i18n';
 import type { ProductSettings } from '@/lib/settings';
 import type { ConversationTurn } from '@/lib/types';
-import { getSavedDecisions, isDecisionSaved } from '@/lib/savedDecisions';
+import { isDecisionSaved } from '@/lib/savedDecisions';
 import { updateDecisionScoreOnActionCompletion, updateDecisionScoreOnActionSkip } from '@/lib/userProfile';
 import {
   countFollowThrough,
   ensureActionReminder,
   formatCountdown,
+  generateSmallerAction,
   getActiveReminder,
+  getPressureMessage,
+  getPressureState,
+  restartWithSmallerAction,
   updateActionReminder,
   type ActionReminderRecord,
   type ActionReminderStore,
+  type BlockerCategory,
 } from '@/lib/actionReminders';
 import { generateIdentityLabel } from '@/lib/identityEngine';
-import { delayPainLine, skipPainLine } from '@/lib/inactionPain';
+import { skipPainLine } from '@/lib/inactionPain';
 
 interface DecisionConsoleProps {
   thread: ConversationTurn[];
@@ -79,22 +84,23 @@ function UserMessage({ content }: { content: string }) {
   );
 }
 
+const CATEGORY_LABELS: Record<BlockerCategory, string> = {
+  fear: 'Fear',
+  unclear: 'Not clear',
+  lazy: 'No energy',
+  external: 'Blocked externally',
+};
+
 function ExecutionPressure({ turn }: { turn: ConversationTurn }) {
   const action = actionFromTurn(turn);
   const [store, setStore] = useState<ActionReminderStore>(() => ensureActionReminder(turn.id, action));
-  const [blocker, setBlocker] = useState(() => store[turn.id]?.blocker || '');
-  const [painLine, setPainLine] = useState('');
+  const [category, setCategory] = useState<BlockerCategory | null>(() => store[turn.id]?.blockerCategory || null);
   const record = store[turn.id];
   const status = record?.status || 'pending';
   const streak = countFollowThrough(store);
   const identity = generateIdentityLabel(store);
-  const emotion = status === 'done'
-    ? completionEmotion(streak)
-    : status === 'blocked'
-      ? 'You decided this was important. What changed?'
-      : status === 'skipped'
-        ? 'You are training yourself to ignore your own decisions'
-        : '';
+  const pressureState = record ? getPressureState(record) : 'normal' as const;
+  const pressureLabel = pressureState !== 'normal' ? getPressureMessage(pressureState) : 'Do this within 24h';
 
   const persist = useCallback((patch: Partial<ActionReminderRecord> & { action: string }) => {
     const next = updateActionReminder(turn.id, patch);
@@ -104,50 +110,47 @@ function ExecutionPressure({ turn }: { turn: ConversationTurn }) {
   const markDone = useCallback(() => {
     if (!action) return;
     if (status !== 'done') updateDecisionScoreOnActionCompletion();
-    persist({
-      status: 'done',
-      action,
-      blocker: blocker.trim() || undefined,
-      completedAt: new Date().toISOString(),
-    });
-    setPainLine('');
-  }, [action, blocker, persist, status]);
+    persist({ status: 'done', action, completedAt: new Date().toISOString() });
+    setCategory(null);
+  }, [action, persist, status]);
 
   const markBlocked = useCallback(() => {
     if (!action) return;
-    persist({
-      status: 'blocked',
-      action,
-      blocker: blocker.trim() || undefined,
-    });
-    setPainLine(delayPainLine(streak));
-  }, [action, blocker, persist, streak]);
+    persist({ status: 'blocked', action });
+  }, [action, persist]);
 
-  const updateBlocker = useCallback((value: string) => {
-    setBlocker(value);
-    if (status !== 'blocked' || !action) return;
-    persist({
-      status: 'blocked',
-      action,
-      blocker: value.trim() || undefined,
-    });
-  }, [action, persist, status]);
+  const handlePickCategory = useCallback((cat: BlockerCategory) => {
+    setCategory(cat);
+    persist({ status: 'blocked', action, blockerCategory: cat });
+  }, [action, persist]);
+
+  const handleRestartSmaller = useCallback(() => {
+    if (!category) return;
+    const next = restartWithSmallerAction(turn.id, action, category);
+    setStore(next);
+    setCategory(null);
+  }, [action, category, turn.id]);
 
   if (!action) return null;
+
+  const smallerPreview = category ? generateSmallerAction(action, category) : null;
+  const isOverdue = pressureState === 'overdue';
+  const labelColor = isOverdue ? 'text-rose-300' : pressureState === 'pressure_12h' ? 'text-orange-300' : 'text-purple-300';
 
   return (
     <div className="mt-2 rounded-2xl border border-purple-500/20 bg-purple-500/[0.055] px-4 py-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="text-[10px] font-black uppercase tracking-widest text-purple-300">Do this within 24h</div>
-          <div className="mt-1 text-[11px] font-semibold text-amber-200">{record?.dueAt ? formatCountdown(record.dueAt) : '24h left'}</div>
-          <div className="mt-1 text-[11px] font-semibold text-slate-300">You followed through: {streak} times</div>
+          <div className={`text-[10px] font-black uppercase tracking-widest ${labelColor}`}>{pressureLabel}</div>
+          <div className="mt-1 text-[11px] font-semibold text-amber-200">
+            {record?.dueAt ? formatCountdown(record.dueAt) : '24h left'}
+          </div>
+          <div className="mt-1 text-[11px] font-semibold text-slate-300">Follow-through: {streak}×</div>
           <div className="mt-1 text-[11px] font-black text-white">Identity: {identity}</div>
-          {painLine && <div className="mt-1 text-[11px] font-black text-rose-200">{painLine}</div>}
         </div>
         {status === 'done' ? (
           <div className="action-complete-pulse rounded-xl border border-emerald-500/25 bg-emerald-500/[0.1] px-3 py-2 text-[11px] font-black uppercase tracking-widest text-emerald-200">
-            {emotion}
+            {completionEmotion(streak)}
           </div>
         ) : (
           <div className="space-y-2">
@@ -160,28 +163,60 @@ function ExecutionPressure({ turn }: { turn: ConversationTurn }) {
               >
                 Yes
               </button>
-              <button
-                type="button"
-                onClick={markBlocked}
-                className="rounded-xl border border-amber-500/25 bg-amber-500/[0.08] px-3 py-2 text-[11px] font-black uppercase tracking-widest text-amber-300 hover:bg-amber-500/[0.14]"
-              >
-                Not yet
-              </button>
+              {status !== 'blocked' && (
+                <button
+                  type="button"
+                  onClick={markBlocked}
+                  className="rounded-xl border border-amber-500/25 bg-amber-500/[0.08] px-3 py-2 text-[11px] font-black uppercase tracking-widest text-amber-300 hover:bg-amber-500/[0.14]"
+                >
+                  Not yet
+                </button>
+              )}
             </div>
           </div>
         )}
       </div>
-      {status === 'blocked' && (
+
+      {/* Why not done? — category selection */}
+      {status === 'blocked' && !category && (
         <div className="mt-3 border-t border-white/[0.06] pt-3">
-          <div className="text-xs font-semibold text-slate-200">
-            {emotion}
+          <div className="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-400">Why not done?</div>
+          <div className="flex flex-wrap gap-1.5">
+            {(Object.keys(CATEGORY_LABELS) as BlockerCategory[]).map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => handlePickCategory(cat)}
+                className="rounded-lg border border-amber-500/20 bg-amber-500/[0.07] px-3 py-1.5 text-[11px] font-black uppercase tracking-widest text-amber-200 hover:bg-amber-500/[0.13]"
+              >
+                {CATEGORY_LABELS[cat]}
+              </button>
+            ))}
           </div>
-          <input
-            value={blocker}
-            onChange={(event) => updateBlocker(event.target.value)}
-            placeholder="Name the blocker..."
-            className="mt-2 w-full rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-purple-400/35"
-          />
+        </div>
+      )}
+
+      {/* Smaller action after category picked */}
+      {status === 'blocked' && smallerPreview && (
+        <div className="mt-3 border-t border-white/[0.06] pt-3">
+          <div className="mb-1 text-[10px] font-black uppercase tracking-widest text-slate-400">Smaller step</div>
+          <div className="text-sm font-semibold text-white">{smallerPreview}</div>
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              onClick={handleRestartSmaller}
+              className="rounded-lg border border-emerald-400/25 bg-emerald-500/[0.1] px-3 py-1.5 text-[11px] font-black uppercase tracking-widest text-emerald-200 hover:bg-emerald-500/[0.16]"
+            >
+              I&apos;ll do this now
+            </button>
+            <button
+              type="button"
+              onClick={() => setCategory(null)}
+              className="rounded-lg border border-white/10 px-3 py-1.5 text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-200"
+            >
+              Back
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -340,11 +375,13 @@ function DecisionConsole({ thread, loading, onSubmit, copy, settings, mode, onMo
       setError(`${copy.shortPromptError} (${text.length}/20)`);
       return;
     }
-    const active = getSavedDecisions().length > 0 ? getActiveReminder() : null;
+    const active = getActiveReminder();
     if (active) {
       setBlockedReminder(active);
       setSkipMessage(null);
-      setError('Finish previous action first or explicitly skip it');
+      const pState = getPressureState(active[1]);
+      const pMsg = getPressureMessage(pState);
+      setError(`${pMsg} — finish your previous action first`);
       return;
     }
     setError(null);
