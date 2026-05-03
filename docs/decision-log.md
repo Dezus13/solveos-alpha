@@ -4,6 +4,37 @@ This file tracks what we change, why we change it, and what we do next.
 
 ---
 
+## 2026-05-03 — Sync execution pressure system with specs
+
+### Changed
+
+- `0005-identity-and-pressure.md`: Added `PressureState` type, timing table (2h/12h/24h), overdue behavior (red banner + "Why not done?"), `BlockerCategory` definitions, smaller action generation table, updated logic steps, added `blockerCategory` and `smallerAction` to stored data
+- `0004-action-system.md`: Added `BlockerCategory` to main objects; added `generateSmallerAction()` and `restartWithSmallerAction()` as documented functions with clear behavior; added `blockerCategory`, `smallerAction`, `updatedAt` to stored data; updated edge cases to include smaller-action reset and blocked-new-decision gate
+- `0006-data-and-storage.md`: Split stored data into `ActionReminder` and `Decision` sections; added `blockerCategory`, `smallerAction`, `updatedAt` to ActionReminder; added "Pressure State (derived)" section documenting `pressure_state`, `last_action_time`, and `reset_time`
+- `0002-user-flow.md`: Added new Decision blocked gate (step 2); added "Execution loop" section covering 2h/12h/24h escalation and full overdue → category → smaller action → reset flow; updated stored data and edge cases
+
+### Why
+
+- Specs must describe real system behavior
+- The execution pressure loop was fully implemented but specs still described the old simple flow
+- A teacher or new contributor reading the specs would not understand how the pressure system works
+
+### Problem solved
+
+- Specs now match the implemented code exactly
+- No contradiction between specs and implementation
+
+### Not done
+
+- `0003-decision-engine.md` was not changed (no engine logic changed)
+- `0001-project-overview.md` was not changed (overview still accurate)
+
+### Next
+
+- Commit: `docs: sync execution pressure system with specs`
+
+---
+
 ## 2026-05-03 — Execution pressure loop
 
 ### Changed

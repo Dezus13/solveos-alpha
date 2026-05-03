@@ -3,7 +3,7 @@
 ## 1. Purpose
 
 - Define the main user path.
-- Make the Decision -> Action loop clear.
+- Make the Decision -> Action -> Execution loop clear.
 
 ## 2. Where it is used
 
@@ -21,21 +21,32 @@
 - UserState: behavior record after the user acts or avoids Action.
 - Decision Journal: saved list of Decisions.
 
-## 4. Logic (step-by-step)
+## 4. Main flow (step-by-step)
 
 1. User enters a Decision.
-2. System gives a Verdict.
-3. System gives an Action.
-4. Action is saved.
-5. Banner appears.
-6. User chooses:
-   - YES -> mark done
-   - NOT YET -> keep reminder
-   - SKIP -> show consequence
-7. Identity Engine updates UserState.
-8. Pressure Layer reacts when needed.
+2. System checks: is there an active pending Action?
+   - YES → block new Decision. Show: "{PressureMessage} — finish your previous action first".
+   - NO → continue.
+3. System gives a Verdict.
+4. System gives an Action.
+5. Action is saved as ActionReminder (`pending`, 24h clock starts).
+6. Banner appears at top of page.
+7. User marks Done → score increases, banner clears.
 
-## 5. Stored data
+## 5. Execution loop (no action taken)
+
+1. Time elapses. Pressure Layer escalates:
+   - 2h: banner turns amber, "Still not done?"
+   - 12h: banner turns orange, "You are avoiding this"
+   - 24h: banner turns red, "You missed your deadline. Why?"
+2. At overdue:
+   a. User sees "Why not done?" with four category buttons.
+   b. User picks a category (fear / not clear / no energy / blocked externally).
+   c. System generates a smaller action (no API call).
+   d. User sees smaller action and taps "I'll do this now".
+   e. System resets the same reminder with the smaller action and a fresh 24h clock.
+
+## 6. Stored data
 
 - decisionId: record connected to the Action.
 - actionText: Action shown to the user.
@@ -43,24 +54,22 @@
 - dueAt: Action deadline.
 - completedAt: time Action was marked done.
 - skippedAt: time Action was skipped.
-- blocker: reason user has not acted yet.
+- blockerCategory: category picked when Action was overdue.
+- smallerAction: reduced action after category pick.
 
-## 6. Edge cases
+## 7. Edge cases
 
 - Empty situation: block submission.
-- Active pending Action: ask user to finish or skip it.
-- User clicks NOT YET: keep Action pending or blocked.
-- User skips: lower score and show consequence.
+- Active pending Action: block new Decision, show pressure message.
+- Overdue Action: show category buttons to reduce the action.
 - Data missing: recreate safe reminder state.
 
-## 7. Files involved
+## 8. Files involved
 
 - `components/HomeExperience.tsx`
 - `components/DecisionConsole.tsx`
 - `components/PersistentActionBanner.tsx`
 - `components/DecisionJournal.tsx`
-- `components/OutcomeLogger.tsx`
 - `app/api/solve/route.ts`
-- `app/api/outcomes/route.ts`
 - `lib/actionReminders.ts`
 - `lib/userProfile.ts`
