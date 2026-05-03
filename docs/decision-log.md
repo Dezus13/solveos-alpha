@@ -8,10 +8,34 @@ This file tracks what we change, why we change it, and what we do next.
 
 ### Changed
 
+- Added spec consistency rules
+- Added spec consistency checklist
+- Aligned terms across all specs
+- Standardized Decision, Action, UserState, Decision Journal, Identity Engine, and Pressure Layer
+
+### Why
+
+- Specs must describe one system
+- Teacher should not see conflicting names
+- Future changes need one source of truth
+
+### Not done
+
+- No feature changes in this pass
+
+### Next
+
+- Commit aligned specs
+- Keep checklist before future commits
+
+---
+
+### Changed
+
 - Created Functional Map (0000-functional-map.md)
 - Cleaned and simplified project specs
 - Removed unnecessary text and noise
-- Structured files into clear roles (user flow, decision engine, action system, etc.)
+- Structured files into clear roles (User Flow, Decision Engine, Action System, etc.)
 
 ### Why
 
@@ -21,15 +45,20 @@ This file tracks what we change, why we change it, and what we do next.
 
 ### Not done
 
-- Specs are not fully connected yet
-- No clear explanation of how all parts work together
-- Teacher summary not finished
+- Teacher summary needs final review
+- Future changes need consistency checks
 
 ### Next
 
-- Connect all specs inside project overview
-- Add system-level explanation
+- Keep specs aligned after each change
 - Prepare clean teacher summary
+
+### Rule
+
+After any change:
+- update specs
+- check consistency
+- then commit
 
 ---
 
@@ -41,6 +70,7 @@ Every time we change something:
 - Explain why
 - Write what is still missing
 - Define the next step
+- Check spec consistency
 
 Keep it simple.
 No long text.

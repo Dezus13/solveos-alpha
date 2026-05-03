@@ -1,9 +1,9 @@
-# 0005 Identity And Pressure
+# 0005 Identity Engine And Pressure Layer
 
 ## 1. Purpose
 
-- Show the user what their behavior says about them.
-- Create pressure when the user avoids action.
+- Define the Identity Engine.
+- Define the Pressure Layer.
 
 ## 2. Where it is used
 
@@ -14,37 +14,39 @@
 
 ## 3. Main objects
 
+- UserState: behavior record after Action outcomes.
+- Identity Engine: system that turns UserState into identity feedback.
+- Pressure Layer: system that reacts to delay or skip.
 - IdentityLabel: short behavior label for the user.
 - DecisionScore: score based on follow-through.
 - PressureLine: message shown after delay or skip.
-- ActionSignals: completion, delay, and skip rates.
-- UserProfile: saved behavior profile.
+- ActionStatus: `pending`, `done`, `blocked`, or `skipped`.
 
 ## 4. Logic (step-by-step)
 
-1. System reads action reminders.
-2. System counts completed actions.
-3. System counts skipped and delayed actions.
-4. System creates identity label.
-5. User completes action.
+1. System reads ActionStatus.
+2. System counts completed Actions.
+3. System counts skipped and delayed Actions.
+4. Identity Engine creates identity label.
+5. User chooses YES.
 6. Score increases.
-7. User skips or delays action.
-8. Score decreases or pressure increases.
+7. User chooses NOT YET or SKIP.
+8. Pressure Layer increases pressure.
 
 ## 5. Stored data
 
 - userDecisionScore: follow-through score.
 - decisionScoreTrend: score direction.
 - totalDecisions: number of tracked decisions.
-- status: action state used for identity.
+- status: ActionStatus used by Identity Engine.
 - completedAt: proof of follow-through.
 - skippedAt: proof of avoidance.
 
 ## 6. Edge cases
 
-- No action history: show default identity.
-- Many skipped actions: show avoidance identity.
-- Overdue action: show stronger reminder.
+- No Action history: show default identity.
+- Many skipped Actions: show avoidance identity.
+- Overdue Action: show stronger reminder.
 - Missing profile: use default profile.
 - Browser storage blocked: keep UI usable.
 

@@ -3,7 +3,7 @@
 ## 1. Purpose
 
 - Define the main user path.
-- Make the decision-to-action loop clear.
+- Make the Decision -> Action loop clear.
 
 ## 2. Where it is used
 
@@ -11,44 +11,45 @@
 - Decision console messages.
 - Result view.
 - Persistent action banner.
-- Decision journal.
+- Decision Journal.
 
 ## 3. Main objects
 
-- Situation: text entered by the user.
-- Verdict: short decision result.
+- Decision: situation entered by the user.
+- Verdict: short Decision result.
 - Action: required step within 24 hours.
-- Reminder: saved action state.
-- Identity: feedback based on follow-through.
+- UserState: behavior record after the user acts or avoids Action.
+- Decision Journal: saved list of Decisions.
 
 ## 4. Logic (step-by-step)
 
-1. User enters situation.
-2. System gives verdict.
-3. System gives action.
+1. User enters a Decision.
+2. System gives a Verdict.
+3. System gives an Action.
 4. Action is saved.
 5. Banner appears.
 6. User chooses:
    - YES -> mark done
    - NOT YET -> keep reminder
    - SKIP -> show consequence
-7. Identity updates.
+7. Identity Engine updates UserState.
+8. Pressure Layer reacts when needed.
 
 ## 5. Stored data
 
-- turnId: conversation item connected to the action.
-- actionText: next step shown to the user.
+- decisionId: record connected to the Action.
+- actionText: Action shown to the user.
 - status: `pending`, `done`, `blocked`, or `skipped`.
-- dueAt: action deadline.
-- completedAt: time action was marked done.
-- skippedAt: time action was skipped.
+- dueAt: Action deadline.
+- completedAt: time Action was marked done.
+- skippedAt: time Action was skipped.
 - blocker: reason user has not acted yet.
 
 ## 6. Edge cases
 
 - Empty situation: block submission.
-- Active pending action: ask user to finish or skip it.
-- User clicks Not yet: keep action pending or blocked.
+- Active pending Action: ask user to finish or skip it.
+- User clicks NOT YET: keep Action pending or blocked.
 - User skips: lower score and show consequence.
 - Data missing: recreate safe reminder state.
 

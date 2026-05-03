@@ -2,7 +2,7 @@
 
 ## 1. Purpose
 
-- Turn user input into a structured decision result.
+- Turn user input into a structured Decision result.
 - Return data the UI can display consistently.
 
 ## 2. Where it is used
@@ -10,34 +10,34 @@
 - Solve API route.
 - Home experience submit flow.
 - Result panels.
-- Decision memory.
+- Decision Journal.
 
 ## 3. Main objects
 
-- SolveRequest: input sent to the solve API.
-- DecisionBlueprint: structured result from the engine.
-- Verdict: final recommendation.
-- ConfidenceScore: numeric strength of the decision.
+- Decision: situation entered by the user.
+- Verdict: final answer.
+- Action: required next step.
 - Risk: reason the decision could fail.
-- ActionPlan: next steps for execution.
+- UserState: behavior record used as context.
+- Decision Journal: saved list of past Decisions.
 
 ## 4. Logic (step-by-step)
 
-1. User submits a situation.
-2. API reads mode, language, profile, and history.
+1. User submits a Decision.
+2. System reads UserState and Decision Journal.
 3. System detects request intent.
-4. System builds or requests a decision blueprint.
-5. System normalizes missing fields.
-6. System checks verdict quality.
-7. API returns result to the UI.
+4. System creates a Verdict.
+5. System creates an Action.
+6. System checks result quality.
+7. System returns result to the UI.
 
 ## 5. Stored data
 
-- problem: user input.
-- recommendation: final verdict.
-- confidenceScore: decision confidence.
+- problem: user Decision.
+- recommendation: final Verdict.
+- confidenceScore: Decision confidence.
 - keyRisks: main risks.
-- actionPlan: next actions.
+- actionPlan: next Action.
 - milestoneTable: review points when present.
 - language: response language.
 
@@ -47,7 +47,7 @@
 - Wrong intent: route to review or plan behavior.
 - Missing model key: use fallback or error path.
 - Invalid blueprint: normalize fields.
-- Repeated verdict loop: force a different answer.
+- Repeated Verdict loop: force a different answer.
 
 ## 7. Files involved
 

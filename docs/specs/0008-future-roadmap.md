@@ -3,7 +3,7 @@
 ## 1. Purpose
 
 - Define the next technical and product improvements.
-- Keep future work focused on the decision-action loop.
+- Keep future work focused on the Decision and Action loop.
 
 ## 2. Where it is used
 
@@ -14,11 +14,12 @@
 
 ## 3. Main objects
 
-- UserAccount: future identity and login layer.
-- Database: future replacement for local file storage.
+- UserAccount: future owner for each Decision.
+- Database: future place to save Decisions and Actions.
+- Decision Journal: future long-term history view.
 - PaymentSignal: proof that users may pay.
 - FeedbackItem: real user feedback.
-- TestCoverage: automated checks for important flows.
+- TestCoverage: checks for main flows.
 
 ## 4. Logic (step-by-step)
 
@@ -32,10 +33,10 @@
 
 ## 5. Stored data
 
-- userId: future owner of decisions.
+- userId: future owner of Decisions.
 - paymentInterest: user willingness to pay.
 - feedbackText: user feedback.
-- decisionHistory: saved decisions in database.
+- decisionHistory: saved Decisions in database.
 - outcomeHistory: saved results over time.
 
 ## 6. Edge cases

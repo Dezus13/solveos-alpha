@@ -12,8 +12,8 @@ SolveOS forces users to move from thinking to action.
 
 ## 2. What user gets
 
-- Clear decision (not vague advice)
-- Concrete next action
+- Clear Decision (not vague advice)
+- Concrete Action
 - Time pressure
 - Feedback on behavior
 - Feeling of progress
@@ -22,13 +22,13 @@ SolveOS forces users to move from thinking to action.
 
 ## 3. Main user flow
 
-1. User writes a situation or problem
-2. System analyzes it
-3. System gives a verdict (decision)
-4. System creates a required action
+1. User writes a Decision
+2. System analyzes the Decision
+3. System gives a Verdict
+4. System creates a required Action
 5. System sets time pressure (example: 24h)
-6. User either completes or ignores
-7. System reacts (reward or pressure)
+6. User chooses YES, NOT YET, or SKIP
+7. System updates UserState
 
 ---
 
@@ -36,7 +36,7 @@ SolveOS forces users to move from thinking to action.
 
 - No endless thinking
 - No soft suggestions
-- Only decisions + actions
+- Only Decisions + Actions
 - Every step leads to movement
 - User is pushed forward
 
@@ -46,21 +46,21 @@ SolveOS forces users to move from thinking to action.
 
 ### Scenario 1 - User acts
 
-User follows the action -> progress increases -> system builds momentum
+User follows the Action -> UserState improves -> system builds momentum
 
 ### Scenario 2 - User ignores
 
-User skips action -> system applies pressure -> reminds again
+User chooses NOT YET or SKIP -> Pressure Layer reacts -> system reminds again
 
 ### Scenario 3 - User repeats behavior
 
-System tracks patterns -> adapts pressure and decisions
+System tracks UserState -> Identity Engine and Pressure Layer adapt
 
 ---
 
 ## 6. What makes this product different
 
-- It does not help thinking - it forces action
+- It does not help thinking - it forces Action
 - It removes hesitation
 - It creates pressure and accountability
 - It behaves like a strict decision system

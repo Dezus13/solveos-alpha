@@ -3,7 +3,7 @@
 ## 1. Purpose
 
 - Define the main UI areas.
-- Show how the user moves from input to verdict to action.
+- Show how the user moves from Decision to Verdict to Action.
 
 ## 2. Where it is used
 
@@ -13,25 +13,25 @@
 - Result panels.
 - Settings modal.
 - Persistent action banner.
+- Decision Journal.
 
 ## 3. Main objects
 
-- HomeExperience: main app shell.
-- DecisionConsole: input and conversation area.
-- SimulationResults: decision result display.
-- PersistentActionBanner: active action reminder.
-- DecisionJournal: saved decision list.
-- SettingsModal: user settings panel.
+- DecisionConsole: where user enters a Decision.
+- SimulationResults: where user sees Verdict and Action.
+- PersistentActionBanner: where active Action stays visible.
+- Decision Journal: where saved Decisions appear.
+- SettingsModal: where user settings appear.
 
 ## 4. Logic (step-by-step)
 
 1. Home page loads.
 2. Main experience renders.
-3. User enters a situation.
+3. User enters a Decision.
 4. Console submits request.
-5. Results render verdict and action.
-6. Banner shows pending action.
-7. Journal shows saved decisions.
+5. Results show Verdict and Action.
+6. Banner shows pending Action.
+7. Decision Journal shows saved Decisions.
 8. Settings control language and preferences.
 
 ## 5. Stored data
@@ -39,7 +39,7 @@
 - settings: user UI preferences.
 - language: selected or detected language.
 - conversationHistory: visible decision thread.
-- currentDecisionId: active decision.
+- currentDecisionId: active Decision.
 - refreshTrigger: signal to reload journal data.
 
 ## 6. Edge cases

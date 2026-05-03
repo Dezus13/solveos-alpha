@@ -3,42 +3,43 @@
 ## 1. Purpose
 
 - Define the main SolveOS system.
-- Show how the product connects decisions, actions, and follow-through.
+- Show how the product connects Decisions, Actions, and follow-through.
 
 ## 2. Where it is used
 
-- Home page: user starts a decision.
-- Decision console: user enters the situation.
-- Result view: system shows verdict and action.
-- Action banner: system keeps the next action visible.
+- Home page: user starts a Decision.
+- Decision console: user enters the Decision.
+- Result view: system shows Verdict and Action.
+- Action banner: system keeps the Action visible.
 
 ## 3. Main objects
 
-- Decision: user situation that needs a clear verdict.
+- Decision: user situation that needs a clear Verdict.
 - Verdict: short system answer for what to do.
-- Action: required next step after the verdict.
-- UserState: behavior record used for identity and pressure.
-- DecisionHistory: saved record of past decisions.
+- Action: required next step after the Verdict.
+- UserState: behavior record used by the Identity Engine and Pressure Layer.
+- Decision Journal: saved list of past Decisions.
 
 ## 4. Logic (step-by-step)
 
-1. User enters a situation.
+1. User enters a Decision.
 2. System checks the input.
-3. System generates a verdict.
-4. System creates a next action.
-5. System saves the decision.
-6. System tracks the action.
-7. System updates identity based on behavior.
+3. System generates a Verdict.
+4. System creates an Action.
+5. System saves the Decision.
+6. System tracks the Action.
+7. System updates UserState.
 
 ## 5. How all parts connect
 
 This system is built from simple connected parts.
 
-- The user starts with a situation -> (User Flow)
+- The user starts with a Decision -> (User Flow)
 - The system analyzes it -> (Decision Engine)
-- The system gives a clear verdict
-- The system creates a required action -> (Action System)
-- The system adds pressure -> (Identity & Pressure)
+- The system gives a clear Verdict
+- The system creates a required Action -> (Action System)
+- The Identity Engine reads UserState -> (Identity Engine And Pressure Layer)
+- The Pressure Layer reacts to delay or skip -> (Identity Engine And Pressure Layer)
 - The system tracks everything -> (Data & Storage)
 - The interface shows the result -> (UI Structure)
 
@@ -60,9 +61,9 @@ SolveOS is not a chatbot.
 
 It is a system that:
 
-- makes decisions
-- forces action
+- makes Decisions
+- forces Action
 - tracks behavior
 - builds momentum
 
-The goal is not thinking - the goal is action.
+The goal is not thinking - the goal is Action.
