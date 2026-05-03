@@ -98,7 +98,7 @@ Score starts at 50. Clamped 0–100. Stored in `solveos_user_profile` (localStor
 - `getActionResultTimestamp()`: picks the timestamp used for "time passed" in the history row.
 - `getActionMetrics()`: computes `successRate` (% done in last 7 action records) and `streak` (consecutive done from newest).
 - `formatTimeAgo(timestamp)`: converts ISO timestamp to human-readable relative time ("2h ago", "3d ago").
-- `ActionHistory` component: displays metrics + last 8 actions in the sidebar. Reacts to `ACTION_REMINDER_EVENT`.
+- `ActionHistory` component: available for future UI, but not currently rendered in the sidebar. Action History remains internal behavior memory until the UI is cleaner.
 
 ## 8. Files involved
 

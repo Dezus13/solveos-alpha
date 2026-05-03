@@ -56,6 +56,7 @@ History is computed from `solveos_action_pressure_v1` at read time:
 - Each row shows Decision text, Action/result text, normalized status (`done`, `not yet`, `skipped`, `overdue`), and time passed from the relevant timestamp.
 - `getHistoryRecords()` returns records sorted by result timestamp descending.
 - `getActionMetrics()` returns `successRate` (% done in last 7 action records) and `streak` (consecutive done from newest).
+- Action History remains internal behavior memory for now; it is not rendered in the sidebar until the UI is cleaner.
 
 ### Decision (`solveos_saved_decisions`)
 

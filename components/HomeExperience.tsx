@@ -10,7 +10,6 @@ import { detectInputLanguage, uiCopy, type SupportedLanguage } from '@/lib/i18n'
 import { defaultSettings, SETTINGS_STORAGE_KEY, type ProductSettings } from '@/lib/settings';
 import type { IntelligenceSnapshot } from '@/components/IntelligenceRail';
 import DecisionJournal from '@/components/DecisionJournal';
-import ActionHistory from '@/components/ActionHistory';
 import type { ConversationTurn, DecisionBlueprint, SolveRequest } from '@/lib/types';
 import { getSavedDecisions, saveDecision } from '@/lib/savedDecisions';
 import { getProfile, getIdentityLabel } from '@/lib/userProfile';
@@ -606,12 +605,6 @@ export default function HomeExperience() {
         </button>
 
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto pb-2">
-          {/* Action History */}
-          <div className="mb-4">
-            <div className="mb-2 px-1 text-[10px] font-black uppercase tracking-widest text-slate-600">Action History</div>
-            <ActionHistory />
-          </div>
-
           {/* Current conversation */}
           {thread.length > 0 && (
             <>

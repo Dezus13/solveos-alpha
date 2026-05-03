@@ -4,6 +4,26 @@ This file tracks what we change, why we change it, and what we do next.
 
 ---
 
+## 2026-05-03 — Hide sidebar action history
+
+### Changed
+
+- `components/HomeExperience.tsx`: Stopped rendering the Action History block in the sidebar.
+- `components/ActionHistory.tsx`: Kept the component for future use.
+- `lib/actionReminders.ts`: Kept action history storage, metrics, and behavior-memory functions unchanged.
+- Specs updated to document Action History as internal behavior memory hidden from sidebar until the UI is cleaner.
+
+### Why
+
+- Old test/demo records made the sidebar look messy.
+- The accountability data is still useful for future behavior pressure, but the current UI should stay cleaner.
+
+### Next
+
+- Commit: `refactor: hide action history from sidebar`
+
+---
+
 ## 2026-05-03 — Hydration fix and hidden sidebar score
 
 ### Changed
@@ -17,7 +37,7 @@ This file tracks what we change, why we change it, and what we do next.
 ### Why
 
 - The banner was reading client-only state during initial render, causing a Next.js hydration mismatch.
-- The sidebar score card was visually noisy; the score should remain internal for now while Action History stays visible.
+- The sidebar score card was visually noisy; the score should remain internal for now while the rest of the sidebar stays focused.
 
 ### Next
 
