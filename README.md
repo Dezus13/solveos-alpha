@@ -1,69 +1,44 @@
 # SolveOS
 
-The Operating System for High-Stakes Decisions.
+SolveOS helps users make decisions and take action.
 
-Every decision makes the next one smarter.
+It is not a normal chatbot. A normal chatbot mostly answers a question. SolveOS turns a decision into a short verdict, a required next action, and a follow-up loop.
 
-SolveOS helps users simulate outcomes, expose risks, and make better decisions using strategic agents, confidence calibration, and decision memory.
+## What SolveOS Does
 
-## Product goal
+- Gives the user a short verdict on a decision.
+- Shows why the verdict makes sense.
+- Creates a clear action the user should do next.
+- Tracks pending actions.
+- Asks if the user completed the action.
+- Builds identity, pressure, and follow-through over time.
+- Saves decision history so past decisions can inform future ones.
 
-SolveOS helps founders and teams turn confusing, high-stakes choices into clear decision blueprints. The goal is to reduce guesswork by combining AI analysis, risk review, and memory from past outcomes.
+## Main User Flow
 
-## What it does
+1. The user enters a decision or situation.
+2. SolveOS analyzes the problem.
+3. SolveOS returns a verdict and next action.
+4. The action becomes pending.
+5. The user marks the action as done or not done.
+6. SolveOS updates the user's follow-through score and identity.
+7. The decision is saved for later review.
 
-- Simulates strategic decisions
-- Shows success, downside, and black swan risk
-- Explains why confidence changed
-- Learns from past outcomes
-- Builds decision memory over time
+## Technical Parts
 
-## Core features
+- `app/` contains the Next.js pages and API routes.
+- `components/` contains the user interface.
+- `lib/` contains the decision engine, memory, action reminders, identity logic, and helpers.
+- `data/` stores decision history for local/server memory.
+- `scripts/` contains test scripts for routing and behavior checks.
+- `docs/specs/` contains the clean SolveOS documentation.
 
-- Decision Engine: turns user context into a recommendation, risks, and next steps.
-- Memory Graph: connects past decisions, lessons, and outcomes.
-- Outcome Flywheel: uses real-world results to improve future decisions.
-- Multilingual support: lets users ask and receive answers in their preferred language.
+## Documentation
 
-## User flow
-
-1. User enters a decision question and important context.
-2. SolveOS asks for missing details when needed.
-3. AI advisors analyze the decision from strategy, risk, and execution angles.
-4. The system returns a clear decision blueprint.
-5. The user later records the real outcome so future recommendations improve.
-
-## Technical overview
-
-The project uses Next.js, TypeScript, Tailwind CSS, and planned AI orchestration with OpenAI and LangGraph. The current app focuses on a decision workspace, blueprint output, and a structure that can grow into memory, sharing, and multilingual features.
-
-## Roadmap
-
-1. Stabilize the decision input and blueprint experience.
-2. Add stronger AI advisor logic and confidence scoring.
-3. Build memory and outcome tracking.
-4. Add sharing, exports, and team workflows.
-
-## Core idea
-
-Most AI tools answer once.  
-SolveOS improves after every decision.
-
-## Homework specs
-
-Teacher-facing specs are available in the `specs/` folder, with the main work plan in `PLAN.md`.
-
-## Demo
-
-Coming soon: SolveOS v1 demo.
-
-## v1-review-routing-fixed
-
-- Fixed review vs verdict routing
-- Added 30/60/90 milestone scorecards
-- Added review mode hard routing fallback
-- Regression prompts passing
+- [Project Map](docs/project-map.md)
+- [Teacher Summary](docs/teacher-summary.md)
+- [Specs](docs/specs/)
 
 ## Status
 
-Alpha v1
+SolveOS is an alpha project. The core idea is working: decision in, verdict out, action tracked, history saved, and follow-through measured.

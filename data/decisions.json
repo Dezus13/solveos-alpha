@@ -1,5 +1,581 @@
 [
   {
+    "problem": "Я делаю инструмент, который помогает принимать решения и не откладывать действия.\n\nМожно тебе показать на 2 минуты и получить честный фидбек?",
+    "blueprint": {
+      "score": 69,
+      "hiddenPain": "The decision pressure is real, but the underlying pain needs sharper definition.",
+      "strategistView": {
+        "biggestUpside": "The biggest upside is capturing signal before competitors or hesitation close the window.",
+        "leverageMove": "Use a staged commitment that creates evidence without overexposing the downside."
+      },
+      "skepticView": {
+        "hiddenFlaw": "The hidden flaw is assuming intent will convert into reliable behavior.",
+        "whatCouldBreak": "Execution quality, timing, or trust could break before the upside appears."
+      },
+      "operatorNextSteps": [
+        "Define the smallest reversible test.",
+        "Assign one owner and one success metric.",
+        "Review evidence before scaling commitment."
+      ],
+      "redTeamCritique": "The strongest attack is that the decision may scale risk faster than learning.",
+      "economistView": "The opportunity cost is capital, attention, and time that cannot be reused if the bet is wrong.",
+      "counterfactualPaths": [
+        {
+          "name": "Proceed Now",
+          "probability": "Medium",
+          "impact": 8,
+          "confidence": 63,
+          "likelyUpside": "The biggest upside is capturing signal before competitors or hesitation close the window.",
+          "keyFailureMode": "Execution quality, timing, or trust could break before the upside appears."
+        },
+        {
+          "name": "Delay",
+          "probability": "High",
+          "impact": 6,
+          "confidence": 55,
+          "reducedRisk": "More time to validate evidence before scaling commitment.",
+          "opportunityCost": "The opportunity cost is capital, attention, and time that cannot be reused if the bet is wrong."
+        },
+        {
+          "name": "Do Nothing",
+          "probability": "High",
+          "impact": 9,
+          "confidence": 50,
+          "probableDownside": "The window narrows while uncertainty stays unresolved.",
+          "hiddenRiskAccumulation": "Inaction compounds ambiguity and slows organizational learning."
+        }
+      ],
+      "preMortemRisks": [
+        {
+          "mode": "Execution Failure",
+          "riskTrigger": "Execution quality, timing, or trust could break before the upside appears.",
+          "earlyWarningSignal": "The first milestone slips or ownership is unclear.",
+          "mitigationMove": "Define the smallest reversible test."
+        },
+        {
+          "mode": "Market Assumption Failure",
+          "riskTrigger": "The hidden flaw is assuming intent will convert into reliable behavior.",
+          "earlyWarningSignal": "Users do not behave as the strategy assumes.",
+          "mitigationMove": "Validate the riskiest assumption before increasing exposure."
+        },
+        {
+          "mode": "Hidden Second-Order Risk",
+          "riskTrigger": "The strongest attack is that the decision may scale risk faster than learning.",
+          "earlyWarningSignal": "A secondary cost appears after the first move.",
+          "mitigationMove": "Install a review checkpoint and explicit stop criteria."
+        }
+      ],
+      "secondOrderEffects": [
+        {
+          "scenario": "Proceed Now",
+          "immediateEffect": "The biggest upside is capturing signal before competitors or hesitation close the window.",
+          "downstreamConsequence": "Execution quality, timing, or trust could break before the upside appears.",
+          "hiddenLongTermEffect": "The opportunity cost is capital, attention, and time that cannot be reused if the bet is wrong."
+        },
+        {
+          "scenario": "Delay",
+          "immediateEffect": "Risk exposure decreases while evidence improves.",
+          "downstreamConsequence": "Momentum and market timing may weaken.",
+          "hiddenLongTermEffect": "The cost of waiting becomes visible only after the window moves."
+        }
+      ],
+      "confidenceScore": 63,
+      "outcomeLessonPrompt": "What happened after execution, and which assumption was most wrong?",
+      "recommendation": "Reversible Experiment: make the next move create evidence instead of defaulting to a generic commitment.",
+      "warRoomDebate": {
+        "strategist": "Go aggressively only where the upside is explicit: The biggest upside is capturing signal before competitors or hesitation close the window. The leverage move is Use a staged commitment that creates evidence without overexposing the downside.",
+        "skeptic": "This fails if the hidden flaw is real: The hidden flaw is assuming intent will convert into reliable behavior. The first break point is Execution quality, timing, or trust could break before the upside appears.",
+        "operator": "Make the next move reversible: Define the smallest reversible test.",
+        "redTeam": "Attack the premise: The strongest attack is that the decision may scale risk faster than learning.",
+        "finalSynthesis": {
+          "survivesDebate": "Use a staged commitment that creates evidence without overexposing the downside.",
+          "breaks": "Execution quality, timing, or trust could break before the upside appears.",
+          "recommendedMoveAfterDebate": "Reversible Experiment: make the next move create evidence instead of defaulting to a generic commitment."
+        }
+      },
+      "executionPlan": [
+        {
+          "week": "Week 1",
+          "objective": "Define the test boundary and the one assumption being validated.",
+          "experiment": "Define the smallest reversible test.",
+          "metric": "Qualified participants, activation, and first useful signal.",
+          "killCriteria": "No qualified users, unclear owner, or no measurable behavior by the end of the week.",
+          "goNoGoThreshold": "Go if at least 5 qualified users complete the test setup and one metric can be tracked."
+        },
+        {
+          "week": "Week 2",
+          "objective": "Run the experiment with real users or real operating constraints.",
+          "experiment": "Assign one owner and one success metric.",
+          "metric": "Activation rate, completion rate, time-to-value, and qualitative friction.",
+          "killCriteria": "Users do not engage, cannot explain the value, or require manual rescue to complete the flow.",
+          "goNoGoThreshold": "Go if 40% or more complete the core action and can name the value without prompting."
+        },
+        {
+          "week": "Week 3",
+          "objective": "Stress-test retention, willingness to pay, or repeat behavior.",
+          "experiment": "Review evidence before scaling commitment.",
+          "metric": "Repeat usage, conversion intent, willingness to pay, referral, or retained engagement.",
+          "killCriteria": "Interest drops after novelty, users avoid commitment, or the cost to support them is too high.",
+          "goNoGoThreshold": "Go if retained usage or commitment clears the pre-set success metric."
+        },
+        {
+          "week": "Week 4",
+          "objective": "Decide scale, redesign, delay, or kill based on evidence.",
+          "experiment": "Compare results against thresholds and make the go / no-go decision.",
+          "metric": "Evidence strength, risk reduction, resource cost, and confidence delta.",
+          "killCriteria": "Core assumption remains unproven or the next phase requires disproportionate resources.",
+          "goNoGoThreshold": "Go only if the evidence supports the next commitment without weakening runway or focus."
+        }
+      ],
+      "diagnosis": {
+        "coreProblem": "Стратегическая экспансия в невалидированный сегмент с высоким порогом входа.",
+        "blindSpots": "Критическая переоценка операционной скорости и недооценка агрессивности конкурентного ответа.",
+        "keyRisks": "Скептик указывает на риск нецелевого сжигания капитала (burn rate) и размытие ценности бренда при отсутствии четкого MVP."
+      },
+      "paths": {
+        "safe": {
+          "description": "Консервативная траектория: запуск серии низкозатратных экспериментов без изменения основного продукта.",
+          "pros": [
+            "Минимизация капитальных рисков",
+            "Сохранение фокуса основной команды"
+          ],
+          "cons": [
+            "Упущенная рыночная возможность",
+            "Риск стагнации"
+          ]
+        },
+        "balanced": {
+          "description": "Сбалансированная стратегия (рекомендация Оператора): фазовое развертывание в течение 12 недель с жесткими KPI.",
+          "pros": [
+            "Контролируемые затраты",
+            "Быстрая петля обратной связи"
+          ],
+          "cons": [
+            "Умеренная нагрузка на ключевые ресурсы"
+          ]
+        },
+        "bold": {
+          "description": "Founder Mode (Видение Стратега): агрессивный захват доли рынка через массированные инвестиции в рост.",
+          "pros": [
+            "Статус технологического лидера",
+            "Максимальный потенциал ROI"
+          ],
+          "cons": [
+            "Риск бинарного исхода",
+            "Экстремальный уровень сжигания ресурсов"
+          ]
+        }
+      },
+      "contrarianInsight": {
+        "perspective": "Что если рынку не нужна комплексная ОС, а требуется лишь точечное решение критической боли?",
+        "hiddenOpportunity": "Доминирование в узком сегменте 'Founders & VC' перед масштабированием на масс-маркет.",
+        "uncomfortableTruth": "Текущий технический стек может не выдержать нагрузку при масштабировании до полноценного движка решений."
+      },
+      "futureSimulation": {
+        "threeMonths": "Ранняя валидация подтверждает спрос, однако сложность UX становится бутылочным горлышком.",
+        "twelveMonths": "SolveOS становится индустриальным стандартом для принятия стратегических решений в среднем и крупном бизнесе."
+      },
+      "actionPlan": {
+        "today": "Финализировать спецификацию MVP и зафиксировать метрики успеха.",
+        "thisWeek": "Развернуть инфраструктуру LangGraph для агентов War Room.",
+        "thirtyDays": "Запустить закрытое альфа-тестирование для 5 ключевых партнеров."
+      },
+      "language": "Russian",
+      "isDemo": true,
+      "council": {
+        "strategistConfidence": 68,
+        "skepticAgreement": 20,
+        "operatorFeasibility": 65,
+        "consensusScore": 64,
+        "debateIntensity": 40,
+        "keyDisagreements": [
+          "Validate assumptions before scaling commitment."
+        ],
+        "resolutionPath": "Proceed only with explicit safeguards and review points."
+      },
+      "riskMap": {
+        "opportunity": 69,
+        "risk": 37
+      },
+      "scenarioBranches": [
+        {
+          "id": "scenario-base",
+          "name": "Base Case",
+          "probability": 45,
+          "upside": 150,
+          "downside": -100,
+          "timeline": "30-90 days",
+          "description": "Expected execution with normal friction and measurable checkpoints."
+        },
+        {
+          "id": "scenario-downside",
+          "name": "Downside Case",
+          "probability": 37,
+          "upside": -50,
+          "downside": -500,
+          "timeline": "Immediate",
+          "description": "Core assumption weakens and the decision needs a fallback path."
+        }
+      ],
+      "outcomeContract": {
+        "prediction30": "",
+        "prediction60": "",
+        "prediction90": "SolveOS становится индустриальным стандартом для принятия стратегических решений в среднем и крупном бизнесе.",
+        "proveCorrect": "The biggest upside is capturing signal before competitors or hesitation close the window.",
+        "proveMistake": "Execution quality, timing, or trust could break before the upside appears."
+      },
+      "confidenceDrivers": {
+        "baseConfidence": 63,
+        "priorOutcomesAdjustment": 6,
+        "similarSuccessRate": 84,
+        "riskPenalty": 0,
+        "finalConfidence": 69,
+        "sampleSize": 2,
+        "evidence": [
+          {
+            "decisionId": "2fyol9u",
+            "problem": "Сможет продукт решать боль лучше чем ChatGPT/Claude?",
+            "predictedConfidence": 78,
+            "actualOutcome": "succeeded",
+            "actualConfidence": 85,
+            "calibrationOffset": 7
+          },
+          {
+            "decisionId": "9zogegs",
+            "problem": "Should I launch SolveOS to 5 beta users this week?",
+            "predictedConfidence": 78,
+            "actualOutcome": "Persisted proof outcome: beta launch completed and feedback was actionable.",
+            "actualConfidence": 82,
+            "calibrationOffset": 4
+          }
+        ]
+      },
+      "decisionScore": 50,
+      "decisionScoreTrend": "up",
+      "scoreMessage": "You follow through"
+    },
+    "id": "iktcgm4",
+    "timestamp": "2026-04-30T21:38:44.142Z",
+    "createdAt": "2026-04-30T21:38:44.142Z",
+    "outcomeStatus": "unknown",
+    "tags": [],
+    "question": "Я делаю инструмент, который помогает принимать решения и не откладывать действия.\n\nМожно тебе показать на 2 минуты и получить честный фидбек?",
+    "verdict": "Reversible Experiment: make the next move create evidence instead of defaulting to a generic commitment.",
+    "confidence": 69,
+    "keyRisks": [
+      "Скептик указывает на риск нецелевого сжигания капитала (burn rate) и размытие ценности бренда при отсутствии четкого MVP.",
+      "Execution quality, timing, or trust could break before the upside appears.",
+      "The hidden flaw is assuming intent will convert into reliable behavior.",
+      "The strongest attack is that the decision may scale risk faster than learning."
+    ],
+    "nextMove": "Финализировать спецификацию MVP и зафиксировать метрики успеха.",
+    "reviewCheckpoints": [
+      {
+        "horizon": 30,
+        "scheduledFor": "2026-05-30T21:38:44.142Z",
+        "status": "unknown"
+      },
+      {
+        "horizon": 60,
+        "scheduledFor": "2026-06-29T21:38:44.142Z",
+        "status": "unknown"
+      },
+      {
+        "horizon": 90,
+        "scheduledFor": "2026-07-29T21:38:44.142Z",
+        "status": "unknown"
+      }
+    ]
+  },
+  {
+    "problem": "I want to test if people will actually pay for SolveOS. What is the fastest way to validate this with real users in 7 days?",
+    "blueprint": {
+      "score": 69,
+      "hiddenPain": "The decision pressure is real, but the underlying pain needs sharper definition.",
+      "strategistView": {
+        "biggestUpside": "The biggest upside is capturing signal before competitors or hesitation close the window.",
+        "leverageMove": "Use a staged commitment that creates evidence without overexposing the downside."
+      },
+      "skepticView": {
+        "hiddenFlaw": "The hidden flaw is assuming intent will convert into reliable behavior.",
+        "whatCouldBreak": "Execution quality, timing, or trust could break before the upside appears."
+      },
+      "operatorNextSteps": [
+        "Define the smallest reversible test.",
+        "Assign one owner and one success metric.",
+        "Review evidence before scaling commitment."
+      ],
+      "redTeamCritique": "The strongest attack is that the decision may scale risk faster than learning.",
+      "economistView": "The opportunity cost is capital, attention, and time that cannot be reused if the bet is wrong.",
+      "counterfactualPaths": [
+        {
+          "name": "Proceed Now",
+          "probability": "Medium",
+          "impact": 8,
+          "confidence": 63,
+          "likelyUpside": "The biggest upside is capturing signal before competitors or hesitation close the window.",
+          "keyFailureMode": "Execution quality, timing, or trust could break before the upside appears."
+        },
+        {
+          "name": "Delay",
+          "probability": "High",
+          "impact": 6,
+          "confidence": 55,
+          "reducedRisk": "More time to validate evidence before scaling commitment.",
+          "opportunityCost": "The opportunity cost is capital, attention, and time that cannot be reused if the bet is wrong."
+        },
+        {
+          "name": "Do Nothing",
+          "probability": "High",
+          "impact": 9,
+          "confidence": 50,
+          "probableDownside": "The window narrows while uncertainty stays unresolved.",
+          "hiddenRiskAccumulation": "Inaction compounds ambiguity and slows organizational learning."
+        }
+      ],
+      "preMortemRisks": [
+        {
+          "mode": "Execution Failure",
+          "riskTrigger": "Execution quality, timing, or trust could break before the upside appears.",
+          "earlyWarningSignal": "The first milestone slips or ownership is unclear.",
+          "mitigationMove": "Define the smallest reversible test."
+        },
+        {
+          "mode": "Market Assumption Failure",
+          "riskTrigger": "The hidden flaw is assuming intent will convert into reliable behavior.",
+          "earlyWarningSignal": "Users do not behave as the strategy assumes.",
+          "mitigationMove": "Validate the riskiest assumption before increasing exposure."
+        },
+        {
+          "mode": "Hidden Second-Order Risk",
+          "riskTrigger": "The strongest attack is that the decision may scale risk faster than learning.",
+          "earlyWarningSignal": "A secondary cost appears after the first move.",
+          "mitigationMove": "Install a review checkpoint and explicit stop criteria."
+        }
+      ],
+      "secondOrderEffects": [
+        {
+          "scenario": "Proceed Now",
+          "immediateEffect": "The biggest upside is capturing signal before competitors or hesitation close the window.",
+          "downstreamConsequence": "Execution quality, timing, or trust could break before the upside appears.",
+          "hiddenLongTermEffect": "The opportunity cost is capital, attention, and time that cannot be reused if the bet is wrong."
+        },
+        {
+          "scenario": "Delay",
+          "immediateEffect": "Risk exposure decreases while evidence improves.",
+          "downstreamConsequence": "Momentum and market timing may weaken.",
+          "hiddenLongTermEffect": "The cost of waiting becomes visible only after the window moves."
+        }
+      ],
+      "confidenceScore": 63,
+      "outcomeLessonPrompt": "What happened after execution, and which assumption was most wrong?",
+      "recommendation": "Reversible Experiment: make the next move create evidence instead of defaulting to a generic commitment.",
+      "warRoomDebate": {
+        "strategist": "Go aggressively only where the upside is explicit: The biggest upside is capturing signal before competitors or hesitation close the window. The leverage move is Use a staged commitment that creates evidence without overexposing the downside.",
+        "skeptic": "This fails if the hidden flaw is real: The hidden flaw is assuming intent will convert into reliable behavior. The first break point is Execution quality, timing, or trust could break before the upside appears.",
+        "operator": "Make the next move reversible: Define the smallest reversible test.",
+        "redTeam": "Attack the premise: The strongest attack is that the decision may scale risk faster than learning.",
+        "finalSynthesis": {
+          "survivesDebate": "Use a staged commitment that creates evidence without overexposing the downside.",
+          "breaks": "Execution quality, timing, or trust could break before the upside appears.",
+          "recommendedMoveAfterDebate": "Reversible Experiment: make the next move create evidence instead of defaulting to a generic commitment."
+        }
+      },
+      "executionPlan": [
+        {
+          "week": "Week 1",
+          "objective": "Define the test boundary and the one assumption being validated.",
+          "experiment": "Define the smallest reversible test.",
+          "metric": "Qualified participants, activation, and first useful signal.",
+          "killCriteria": "No qualified users, unclear owner, or no measurable behavior by the end of the week.",
+          "goNoGoThreshold": "Go if at least 5 qualified users complete the test setup and one metric can be tracked."
+        },
+        {
+          "week": "Week 2",
+          "objective": "Run the experiment with real users or real operating constraints.",
+          "experiment": "Assign one owner and one success metric.",
+          "metric": "Activation rate, completion rate, time-to-value, and qualitative friction.",
+          "killCriteria": "Users do not engage, cannot explain the value, or require manual rescue to complete the flow.",
+          "goNoGoThreshold": "Go if 40% or more complete the core action and can name the value without prompting."
+        },
+        {
+          "week": "Week 3",
+          "objective": "Stress-test retention, willingness to pay, or repeat behavior.",
+          "experiment": "Review evidence before scaling commitment.",
+          "metric": "Repeat usage, conversion intent, willingness to pay, referral, or retained engagement.",
+          "killCriteria": "Interest drops after novelty, users avoid commitment, or the cost to support them is too high.",
+          "goNoGoThreshold": "Go if retained usage or commitment clears the pre-set success metric."
+        },
+        {
+          "week": "Week 4",
+          "objective": "Decide scale, redesign, delay, or kill based on evidence.",
+          "experiment": "Compare results against thresholds and make the go / no-go decision.",
+          "metric": "Evidence strength, risk reduction, resource cost, and confidence delta.",
+          "killCriteria": "Core assumption remains unproven or the next phase requires disproportionate resources.",
+          "goNoGoThreshold": "Go only if the evidence supports the next commitment without weakening runway or focus."
+        }
+      ],
+      "diagnosis": {
+        "coreProblem": "Стратегическая экспансия в невалидированный сегмент с высоким порогом входа.",
+        "blindSpots": "Критическая переоценка операционной скорости и недооценка агрессивности конкурентного ответа.",
+        "keyRisks": "Скептик указывает на риск нецелевого сжигания капитала (burn rate) и размытие ценности бренда при отсутствии четкого MVP."
+      },
+      "paths": {
+        "safe": {
+          "description": "Консервативная траектория: запуск серии низкозатратных экспериментов без изменения основного продукта.",
+          "pros": [
+            "Минимизация капитальных рисков",
+            "Сохранение фокуса основной команды"
+          ],
+          "cons": [
+            "Упущенная рыночная возможность",
+            "Риск стагнации"
+          ]
+        },
+        "balanced": {
+          "description": "Сбалансированная стратегия (рекомендация Оператора): фазовое развертывание в течение 12 недель с жесткими KPI.",
+          "pros": [
+            "Контролируемые затраты",
+            "Быстрая петля обратной связи"
+          ],
+          "cons": [
+            "Умеренная нагрузка на ключевые ресурсы"
+          ]
+        },
+        "bold": {
+          "description": "Founder Mode (Видение Стратега): агрессивный захват доли рынка через массированные инвестиции в рост.",
+          "pros": [
+            "Статус технологического лидера",
+            "Максимальный потенциал ROI"
+          ],
+          "cons": [
+            "Риск бинарного исхода",
+            "Экстремальный уровень сжигания ресурсов"
+          ]
+        }
+      },
+      "contrarianInsight": {
+        "perspective": "Что если рынку не нужна комплексная ОС, а требуется лишь точечное решение критической боли?",
+        "hiddenOpportunity": "Доминирование в узком сегменте 'Founders & VC' перед масштабированием на масс-маркет.",
+        "uncomfortableTruth": "Текущий технический стек может не выдержать нагрузку при масштабировании до полноценного движка решений."
+      },
+      "futureSimulation": {
+        "threeMonths": "Ранняя валидация подтверждает спрос, однако сложность UX становится бутылочным горлышком.",
+        "twelveMonths": "SolveOS становится индустриальным стандартом для принятия стратегических решений в среднем и крупном бизнесе."
+      },
+      "actionPlan": {
+        "today": "Финализировать спецификацию MVP и зафиксировать метрики успеха.",
+        "thisWeek": "Развернуть инфраструктуру LangGraph для агентов War Room.",
+        "thirtyDays": "Запустить закрытое альфа-тестирование для 5 ключевых партнеров."
+      },
+      "language": "Russian",
+      "isDemo": true,
+      "council": {
+        "strategistConfidence": 68,
+        "skepticAgreement": 20,
+        "operatorFeasibility": 65,
+        "consensusScore": 64,
+        "debateIntensity": 40,
+        "keyDisagreements": [
+          "Validate assumptions before scaling commitment."
+        ],
+        "resolutionPath": "Proceed only with explicit safeguards and review points."
+      },
+      "riskMap": {
+        "opportunity": 69,
+        "risk": 37
+      },
+      "scenarioBranches": [
+        {
+          "id": "scenario-base",
+          "name": "Base Case",
+          "probability": 45,
+          "upside": 150,
+          "downside": -100,
+          "timeline": "30-90 days",
+          "description": "Expected execution with normal friction and measurable checkpoints."
+        },
+        {
+          "id": "scenario-downside",
+          "name": "Downside Case",
+          "probability": 37,
+          "upside": -50,
+          "downside": -500,
+          "timeline": "Immediate",
+          "description": "Core assumption weakens and the decision needs a fallback path."
+        }
+      ],
+      "outcomeContract": {
+        "prediction30": "",
+        "prediction60": "",
+        "prediction90": "SolveOS становится индустриальным стандартом для принятия стратегических решений в среднем и крупном бизнесе.",
+        "proveCorrect": "The biggest upside is capturing signal before competitors or hesitation close the window.",
+        "proveMistake": "Execution quality, timing, or trust could break before the upside appears."
+      },
+      "confidenceDrivers": {
+        "baseConfidence": 63,
+        "priorOutcomesAdjustment": 6,
+        "similarSuccessRate": 84,
+        "riskPenalty": 0,
+        "finalConfidence": 69,
+        "sampleSize": 2,
+        "evidence": [
+          {
+            "decisionId": "2fyol9u",
+            "problem": "Сможет продукт решать боль лучше чем ChatGPT/Claude?",
+            "predictedConfidence": 78,
+            "actualOutcome": "succeeded",
+            "actualConfidence": 85,
+            "calibrationOffset": 7
+          },
+          {
+            "decisionId": "9zogegs",
+            "problem": "Should I launch SolveOS to 5 beta users this week?",
+            "predictedConfidence": 78,
+            "actualOutcome": "Persisted proof outcome: beta launch completed and feedback was actionable.",
+            "actualConfidence": 82,
+            "calibrationOffset": 4
+          }
+        ]
+      },
+      "decisionScore": 50,
+      "decisionScoreTrend": "up",
+      "scoreMessage": "You follow through"
+    },
+    "id": "9pp2y3e",
+    "timestamp": "2026-04-30T21:36:49.952Z",
+    "createdAt": "2026-04-30T21:36:49.952Z",
+    "outcomeStatus": "unknown",
+    "tags": [],
+    "question": "I want to test if people will actually pay for SolveOS. What is the fastest way to validate this with real users in 7 days?",
+    "verdict": "Reversible Experiment: make the next move create evidence instead of defaulting to a generic commitment.",
+    "confidence": 69,
+    "keyRisks": [
+      "Скептик указывает на риск нецелевого сжигания капитала (burn rate) и размытие ценности бренда при отсутствии четкого MVP.",
+      "Execution quality, timing, or trust could break before the upside appears.",
+      "The hidden flaw is assuming intent will convert into reliable behavior.",
+      "The strongest attack is that the decision may scale risk faster than learning."
+    ],
+    "nextMove": "Финализировать спецификацию MVP и зафиксировать метрики успеха.",
+    "reviewCheckpoints": [
+      {
+        "horizon": 30,
+        "scheduledFor": "2026-05-30T21:36:49.952Z",
+        "status": "unknown"
+      },
+      {
+        "horizon": 60,
+        "scheduledFor": "2026-06-29T21:36:49.952Z",
+        "status": "unknown"
+      },
+      {
+        "horizon": 90,
+        "scheduledFor": "2026-07-29T21:36:49.952Z",
+        "status": "unknown"
+      }
+    ]
+  },
+  {
     "problem": "Kak utebya dela chto ti mojesh reshat?",
     "blueprint": {
       "score": 69,
