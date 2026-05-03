@@ -4,6 +4,34 @@ This file tracks what we change, why we change it, and what we do next.
 
 ---
 
+## 2026-05-04 — Retention loop via open commitments
+
+### Changed
+
+- `components/DecisionConsole.tsx`: Added `OpenCommitmentView` component. When `!hasThread && !isEntryFlow && activeCommitment`, the main area skips `EmptyState` and shows the commitment re-entry view. Pressure message, action text, countdown (for pressure states), and Done button. Input bar is hidden. Done marks the action complete, dispatches score update, shows "Done. / Next?" for 2s, then clears. Added `activeCommitment`, `commitmentNow`, `commitmentDone` state with 60s tick + `ACTION_REMINDER_EVENT` listener.
+- `components/PersistentActionBanner.tsx`: Added minimal strip for `normal` state (0–2h). Previously returned null for normal state. Now shows a very subdued top bar: accent dot + action text + minimal Done button. Changed completion message from streak-based language ("Good. You execute.", "This is discipline") to simply "Done." — completion banner also shows "Next?" as subdued subtext. Removed unused `readActionReminders` import and `doneCount` variable.
+- `docs/specs/0002-user-flow.md`: Added "Retention Loop via Open Commitments" section (section 4) documenting open loop rules, re-entry behavior, completion behavior, and what does NOT happen. Renumbered subsequent sections.
+- `docs/specs/0005-identity-and-pressure.md`: Updated pressure states table to include "Minimal strip" for normal state. Added "Retention Loop via Open Commitments" subsection documenting normal-state strip, re-entry behavior, completion, and constraints.
+
+### Why
+
+- Users who committed to an action need to feel the open loop when they return. Showing the empty state on re-entry erases that feeling.
+- The normal-state strip (0–2h) keeps the commitment visible without triggering alarm. Calm but persistent.
+- "Done." as completion message is correct. "Good. You execute." is a reward. A reward changes the behavior from accountability to performance — the wrong signal.
+- "Next?" invites forward motion without pushing it.
+- All pressure is in-product only. No notifications required and none added.
+
+### Not done
+
+- No change to the overdue blocker flow — it was already correct.
+- No external notification infrastructure added or planned.
+
+### Next
+
+- Evaluate after real usage: does the normal-state strip feel ambient or annoying?
+
+---
+
 ## 2026-05-04 — Identity-based behavior system
 
 ### Changed

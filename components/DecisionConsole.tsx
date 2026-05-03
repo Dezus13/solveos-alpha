@@ -9,6 +9,7 @@ import type { ConversationTurn } from '@/lib/types';
 import { isDecisionSaved } from '@/lib/savedDecisions';
 import { updateDecisionScoreOnActionCompletion, updateDecisionScoreOnActionSkip, getProfile, getIdentityLabel, PROFILE_UPDATED_EVENT } from '@/lib/userProfile';
 import {
+  ACTION_REMINDER_EVENT,
   countFollowThrough,
   ensureActionReminder,
   formatCountdown,
@@ -449,6 +450,69 @@ function ExecutionEntryFlow({
   );
 }
 
+function OpenCommitmentView({
+  reminder,
+  pressureState,
+  nowTs,
+  done,
+  onDone,
+}: {
+  reminder: ActionReminderRecord | null;
+  pressureState: 'normal' | 'pressure_2h' | 'pressure_12h' | 'overdue';
+  nowTs: number;
+  done: boolean;
+  onDone: () => void;
+}) {
+  if (done) {
+    return (
+      <div className="mx-auto flex max-w-xl flex-1 flex-col items-center justify-center px-4">
+        <div className="text-center">
+          <div className="text-[11px] font-black uppercase tracking-widest text-emerald-300">Done.</div>
+          <div className="mt-3 text-xs text-slate-500">Next?</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!reminder) return null;
+
+  const isOverdue = pressureState === 'overdue';
+  const headerMsg =
+    pressureState === 'normal' ? 'You have an open commitment' : getPressureMessage(pressureState);
+  const msgColor =
+    isOverdue ? 'text-rose-300'
+    : pressureState === 'pressure_12h' ? 'text-orange-300'
+    : pressureState === 'pressure_2h' ? 'text-amber-300'
+    : 'text-slate-500';
+
+  return (
+    <div className="mx-auto flex max-w-xl flex-1 flex-col items-center justify-center px-4 py-8">
+      <div className="w-full space-y-5">
+        <div className="space-y-2">
+          <div className={`text-[10px] font-black uppercase tracking-widest ${msgColor}`}>
+            {headerMsg}
+          </div>
+          <div className="text-base font-semibold leading-snug text-slate-200">
+            {reminder.action}
+          </div>
+          {pressureState !== 'normal' && (
+            <div className="text-[11px] font-semibold text-slate-600">
+              {formatCountdown(reminder.dueAt, nowTs)}
+            </div>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={onDone}
+          className="rounded-xl border border-emerald-400/25 bg-emerald-400/[0.08] px-4 py-2.5 text-[11px] font-black uppercase tracking-widest text-emerald-300 transition-colors hover:bg-emerald-400/[0.14]"
+        >
+          Done
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function DecisionConsole({ thread, loading, onSubmit, copy, settings, mode, onModeChange, modesLoading, loadedModes, onSaveDecision }: DecisionConsoleProps) {
   const [input, setInput] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -460,6 +524,43 @@ function DecisionConsole({ thread, loading, onSubmit, copy, settings, mode, onMo
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [thread.length, loading]);
+
+  const [activeCommitment, setActiveCommitment] = useState<[string, ActionReminderRecord] | null>(null);
+  const [commitmentNow, setCommitmentNow] = useState(0);
+  const [commitmentDone, setCommitmentDone] = useState(false);
+
+  useEffect(() => {
+    const read = () => {
+      setActiveCommitment(getActiveReminder());
+      setCommitmentNow(Date.now());
+    };
+    read();
+    window.addEventListener(ACTION_REMINDER_EVENT, read);
+    const id = window.setInterval(read, 60_000);
+    return () => {
+      window.removeEventListener(ACTION_REMINDER_EVENT, read);
+      window.clearInterval(id);
+    };
+  }, []);
+
+  const commitmentPressureState = activeCommitment
+    ? getPressureState(activeCommitment[1], commitmentNow)
+    : 'normal' as const;
+
+  const handleCommitmentDone = useCallback(() => {
+    if (!activeCommitment) return;
+    updateDecisionScoreOnActionCompletion();
+    updateActionReminder(activeCommitment[0], {
+      ...activeCommitment[1],
+      status: 'done',
+      action: activeCommitment[1].action,
+      completedAt: new Date().toISOString(),
+    });
+    setCommitmentDone(true);
+    window.setTimeout(() => {
+      setCommitmentDone(false);
+    }, 2000);
+  }, [activeCommitment]);
 
   const [entryDecision, setEntryDecision] = useState<string | null>(null);
   const [entryPhase, setEntryPhase] = useState<EntryPhase | null>(null);
@@ -543,6 +644,7 @@ function DecisionConsole({ thread, loading, onSubmit, copy, settings, mode, onMo
   }, [handleSubmit]);
 
   const isEntryFlow = !!entryDecision && !!entryPhase;
+  const isOpenCommitment = !hasThread && !isEntryFlow && (!!activeCommitment || commitmentDone);
 
   return (
     <section className="flex h-full min-w-0 flex-1 flex-col">
@@ -555,6 +657,14 @@ function DecisionConsole({ thread, loading, onSubmit, copy, settings, mode, onMo
             copy={copy}
             onPickCategory={handlePickCategory}
             onCommit={handleCommit}
+          />
+        ) : isOpenCommitment ? (
+          <OpenCommitmentView
+            reminder={activeCommitment?.[1] ?? null}
+            pressureState={commitmentPressureState}
+            nowTs={commitmentNow}
+            done={commitmentDone}
+            onDone={handleCommitmentDone}
           />
         ) : !hasThread && !loading ? (
           <EmptyState onPick={submitText} copy={copy} showSuggestions={settings.general.showSuggestions} />
@@ -571,7 +681,7 @@ function DecisionConsole({ thread, loading, onSubmit, copy, settings, mode, onMo
         )}
       </div>
 
-      {!isEntryFlow && <div className="sticky bottom-0 border-t border-white/8 bg-[#090E1B]/94 px-4 py-5 backdrop-blur-2xl sm:px-6">
+      {!isEntryFlow && !isOpenCommitment && <div className="sticky bottom-0 border-t border-white/8 bg-[#090E1B]/94 px-4 py-5 backdrop-blur-2xl sm:px-6">
         <div className="mx-auto max-w-4xl">
           {(error || skipMessage) && (
             <div className="mb-3 rounded-xl border border-rose-500/20 bg-rose-500/[0.06] px-3 py-2 text-xs font-semibold text-rose-200">

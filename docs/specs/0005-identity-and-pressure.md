@@ -24,16 +24,35 @@
 - ActionStatus: `pending`, `done`, `blocked`, or `skipped`.
 - BlockerCategory: reason the user did not act (`fear`, `unclear`, `lazy`, `external`).
 
-## 4. Pressure States
+## 4. Pressure States and Retention Loop
 
-| State         | Trigger         | Banner shown | Message shown                      |
-|---------------|-----------------|--------------|------------------------------------|
-| normal        | 0–2 hours       | No           | —                                  |
-| pressure_2h   | 2–12 hours      | Yes (amber)  | "Still not done?"                  |
-| pressure_12h  | 12–24 hours     | Yes (orange) | "You are avoiding this"            |
-| overdue       | 24+ hours       | Yes (red)    | "You missed your deadline. Why?"   |
+| State         | Trigger         | Banner shown            | Message shown                      |
+|---------------|-----------------|-------------------------|------------------------------------|
+| normal        | 0–2 hours       | Minimal strip (subdued) | —                                  |
+| pressure_2h   | 2–12 hours      | Amber banner            | "Still not done?"                  |
+| pressure_12h  | 12–24 hours     | Orange banner           | "You are avoiding this"            |
+| overdue       | 24+ hours       | Red banner              | "You missed your deadline. Why?"   |
 
-The banner is intentionally hidden during the normal state (0–2h). This avoids noise immediately after a commitment and preserves the signal-to-noise ratio of the pressure system.
+### Retention Loop via Open Commitments
+
+SolveOS keeps the user's unfinished commitment visible at all times. There are no external notifications — the pressure is entirely internal.
+
+**Normal state (0–2h)**: A very minimal strip at `top-0` shows:
+- A small muted accent dot
+- The action text, truncated, in subdued color
+- A "Done" text button (muted, no border emphasis)
+
+This strip signals "you have something open" without creating urgency. Calm but persistent.
+
+**Re-entry behavior**: When the user opens the app with no thread and an active action exists, `DecisionConsole` replaces `EmptyState` with `OpenCommitmentView`:
+- Shows the pressure-appropriate message (changes with elapsed time)
+- Shows the action text
+- Shows remaining time (for pressure_2h and beyond)
+- Done button: marks complete, shows "Done. / Next?" for 2s, then clears
+
+**Completion**: Marking Done anywhere (banner strip, `OpenCommitmentView`, or inline in a conversation turn) dispatches `ACTION_REMINDER_EVENT`. All surfaces update immediately. The banner briefly shows "Done." — no celebration, no streak language.
+
+**What does NOT happen**: No celebration animations, no reward language, no gamification, no push notifications, no external reminders of any kind.
 
 ## 5. Overdue Behavior
 

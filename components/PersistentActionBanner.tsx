@@ -9,7 +9,6 @@ import {
   getActiveReminder,
   getPressureMessage,
   getPressureState,
-  readActionReminders,
   restartWithSmallerAction,
   updateActionReminder,
   type ActionReminderRecord,
@@ -37,11 +36,8 @@ function readActive(): [string, ActionReminderRecord] | null {
   }
 }
 
-function completionEmotion(streak: number): string {
-  if (streak >= 10) return 'You are operating differently now';
-  if (streak >= 5) return 'This is discipline';
-  if (streak >= 2) return 'You are building momentum';
-  return 'Good. You execute.';
+function completionEmotion(): string {
+  return 'Done.';
 }
 
 export default function PersistentActionBanner() {
@@ -117,8 +113,7 @@ export default function PersistentActionBanner() {
       action: active[1].action,
       completedAt: new Date().toISOString(),
     });
-    const doneCount = Object.values(readActionReminders()).filter((r) => r.status === 'done').length;
-    setCompletionMessage(completionEmotion(doneCount));
+    setCompletionMessage(completionEmotion());
     window.setTimeout(() => setCompletionMessage(null), 2200);
     refresh();
   }, [active, mounted, refresh]);
@@ -144,15 +139,38 @@ export default function PersistentActionBanner() {
 
   if (!active && completionMessage) {
     return (
-      <div className="fixed left-0 right-0 top-0 z-[120] border-b border-emerald-400/25 bg-[#07130D]/95 px-4 py-3 text-emerald-50 shadow-[0_18px_60px_rgba(0,0,0,0.35)] backdrop-blur-xl action-complete-pulse">
-        <div className="mx-auto max-w-5xl text-sm font-black uppercase tracking-widest text-emerald-200">{completionMessage}</div>
+      <div className="fixed left-0 right-0 top-0 z-[120] border-b border-emerald-400/25 bg-[#07130D]/95 px-4 py-3 shadow-[0_18px_60px_rgba(0,0,0,0.35)] backdrop-blur-xl">
+        <div className="mx-auto flex max-w-5xl items-center justify-between">
+          <div className="text-sm font-black uppercase tracking-widest text-emerald-200">Done.</div>
+          <div className="text-[11px] text-slate-500">Next?</div>
+        </div>
       </div>
     );
   }
 
-  if (!active || pressureState === 'normal') return null;
+  if (!active) return null;
 
   const [, reminder] = active;
+
+  if (pressureState === 'normal') {
+    return (
+      <div className="fixed left-0 right-0 top-0 z-[120] border-b border-white/[0.05] bg-[#09101F]/90 px-4 py-2 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[var(--accent)] opacity-40" />
+            <span className="truncate text-[11px] font-medium text-slate-600">{reminder.action}</span>
+          </div>
+          <button
+            type="button"
+            onClick={markDone}
+            className="flex-shrink-0 rounded-lg border border-white/8 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-600 transition-colors hover:border-emerald-400/20 hover:text-emerald-400"
+          >
+            Done
+          </button>
+        </div>
+      </div>
+    );
+  }
   const identity = generateIdentityLabel();
   const headerMessage = getPressureMessage(pressureState);
 
