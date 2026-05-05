@@ -5,7 +5,9 @@ import dynamic from 'next/dynamic';
 import { Settings, Sparkles } from 'lucide-react';
 import DecisionConsole from '@/components/DecisionConsole';
 import SolveOSSymbol from '@/components/SolveOSSymbol';
+import { getActionMetrics, getHistoryRecords, type ActionReminderRecord } from '@/lib/actionReminders';
 import { detectInputLanguage, uiCopy, type SupportedLanguage } from '@/lib/i18n';
+import { getSavedDecisions } from '@/lib/savedDecisions';
 import { readSettings, type ProductSettings, writeSettings } from '@/lib/settings';
 import { SETTINGS_UPDATED, type AppSettings } from '@/lib/settingsStore';
 import type { ConversationTurn, DecisionBlueprint, SolveRequest } from '@/lib/types';
@@ -262,6 +264,7 @@ function buildConversationMemory(turns: ConversationTurn[]): string {
     5
   );
 
+  const outcomeLearning = buildLocalOutcomeMemory();
   const lines = [
     goals.length ? `Goals: ${goals.join(' | ')}` : '',
     fears.length ? `Fears/pressure: ${fears.join(' | ')}` : '',
@@ -273,9 +276,63 @@ function buildConversationMemory(turns: ConversationTurn[]): string {
     decisions.length ? `Decisions already advised: ${uniqueLimited(decisions, 3).join(' | ')}` : '',
     actionSignals.length ? `Unfinished or proposed actions: ${actionSignals.join(' | ')}` : '',
     recurringThemes.length ? `Recurring themes: ${recurringThemes.join(', ')}` : '',
+    outcomeLearning,
   ].filter(Boolean);
 
   return lines.length ? lines.join('\n').slice(0, 1800) : '';
+}
+
+function actionStatusSummary(record: ActionReminderRecord): string {
+  const action = record.action.replace(/\s+/g, ' ').trim();
+  const clipped = action.length > 90 ? `${action.slice(0, 87).trim()}...` : action;
+  if (record.status === 'done') return `completed: ${clipped}`;
+  if (record.status === 'skipped') return `abandoned/skipped: ${clipped}`;
+  if (record.status === 'overdue') return `missed/overdue: ${clipped}`;
+  if (record.status === 'blocked') return `blocked: ${record.blockerCategory || 'unknown'} -> ${clipped}`;
+  return `pending: ${clipped}`;
+}
+
+function buildLocalOutcomeMemory(): string {
+  if (typeof window === 'undefined') return '';
+
+  const actionHistory = getHistoryRecords().slice(0, 8);
+  const savedDecisions = getSavedDecisions().slice(0, 8);
+  if (actionHistory.length === 0 && savedDecisions.length === 0) return '';
+
+  const metrics = getActionMetrics();
+  const done = actionHistory.filter(([, record]) => record.status === 'done').length;
+  const weak = actionHistory.filter(([, record]) => (
+    record.status === 'skipped' || record.status === 'overdue' || record.status === 'blocked'
+  )).length;
+  const pending = actionHistory.filter(([, record]) => (
+    record.status === 'not yet' || record.status === 'pending'
+  )).length;
+  const workedDecisions = savedDecisions.filter((decision) => decision.status === 'worked').length;
+  const failedDecisions = savedDecisions.filter((decision) => decision.status === 'failed').length;
+
+  const tendencies = [
+    actionHistory.length >= 3 && done >= weak + pending ? 'Execution pattern: completed actions are common; advice can assume practical follow-through.' : '',
+    actionHistory.length >= 3 && weak >= done ? 'Execution pattern: skipped/blocked/overdue actions appear often; compress future advice into one smaller action.' : '',
+    metrics.streak >= 2 ? `Execution pattern: current completion streak ${metrics.streak}; rapid validation advice can be useful.` : '',
+    savedDecisions.length >= 3 && failedDecisions > workedDecisions ? 'Decision outcome pattern: failed outcomes outnumber worked ones; stress-test assumptions and distribution earlier.' : '',
+    savedDecisions.length >= 3 && workedDecisions >= 2 ? 'Decision outcome pattern: prior completed decisions have produced wins; move toward higher-leverage next steps when evidence is similar.' : '',
+  ].filter(Boolean);
+
+  const recentActions = actionHistory
+    .slice(0, 4)
+    .map(([, record]) => actionStatusSummary(record));
+  const recentDecisions = savedDecisions
+    .filter((decision) => decision.status !== 'pending')
+    .slice(0, 3)
+    .map((decision) => `${decision.status}: ${decision.question.slice(0, 90)}${decision.lesson ? ` -> ${decision.lesson.slice(0, 90)}` : ''}`);
+
+  return [
+    'Decision outcome learning:',
+    tendencies.join(' '),
+    recentActions.length ? `Recent action outcomes: ${recentActions.join(' | ')}` : '',
+    recentDecisions.length ? `Recent decision outcomes: ${recentDecisions.join(' | ')}` : '',
+    'Use this subtly. Do not mention tracking, scores, analytics, or labels.',
+  ].filter(Boolean).join('\n');
 }
 
 export default function HomeExperience() {

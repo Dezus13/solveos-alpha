@@ -4,6 +4,7 @@ import { getMemoryIntelligenceFromHistory } from '@/lib/memory-graph';
 import { computeNetworkIntelligence, calibrateScore, buildCalibrationContext, computeDecisionAccuracy, computeCalibrationScore } from '@/lib/benchmarks';
 import { isPlanModeRequest, isReviewModeRequest, semanticVerdictForQuestion, shouldRejectDecisionOutput, detectVerdictLoop, buildForceDiversityInstruction, semanticVerdictExcluding, extractVerdictClass, buildIntentInstruction, enforceIntentRouting, detectSolveRequestIntent, extractLiteralOutput } from '@/lib/semantic-guards';
 import { detectInputLanguage } from '@/lib/i18n';
+import { buildOutcomeLearningInstruction } from '@/lib/outcomeLearning';
 import { buildProfileDirective, applyProfileAdjustments, scoreMessageFor } from '@/lib/profileEngine';
 import { computeSessionPressureLevel, buildPressureDirective } from '@/lib/pressureEngine';
 import type { CouncilMetrics, CounterfactualPath, DecisionBlueprint, DecisionContext, ExecutionPlanWeek, MilestoneMetric, MilestoneStatus, PreMortemRisk, ScenarioBranch, SecondOrderEffect, SolveRequest, SolveResponse, UserProfileData, WarRoomDebate } from '@/lib/types';
@@ -1124,15 +1125,12 @@ export async function POST(req: Request) {
     const strategicToolInstruction = buildStrategicToolInstruction(problem, conversationHistoryForGuard);
     const firstResponseQualityInstruction = buildFirstResponseQualityInstruction();
     const persistentMemoryInstruction = buildPersistentMemoryInstruction(persistentConversationMemory);
-    const conversationContext = [persistentMemoryInstruction, conversationMemoryNote, followUpInstruction, firstResponseQualityInstruction, strategicArchitectureInstruction, contradictionIntelligenceInstruction, adaptiveResponseInstruction, strategicToolInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
-      .filter(Boolean)
-      .join('\n\n')
-      .trim();
     const domain = context?.domain;
     let memoryContext = '';
     let memoryScore = 0;
     let networkScore = 0;
     let calibrationNote = '';
+    let outcomeLearningInstruction = '';
 
     try {
       const intel = getMemoryIntelligenceFromHistory(problem, history, context);
@@ -1142,9 +1140,15 @@ export async function POST(req: Request) {
       const netIntel = computeNetworkIntelligence(history);
       networkScore = netIntel.networkScore;
       calibrationNote = buildCalibrationContext(history, domain);
+      outcomeLearningInstruction = buildOutcomeLearningInstruction(history, problem, context);
     } catch {
       // Continue analysis without memory enrichment.
     }
+
+    const conversationContext = [persistentMemoryInstruction, outcomeLearningInstruction, conversationMemoryNote, followUpInstruction, firstResponseQualityInstruction, strategicArchitectureInstruction, contradictionIntelligenceInstruction, adaptiveResponseInstruction, strategicToolInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
+      .filter(Boolean)
+      .join('\n\n')
+      .trim();
 
     const fullContext = [memoryContext, calibrationNote, userProfileCtx, profileDirective].filter(Boolean).join('\n\n');
     
