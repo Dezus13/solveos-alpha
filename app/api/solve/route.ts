@@ -5,6 +5,7 @@ import { computeNetworkIntelligence, calibrateScore, buildCalibrationContext, co
 import { isPlanModeRequest, isReviewModeRequest, semanticVerdictForQuestion, shouldRejectDecisionOutput, detectVerdictLoop, buildForceDiversityInstruction, semanticVerdictExcluding, extractVerdictClass, buildIntentInstruction, enforceIntentRouting, detectSolveRequestIntent, extractLiteralOutput } from '@/lib/semantic-guards';
 import { detectInputLanguage } from '@/lib/i18n';
 import { buildOutcomeLearningInstruction } from '@/lib/outcomeLearning';
+import { buildLongitudinalMemoryInstruction } from '@/lib/longitudinalMemory';
 import { buildProfileDirective, applyProfileAdjustments, scoreMessageFor } from '@/lib/profileEngine';
 import { computeSessionPressureLevel, buildPressureDirective } from '@/lib/pressureEngine';
 import type { CouncilMetrics, CounterfactualPath, DecisionBlueprint, DecisionContext, ExecutionPlanWeek, MilestoneMetric, MilestoneStatus, PreMortemRisk, ScenarioBranch, SecondOrderEffect, SolveRequest, SolveResponse, UserProfileData, WarRoomDebate } from '@/lib/types';
@@ -1311,6 +1312,7 @@ export async function POST(req: Request) {
     let networkScore = 0;
     let calibrationNote = '';
     let outcomeLearningInstruction = '';
+    let longitudinalMemoryInstruction = '';
 
     try {
       const intel = getMemoryIntelligenceFromHistory(problem, history, context);
@@ -1321,11 +1323,12 @@ export async function POST(req: Request) {
       networkScore = netIntel.networkScore;
       calibrationNote = buildCalibrationContext(history, domain);
       outcomeLearningInstruction = buildOutcomeLearningInstruction(history, problem, context);
+      longitudinalMemoryInstruction = buildLongitudinalMemoryInstruction(problem, history);
     } catch {
       // Continue analysis without memory enrichment.
     }
 
-    const conversationContext = [persistentMemoryInstruction, outcomeLearningInstruction, conversationMemoryNote, followUpInstruction, firstResponseQualityInstruction, compressionIntelligenceInstruction, conversationalFlowInstruction, strategicArchitectureInstruction, contradictionIntelligenceInstruction, adaptiveResponseInstruction, strategicToolInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
+    const conversationContext = [persistentMemoryInstruction, longitudinalMemoryInstruction, outcomeLearningInstruction, conversationMemoryNote, followUpInstruction, firstResponseQualityInstruction, compressionIntelligenceInstruction, conversationalFlowInstruction, strategicArchitectureInstruction, contradictionIntelligenceInstruction, adaptiveResponseInstruction, strategicToolInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
       .filter(Boolean)
       .join('\n\n')
       .trim();
