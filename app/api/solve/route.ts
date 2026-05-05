@@ -199,6 +199,12 @@ function buildResponseStyleInstruction(problem: string, history: Array<{ role: s
 type UserMode = 'beginner' | 'analytical' | 'emotional' | 'strategic' | 'overwhelmed' | 'action-oriented';
 type ResponseDepth = 'short answer' | 'medium reasoning' | 'deep analysis';
 type AdvisorMode = 'operator' | 'strategist' | 'skeptic' | 'builder';
+type BlindSpotSignal = {
+  name: string;
+  evidence: string;
+  guidance: string;
+  score: number;
+};
 type StrategicToolMode =
   | 'roadmap'
   | 'comparison'
@@ -361,6 +367,96 @@ function buildStrategicArchitectureInstruction(problem: string, history: Array<{
     'Strategic language engine: use direct observations, concrete consequences, asymmetric thinking, opportunity cost, and execution realism.',
     'High-signal ending: end with action, uncertainty to resolve, next leverage point, or hidden risk. No generic summary.',
     'Do not name the advisor posture or this architecture.',
+  ].join('\n');
+}
+
+function buildContradictionIntelligenceInstruction(problem: string, history: Array<{ role: string; content: string }>): string {
+  const userTurns = history.filter((turn) => turn.role === 'user' && turn.content.trim());
+  const recentUserTurns = userTurns.slice(-6);
+  const currentText = problem.trim();
+  const combined = `${recentUserTurns.map((turn) => turn.content).join(' ')} ${currentText}`.toLowerCase();
+  const currentLower = currentText.toLowerCase();
+  const signals: BlindSpotSignal[] = [];
+
+  const hasFreedomGoal = /freedom|independence|control|autonomy|свобод|независим|контрол|selbstbestimmt|freiheit|unabhängig|unabhaengig/.test(combined);
+  const hasLowControlPath = /job|boss|salary|employee|corporate|зарплат|работа по найму|начальник|корпорат|angestellt|chef|festanstellung/.test(combined);
+  if (hasFreedomGoal && hasLowControlPath) {
+    signals.push({
+      name: 'goal-path contradiction',
+      evidence: 'User wants more freedom/control while repeatedly discussing lower-control paths.',
+      guidance: 'If relevant, point out that the chosen path may optimize safety while weakening the stated freedom goal.',
+      score: 4,
+    });
+  }
+
+  const avoidanceHits = (combined.match(/\b(later|not ready|need more time|research more|maybe|soon|after|wait)\b|потом|не готов|ещ[её] подума|надо больше|может быть|позже|подожд|später|spaeter|nicht bereit|mehr recherchieren|vielleicht|warten/g) || []).length;
+  const actionHits = (combined.match(/\blaunch|ship|sell|call|publish|test|execute|do now|запуск|продать|позвон|опублик|тест|сделать|ausführen|ausfuehren|testen|verkaufen|anrufen|veröffentlichen|veroeffentlichen/g) || []).length;
+  if (avoidanceHits >= 2 && actionHits >= 1) {
+    signals.push({
+      name: 'avoidance loop',
+      evidence: 'The thread mixes action intent with repeated delay/research language.',
+      guidance: 'Challenge the loop softly: the issue may be avoiding evidence, not needing more analysis.',
+      score: avoidanceHits >= 4 ? 5 : 3,
+    });
+  }
+
+  const goalMarkers = (currentLower.match(/\b(and|also|plus|at the same time|while also|everything|all of this)\b|и ещё|и еще|также|одновременно|всё сразу|все сразу|und auch|gleichzeitig|alles/g) || []).length;
+  const concreteGoals = (currentLower.match(/\b(revenue|customers|startup|job|study|family|fitness|visa|move|launch|mvp|fundraising|деньги|клиент|стартап|работ|уч[её]б|семь|переезд|виза|запуск|инвестиц|umsatz|kunden|startup|arbeit|studium|familie|umzug|visum|finanzierung)\b/g) || []).length;
+  if (goalMarkers >= 2 || concreteGoals >= 5) {
+    signals.push({
+      name: 'priority collision',
+      evidence: 'The current ask carries multiple competing goals or execution tracks.',
+      guidance: 'Narrow the answer to the priority collision: what cannot be optimized at the same time, and what to sequence first.',
+      score: Math.min(5, Math.max(3, goalMarkers + Math.floor(concreteGoals / 3))),
+    });
+  }
+
+  const timelinePressure = /\b(in|within)\s+(\d+)\s+(day|week|month)s?\b|за\s+\d+\s+(дн|недел|месяц)|in\s+\d+\s+(tag|woche|monat)/.test(currentLower);
+  const steepOutcome = /\b10k|100k|million|scale|quit my job|replace income|быстро|миллион|уволиться|заменить доход|schnell|million|job kündigen|job kuendigen/.test(currentLower);
+  const evidenceGap = !/\b(customer|user|revenue|sales|data|validated|paid|клиент|пользователь|выруч|продаж|данн|валид|плат|kunde|nutzer|umsatz|verkauf|daten|validiert|bezahlt)/.test(combined);
+  if (timelinePressure && steepOutcome && evidenceGap) {
+    signals.push({
+      name: 'timeline realism gap',
+      evidence: 'The desired outcome is aggressive while proof of demand, resources, or execution capacity is missing.',
+      guidance: 'Surface the timeline mismatch without scolding. Convert ambition into a near-term evidence test.',
+      score: 4,
+    });
+  }
+
+  const repeatedQuestionRoots = userTurns
+    .map((turn) => turn.content.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, '').split(/\s+/).filter((word) => word.length > 3).slice(0, 8).join(' '))
+    .filter(Boolean);
+  const repeatedRootCount = repeatedQuestionRoots.filter((root, index, arr) => arr.findIndex((candidate) => candidate.includes(root.slice(0, 24)) || root.includes(candidate.slice(0, 24))) !== index).length;
+  if (userTurns.length >= 4 && repeatedRootCount >= 1) {
+    signals.push({
+      name: 'repeated unresolved decision',
+      evidence: `A similar blocker has appeared across the recent thread (${Math.min(userTurns.length, 6)} user turns).`,
+      guidance: 'Acknowledge stagnation naturally and shift from more advice to the smallest decision or experiment that breaks the loop.',
+      score: 4,
+    });
+  }
+
+  const topSignals = signals
+    .filter((signal) => signal.score >= 3)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 2);
+
+  if (topSignals.length === 0) return '';
+
+  return [
+    'CONTRADICTION AND BLIND-SPOT INTELLIGENCE:',
+    'Use only if it genuinely improves this answer. Do not force a critique.',
+    'Tone: calm strategic challenge, never aggressive, judgmental, therapy-like, or superior.',
+    'Do not label this as a contradiction, blind spot, pattern, or diagnosis.',
+    'Surface at most one challenge in the visible answer unless the user explicitly asks for deep analysis.',
+    ...topSignals.flatMap((signal, index) => [
+      `Signal ${index + 1}: ${signal.name}.`,
+      `Evidence: ${signal.evidence}`,
+      `Guidance: ${signal.guidance}`,
+    ]),
+    'Good challenge style: "The bigger issue may not be funding." / "You keep optimizing the idea, not distribution." / "This sounds more like avoidance than validation."',
+    'Avoid fake psychology. Frame everything as strategy: tradeoff, constraint, opportunity cost, execution bottleneck, or decision loop.',
+    'If the same loop has appeared before, acknowledge progression or stagnation briefly without counting turns unless the context clearly supports it.',
   ].join('\n');
 }
 
@@ -1024,10 +1120,11 @@ export async function POST(req: Request) {
     const responseStyleInstruction = buildResponseStyleInstruction(problem, conversationHistoryForGuard);
     const adaptiveResponseInstruction = buildAdaptiveResponseInstruction(problem, conversationHistoryForGuard);
     const strategicArchitectureInstruction = buildStrategicArchitectureInstruction(problem, conversationHistoryForGuard);
+    const contradictionIntelligenceInstruction = buildContradictionIntelligenceInstruction(problem, conversationHistoryForGuard);
     const strategicToolInstruction = buildStrategicToolInstruction(problem, conversationHistoryForGuard);
     const firstResponseQualityInstruction = buildFirstResponseQualityInstruction();
     const persistentMemoryInstruction = buildPersistentMemoryInstruction(persistentConversationMemory);
-    const conversationContext = [persistentMemoryInstruction, conversationMemoryNote, followUpInstruction, firstResponseQualityInstruction, strategicArchitectureInstruction, adaptiveResponseInstruction, strategicToolInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
+    const conversationContext = [persistentMemoryInstruction, conversationMemoryNote, followUpInstruction, firstResponseQualityInstruction, strategicArchitectureInstruction, contradictionIntelligenceInstruction, adaptiveResponseInstruction, strategicToolInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
       .filter(Boolean)
       .join('\n\n')
       .trim();
