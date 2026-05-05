@@ -48,7 +48,7 @@
 
 ## 6. Edge cases
 
-- No problem: return validation error.
+- Empty problem: return validation error. Any non-empty input is accepted — no character minimum.
 - Wrong intent: route to review or plan behavior.
 - Missing model key: use fallback or error path.
 - Invalid blueprint: normalize fields.

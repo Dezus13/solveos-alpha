@@ -584,17 +584,6 @@ export async function POST(req: Request) {
       return NextResponse.json(buildDiagnosticResponse(problem, 'architect_request'));
     }
 
-    const isFirstInput = conversationHistoryForGuard.length === 0;
-    const minProblemLength = isFirstInput ? 5 : 20;
-    if (problem.length < minProblemLength) {
-      return NextResponse.json(
-        { error: isFirstInput
-            ? 'Describe the decision. A few words is enough to start.'
-            : `Decision details must be at least 20 characters. Current: ${problem.length} characters.` },
-        { status: 400 }
-      );
-    }
-
     const history = await getDecisionHistory().catch(() => []);
     const isReview = isReviewModeRequest(problem);
     const effectiveMode = isReview ? 'Review' : mode;

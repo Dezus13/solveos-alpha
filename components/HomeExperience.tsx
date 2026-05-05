@@ -123,17 +123,14 @@ function actionText(blueprint: DecisionBlueprint, language: string): string {
 }
 
 function buildAssistantAnswer(blueprint: DecisionBlueprint): string {
-  const coreProblem = oneLine(blueprint.diagnosis?.coreProblem, 150);
-  const avoiding = oneLine(
-    blueprint.hiddenPain ||
-    blueprint.diagnosis?.keyRisks ||
-    blueprint.skepticView?.whatCouldBreak,
-    150,
-  );
+  const language = blueprint.language || 'English';
+  const verdict = oneLine(blueprint.recommendation || '', 160);
+  const reasoning = oneLine(blueprint.diagnosis?.coreProblem, 130);
+  const next = actionText(blueprint, language);
   return [
-    coreProblem ? `The decision: ${coreProblem}` : '',
-    avoiding ? `What you're avoiding: ${avoiding}` : '',
-    'If you don\'t decide now, this will cost you time, energy, and missed opportunities.',
+    verdict,
+    reasoning,
+    next ? `→ ${next}` : '',
   ].filter(Boolean).join('\n');
 }
 

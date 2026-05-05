@@ -4,6 +4,36 @@ This file tracks what we change, why we change it, and what we do next.
 
 ---
 
+## 2026-05-05 — Answer first, then pressure flow
+
+### Changed
+
+- `components/HomeExperience.tsx`: Restored `buildAssistantAnswer` to produce the full useful answer — verdict, reasoning, next action — on every turn. Removed the consequence line and partial-only framing from the previous monetization iteration.
+- `components/DecisionConsole.tsx`: Removed `ExecutionEntryFlow` component entirely (~80 lines). Removed `EntryPhase` type. Removed `detectSolveRequestIntent` import. Removed `entryDecision`, `entryPhase`, `entryMicroAction` state. Removed `handlePickCategory` and `handleCommit` callbacks. Removed first-input intercept from `submitText` — all non-empty input now routes directly to `onSubmit`. Updated `DecisionGate` pre-unlock copy: reframed from "you already know the answer / unlock the verdict" (written when the answer was hidden) to "want to see what's actually driving this? / unlock the hidden motivation map". Post-unlock now shows `hiddenPain` and `skepticView.whatCouldBreak` instead of repeating verdict and action that are already shown above.
+- `app/api/solve/route.ts`: Removed the character minimum check entirely. Any non-empty input is accepted.
+- `docs/specs/0002-user-flow.md`: Removed "Execution Entry Flow" section. Updated main flow to document that all inputs route to the AI immediately and the full answer streams first.
+- `docs/specs/0003-decision-engine.md`: Updated edge cases — no character minimum, only empty check.
+- `docs/specs/0004-action-system.md`: Removed Path A (Execution Entry Flow). Renamed Path B to Standard Flow. Updated step sequence to reflect answer-first behavior.
+- `docs/specs/0008-monetization.md`: Updated to reflect new flow — gate now sits below the full answer, not before it. Pre-unlock offers deeper analysis (hiddenPain, whatCouldBreak), not the verdict itself.
+
+### Why
+
+- The entry flow intercepted the first input and routed it into blocker-category selection before calling the AI. This felt like friction, not intelligence — users came to get an answer, not fill out a form.
+- Hiding the verdict behind a paywall created the wrong incentive: users had to pay to get the basic answer. The value of the gate is perception of depth, not withholding the core result.
+- "Answer like a strong AI first" is the right model: Claude gives you the verdict immediately, trust is established, then the gate offers supplementary depth (hidden motivation, risk map, accountability tracker) as genuinely optional value.
+- Removing the 20-char minimum removes false friction — "quit my job" is 11 chars and is a real decision.
+
+### Not done
+
+- No A/B test on new gate copy vs old.
+- `hiddenPain` and `skepticView.whatCouldBreak` must be present in the blueprint for the gate to render; if both are missing, `ExecutionPressure` renders directly with no gate.
+
+### Next
+
+- Observe: do users engage with the free answer before scrolling to the gate? Does the gate framing ("hidden motivation map") feel curious or gimmicky?
+
+---
+
 ## 2026-05-05 — Strengthen monetization pressure copy
 
 ### Changed

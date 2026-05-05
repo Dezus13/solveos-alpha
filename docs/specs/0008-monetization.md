@@ -14,31 +14,30 @@
 
 ## 3. Main objects
 
-- PartialResponse: the streamed text shown before the gate. Contains the problem diagnosis and what the user is avoiding. Does NOT include the verdict or next action.
-- DecisionGate: UI component shown after the partial response. Pre-unlock: paywall block. Post-unlock: verdict + next action + 24h commitment.
+- FullResponse: the streamed text shown before the gate. Contains the verdict, reasoning, and next action. The full answer is shown freely.
+- DecisionGate: UI component shown after the full response. Pre-unlock: deeper analysis paywall. Post-unlock: hidden motivation map + risk analysis + 24h commitment tracker.
 - UnlockState: local React state (`isUnlocked: boolean`) per turn. Resets on page reload.
-- PaymentSignal: a click on "Unlock decision — €5" counts as a positive signal.
+- PaymentSignal: a click on "Unlock full blueprint — €5" counts as a positive signal.
 
 ## 4. Flow (step-by-step)
 
 1. User submits a decision.
 2. API returns the full blueprint (unchanged).
-3. `buildAssistantAnswer` produces only the partial content:
-   - "The decision: [coreProblem]"
-   - "What you're avoiding: [hiddenPain or keyRisks]"
-   - "If you don't decide now, this will cost you time, energy, and missed opportunities."
-4. The partial content streams as the assistant message.
+3. `buildAssistantAnswer` produces the full useful answer:
+   - Verdict (from `blueprint.recommendation`)
+   - Reasoning (from `blueprint.diagnosis.coreProblem`)
+   - Next action (from `blueprint.actionPlan.today` or `forcedAction`)
+4. The full answer streams as the assistant message.
 5. After streaming completes, `DecisionGate` renders below the message.
 6. Pre-unlock state shows:
-   - "You already know the answer."
-   - "You're avoiding acting on it."
-   - "Unlock the verdict and stop wasting time."
-   - Button: "Unlock decision — €5"
-   - Helper text: "One clear decision can change the next 24 hours."
+   - "Want to see what's actually driving this?"
+   - "Unlock the hidden motivation map and 24h commitment tracker."
+   - Button: "Unlock full blueprint — €5"
+   - Helper text: "See what could break — before it does."
 7. User clicks the button → `isUnlocked = true`.
 8. Post-unlock state shows:
-   - Verdict (from `blueprint.recommendation`)
-   - Do this next (from `blueprint.actionPlan.today` or `forcedAction`)
+   - What you're avoiding (from `blueprint.hiddenPain`)
+   - What could break (from `blueprint.skepticView.whatCouldBreak`)
    - `ExecutionPressure` component with 24h commitment button
 
 ## 5. What is NOT included (yet)
@@ -52,15 +51,15 @@
 ## 6. Tone rules
 
 - The paywall copy is direct, not apologetic.
-- "You're still avoiding the decision." — this is a pressure statement, not a sales line.
+- "Want to see what's actually driving this?" — curiosity, not accusation. The full answer is already given; this is genuinely optional depth.
 - No "upgrade to premium", no feature comparison, no trial language.
 
 ## 7. Signal to watch
 
-If users click "Unlock decision — €5" consistently, the gate validates:
-- Users perceive the verdict as valuable enough to pay for.
-- The partial response creates enough tension to motivate action.
-- €5 is an acceptable price point to test.
+If users click "Unlock full blueprint — €5" consistently, the gate validates:
+- Users receive real value from the free answer and want to go deeper.
+- The framing ("hidden motivation map", "what could break") creates enough curiosity to motivate the click.
+- €5 is an acceptable price point for supplementary depth, not just the verdict.
 
 ## 8. Next steps (if signal is positive)
 

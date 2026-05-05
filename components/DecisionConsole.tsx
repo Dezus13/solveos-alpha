@@ -2,7 +2,6 @@
 
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, BookmarkCheck, BookmarkPlus, Check, Clipboard, Loader2, Send, Sparkles, ThumbsDown, ThumbsUp } from 'lucide-react';
-import { detectSolveRequestIntent } from '@/lib/semantic-guards';
 import type { UiCopy } from '@/lib/i18n';
 import type { ProductSettings } from '@/lib/settings';
 import type { ConversationTurn } from '@/lib/types';
@@ -25,7 +24,6 @@ import {
 } from '@/lib/actionReminders';
 import { skipPainLine } from '@/lib/inactionPain';
 
-type EntryPhase = 'blocker_selection' | 'micro_action' | 'committed';
 
 interface DecisionConsoleProps {
   thread: ConversationTurn[];
@@ -241,30 +239,29 @@ function DecisionGate({ turn }: { turn: ConversationTurn }) {
   const blueprint = turn.blueprint;
   if (!blueprint) return null;
 
-  const verdict = blueprint.recommendation || '';
-  const action = actionFromTurn(turn);
+  const hiddenPain = blueprint.hiddenPain;
+  const whatCouldBreak = blueprint.skepticView?.whatCouldBreak;
+
+  if (!hiddenPain && !whatCouldBreak) return <ExecutionPressure turn={turn} />;
 
   if (!unlocked) {
     return (
       <div className="mt-3 rounded-xl border border-amber-400/20 bg-amber-400/[0.03] px-4 py-4">
         <p className="text-sm font-semibold text-slate-200">
-          You already know the answer.
+          Want to see what&apos;s actually driving this?
         </p>
-        <p className="text-sm font-semibold text-slate-200">
-          You&apos;re avoiding acting on it.
-        </p>
-        <p className="mt-2 text-[13px] leading-relaxed text-slate-400">
-          Unlock the verdict and stop wasting time.
+        <p className="mt-1 text-[13px] leading-relaxed text-slate-400">
+          Unlock the hidden motivation map and 24h commitment tracker.
         </p>
         <button
           type="button"
           onClick={() => setUnlocked(true)}
           className="mt-4 rounded-xl border border-amber-400/30 bg-amber-400/[0.1] px-5 py-2.5 text-[11px] font-black uppercase tracking-widest text-amber-200 transition-colors hover:bg-amber-400/[0.18]"
         >
-          Unlock decision — €5
+          Unlock full blueprint — €5
         </button>
         <p className="mt-2 text-[11px] text-slate-500">
-          One clear decision can change the next 24 hours.
+          See what could break — before it does.
         </p>
       </div>
     );
@@ -272,20 +269,26 @@ function DecisionGate({ turn }: { turn: ConversationTurn }) {
 
   return (
     <div className="mt-3 space-y-2">
-      <div className="rounded-xl border border-emerald-500/15 bg-emerald-500/[0.04] px-4 py-3">
-        <div className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-emerald-400">
-          Verdict
-        </div>
-        <div className="text-sm font-semibold leading-snug text-white">{verdict}</div>
-        {action && (
-          <>
-            <div className="mb-1.5 mt-3 text-[10px] font-black uppercase tracking-widest text-slate-500">
-              Do this next
+      {(hiddenPain || whatCouldBreak) && (
+        <div className="rounded-xl border border-amber-500/15 bg-amber-500/[0.04] px-4 py-3 space-y-3">
+          {hiddenPain && (
+            <div>
+              <div className="mb-1 text-[10px] font-black uppercase tracking-widest text-amber-400">
+                What you&apos;re avoiding
+              </div>
+              <div className="text-sm leading-snug text-slate-200">{hiddenPain}</div>
             </div>
-            <div className="text-sm leading-snug text-slate-200">{action}</div>
-          </>
-        )}
-      </div>
+          )}
+          {whatCouldBreak && (
+            <div>
+              <div className="mb-1 text-[10px] font-black uppercase tracking-widest text-rose-400">
+                What could break
+              </div>
+              <div className="text-sm leading-snug text-slate-200">{whatCouldBreak}</div>
+            </div>
+          )}
+        </div>
+      )}
       <ExecutionPressure turn={turn} />
     </div>
   );
@@ -423,87 +426,6 @@ function ThinkingMessage({ copy }: { copy: UiCopy }) {
   );
 }
 
-function ExecutionEntryFlow({
-  decision,
-  phase,
-  microAction,
-  copy,
-  onPickCategory,
-  onCommit,
-}: {
-  decision: string;
-  phase: EntryPhase;
-  microAction: string | null;
-  copy: UiCopy;
-  onPickCategory: (cat: BlockerCategory) => void;
-  onCommit: () => void;
-}) {
-  const blockerButtons: Array<{ id: BlockerCategory; label: string }> = [
-    { id: 'fear', label: copy.executionBlockerFear },
-    { id: 'unclear', label: copy.executionBlockerUnclear },
-    { id: 'lazy', label: copy.executionBlockerNoEnergy },
-    { id: 'external', label: copy.executionBlockerExternal },
-  ];
-
-  return (
-    <div className="mx-auto flex max-w-xl flex-1 flex-col items-center justify-center px-4 py-8">
-      <div className="w-full space-y-6">
-        {phase === 'blocker_selection' && (
-          <>
-            <div className="space-y-2">
-              <div className="text-[10px] font-black uppercase tracking-widest text-[var(--accent)]">
-                {copy.executionWhyNotDone}
-              </div>
-              <div className="text-base font-semibold text-slate-300 line-clamp-2">
-                &ldquo;{decision}&rdquo;
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {blockerButtons.map((btn) => (
-                <button
-                  key={btn.id}
-                  type="button"
-                  onClick={() => onPickCategory(btn.id)}
-                  className="rounded-xl border border-white/10 bg-white/[0.025] px-4 py-3.5 text-sm font-semibold text-slate-200 text-left transition-colors hover:border-[rgba(var(--accent-rgb),0.3)] hover:bg-[rgba(var(--accent-rgb),0.07)] hover:text-white"
-                >
-                  {btn.label}
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-
-        {phase === 'micro_action' && microAction && (
-          <>
-            <div className="space-y-3">
-              <div className="text-[10px] font-black uppercase tracking-widest text-amber-400">
-                {copy.executionDoThisNow}
-              </div>
-              <div className="text-lg font-bold text-white leading-snug">
-                {microAction}
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={onCommit}
-              className="w-full rounded-xl bg-[var(--accent)] px-5 py-3.5 text-sm font-black uppercase tracking-widest text-white shadow-[0_0_28px_rgba(var(--accent-rgb),0.22)] transition-all hover:brightness-110 active:scale-[0.98]"
-            >
-              {copy.executionCommit}
-            </button>
-          </>
-        )}
-
-        {phase === 'committed' && (
-          <div className="text-center action-complete-pulse">
-            <div className="text-[11px] font-black uppercase tracking-widest text-emerald-300">
-              {copy.executionCommitted}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 
 function OpenCommitmentView({
   reminder,
@@ -617,44 +539,10 @@ function DecisionConsole({ thread, loading, onSubmit, copy, settings, mode, onMo
     }, 2000);
   }, [activeCommitment]);
 
-  const [entryDecision, setEntryDecision] = useState<string | null>(null);
-  const [entryPhase, setEntryPhase] = useState<EntryPhase | null>(null);
-  const [entryMicroAction, setEntryMicroAction] = useState<string | null>(null);
-
-  const handlePickCategory = useCallback((cat: BlockerCategory) => {
-    if (!entryDecision) return;
-    setEntryMicroAction(generateSmallerAction(entryDecision, cat));
-    setEntryPhase('micro_action');
-  }, [entryDecision]);
-
-  const handleCommit = useCallback(() => {
-    if (!entryMicroAction || !entryDecision) return;
-    ensureActionReminder(crypto.randomUUID(), entryMicroAction, entryDecision);
-    setEntryPhase('committed');
-    window.setTimeout(() => {
-      setEntryDecision(null);
-      setEntryPhase(null);
-      setEntryMicroAction(null);
-    }, 1600);
-  }, [entryDecision, entryMicroAction]);
-
   const submitText = useCallback((value: string) => {
     const text = value.trim();
-    const intent = detectSolveRequestIntent(text);
     if (!text) {
       setError(copy.emptyPromptError);
-      return;
-    }
-    const isFirstInput = thread.length === 0;
-    if (!isFirstInput && intent === 'normal_decision' && text.length < 20) {
-      setError(`${copy.shortPromptError} (${text.length}/20)`);
-      return;
-    }
-    if (isFirstInput) {
-      setError(null);
-      setInput('');
-      setEntryDecision(text);
-      setEntryPhase('blocker_selection');
       return;
     }
     const active = getActiveReminder();
@@ -670,7 +558,7 @@ function DecisionConsole({ thread, loading, onSubmit, copy, settings, mode, onMo
     setBlockedReminder(null);
     setInput('');
     onSubmit(text, mode);
-  }, [copy.emptyPromptError, copy.shortPromptError, mode, onSubmit, thread.length]);
+  }, [copy.emptyPromptError, mode, onSubmit]);
 
   const skipBlockedReminder = useCallback(() => {
     if (!blockedReminder) return;
@@ -698,22 +586,12 @@ function DecisionConsole({ thread, loading, onSubmit, copy, settings, mode, onMo
     }
   }, [handleSubmit]);
 
-  const isEntryFlow = !!entryDecision && !!entryPhase;
-  const isOpenCommitment = !hasThread && !isEntryFlow && (!!activeCommitment || commitmentDone);
+  const isOpenCommitment = !hasThread && (!!activeCommitment || commitmentDone);
 
   return (
     <section className="flex h-full min-w-0 flex-1 flex-col">
       <div className="flex-1 overflow-y-auto px-4 pb-4 pt-6 sm:px-6">
-        {isEntryFlow ? (
-          <ExecutionEntryFlow
-            decision={entryDecision!}
-            phase={entryPhase!}
-            microAction={entryMicroAction}
-            copy={copy}
-            onPickCategory={handlePickCategory}
-            onCommit={handleCommit}
-          />
-        ) : isOpenCommitment ? (
+        {isOpenCommitment ? (
           <OpenCommitmentView
             reminder={activeCommitment?.[1] ?? null}
             pressureState={commitmentPressureState}
@@ -736,7 +614,7 @@ function DecisionConsole({ thread, loading, onSubmit, copy, settings, mode, onMo
         )}
       </div>
 
-      {!isEntryFlow && !isOpenCommitment && <div className="sticky bottom-0 border-t border-white/8 bg-[#090E1B]/94 px-4 py-5 backdrop-blur-2xl sm:px-6">
+      {!isOpenCommitment && <div className="sticky bottom-0 border-t border-white/8 bg-[#090E1B]/94 px-4 py-5 backdrop-blur-2xl sm:px-6">
         <div className="mx-auto max-w-4xl">
           {(error || skipMessage) && (
             <div className="mb-3 rounded-xl border border-rose-500/20 bg-rose-500/[0.06] px-3 py-2 text-xs font-semibold text-rose-200">

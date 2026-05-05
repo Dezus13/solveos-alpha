@@ -25,33 +25,23 @@
 
 ## 4. Logic (step-by-step)
 
-### Path A — Execution Entry Flow (first input)
+### Standard Flow
 
-1. User submits first decision (no existing thread).
-2. System intercepts before calling the AI.
-3. User sees "Why is this not done?" + their decision text.
-4. User picks a BlockerCategory (fear / unclear / lazy / external).
-5. System calls `generateSmallerAction(decision, category)` — client-side, no API.
-6. User sees the micro-action and taps "I will do this now".
-7. System calls `ensureActionReminder(id, microAction, decision)` — creates ActionReminder with fresh 24h clock.
-8. `PersistentActionBanner` appears automatically on next render.
-9. Entry flow shows "Committed. 24h window started." briefly, then clears.
-
-### Path B — Standard Flow (second input onward)
-
-1. System receives an Action from the Decision Engine.
-2. System creates an ActionReminder.
-3. ActionReminder starts as `not yet`.
-4. Banner shows the Action.
-5. User chooses Done.
-6. System marks ActionStatus as `done`, updates score, and the history list updates.
-7. If user chooses Not yet, the Action stays active with status `not yet`; the history list updates immediately.
-8. If user skips to start a new Decision, the ActionStatus becomes `skipped`, score decreases, and the history list updates.
-9. If user does not act — Pressure Layer escalates at 2h, 12h, 24h.
-10. At overdue: ActionStatus becomes `overdue` when the overdue penalty is applied; user picks BlockerCategory.
-11. System calls `generateSmallerAction(action, category)` — client-side, no API.
-12. User accepts smaller action via "I'll do this now".
-13. System calls `restartWithSmallerAction(id, action, category)` — resets same reminder with fresh 24h clock and status `not yet`.
+1. User submits a decision (any non-empty input — no character minimum).
+2. System calls the AI. Streams verdict + reasoning + next action immediately.
+3. After streaming, `DecisionGate` renders below the answer.
+4. System creates an ActionReminder from the blueprint action.
+5. ActionReminder starts as `not yet`.
+6. Banner shows the Action.
+7. User chooses Done.
+8. System marks ActionStatus as `done`, updates score, and the history list updates.
+9. If user chooses Not yet, the Action stays active with status `not yet`; the history list updates immediately.
+10. If user skips to start a new Decision, the ActionStatus becomes `skipped`, score decreases, and the history list updates.
+11. If user does not act — Pressure Layer escalates at 2h, 12h, 24h.
+12. At overdue: ActionStatus becomes `overdue` when the overdue penalty is applied; user picks BlockerCategory.
+13. System calls `generateSmallerAction(action, category)` — client-side, no API.
+14. User accepts smaller action via "I'll do this now".
+15. System calls `restartWithSmallerAction(id, action, category)` — resets same reminder with fresh 24h clock and status `not yet`.
 
 ## 5. Key functions
 

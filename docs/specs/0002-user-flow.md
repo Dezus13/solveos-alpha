@@ -54,28 +54,15 @@ When the user has an active action (not yet marked done), SolveOS applies a cont
 - No streak-based emotional language
 - No forced UI — the user can close the app; the pressure is internal, not pestering
 
-## 5. Execution Entry Flow (first input only)
+## 5. Main flow (step-by-step)
 
-When the user submits their first input (no thread exists), the system does not call the AI. Instead it routes directly into a forced action-discovery flow:
-
-1. System shows: "Why is this not done?" + the user's decision in quotes.
-2. Four blocker buttons appear: Fear / Not clear / No energy / Blocked externally.
-3. User picks a category. System generates a smaller action client-side via `generateSmallerAction(decision, category)`. No API call.
-4. System shows: "Do this now: {micro-action}".
-5. User taps "I will do this now". System calls `ensureActionReminder(id, microAction, decision)`. A 24h clock starts. The `PersistentActionBanner` appears automatically.
-6. Entry flow shows a brief "Committed. 24h window started." confirmation, then clears.
-
-This replaces any AI response for the first interaction. The goal is to force action before analysis.
-
-## 6. Main flow (step-by-step, second input onward)
-
-1. User enters a Decision.
+1. User enters a Decision (any non-empty input — no character minimum).
 2. System checks: is there an active pending Action?
    - YES → block new Decision. Show: "{PressureMessage} — finish your previous action first".
    - NO → continue.
-3. System gives a Verdict.
-4. System gives an Action.
-5. Action is saved as ActionReminder (`pending`, 24h clock starts).
+3. System calls the AI. Streams the full answer immediately: verdict + reasoning + next action.
+4. After streaming completes, `DecisionGate` renders below the answer.
+5. Action is saved as ActionReminder (24h clock starts).
 6. Banner appears at top of page.
 7. User marks Done → score increases, banner clears.
 
