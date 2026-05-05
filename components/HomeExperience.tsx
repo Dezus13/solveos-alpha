@@ -14,7 +14,6 @@ import DecisionJournal from '@/components/DecisionJournal';
 import type { ConversationTurn, DecisionBlueprint, SolveRequest } from '@/lib/types';
 import { getSavedDecisions, saveDecision } from '@/lib/savedDecisions';
 import { getProfile, getIdentityLabel } from '@/lib/userProfile';
-import IdentityWidget from '@/components/IdentityWidget';
 import { generatePatternInsight } from '@/lib/patternInsight';
 import { ensureActionReminder } from '@/lib/actionReminders';
 
@@ -623,7 +622,6 @@ export default function HomeExperience() {
           />
         </div>
 
-        <IdentityWidget />
       </aside>
 
       <section className="flex min-w-0 flex-1 flex-col">

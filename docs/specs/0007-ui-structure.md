@@ -135,6 +135,7 @@ Action History block is hidden — history logic is active but not a UI block.
 - `components/PersistentActionBanner.tsx`
 - `components/SettingsModal.tsx`
 - `components/SettingsHydrator.tsx`
+- `components/IdentityWidget.tsx` — exists, not rendered in sidebar; reserved for future profile/settings view
 - `lib/settings.ts`
 - `lib/settingsStore.ts`
 - `locales/`

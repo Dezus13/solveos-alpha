@@ -4,6 +4,31 @@ This file tracks what we change, why we change it, and what we do next.
 
 ---
 
+## 2026-05-05 — Hide behavior score from main sidebar
+
+### Changed
+
+- `components/HomeExperience.tsx`: Removed `<IdentityWidget />` from the sidebar JSX. Removed the `IdentityWidget` import. Score logic, storage, and all score update functions remain fully active.
+- `docs/specs/0005-identity-and-pressure.md`: Updated section 6a "Where it is shown" — widget is not rendered in the sidebar. Documented that `IdentityWidget` is reserved for a future profile or settings view.
+- `docs/specs/0007-ui-structure.md`: Added `IdentityWidget` to section 10 "Files involved" with a note that it is not currently rendered.
+
+### Why
+
+- The first screen must stay clean and focused on decision input. A score card in the sidebar adds noise before the user has done anything meaningful.
+- Score is internal identity logic. It belongs in a profile or settings surface, not the main decision workspace.
+- The component and all underlying logic are preserved — this is a UI visibility decision, not a deletion.
+
+### Not done
+
+- No change to score math, event dispatch, localStorage format, or identity engine.
+- `IdentityWidget` is not deleted — it is ready to be placed in a profile or settings view.
+
+### Next
+
+- Evaluate where to surface the score in a future profile or settings view.
+
+---
+
 ## 2026-05-04 — Retention loop via open commitments
 
 ### Changed

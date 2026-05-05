@@ -89,7 +89,8 @@ The Identity Feedback System turns the score into a behavioral label and shows i
 
 ### Where it is shown
 
-- Sidebar widget (`components/IdentityWidget.tsx`), pinned at the bottom of the sidebar below the Decision Journal. Visible on `md:` and larger screens.
+- Not shown in the main UI. The score and label are internal behavior data only.
+- `components/IdentityWidget.tsx` exists and is functional but is not rendered in the sidebar. It is available to place in a profile or settings view in a future iteration.
 
 ### Tone rules
 
