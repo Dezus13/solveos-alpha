@@ -4,6 +4,32 @@ This file tracks what we change, why we change it, and what we do next.
 
 ---
 
+## 2026-05-05 — Conversation memory and context continuity
+
+### Changed
+
+- `components/HomeExperience.tsx`: Added local ConversationThread persistence via `solveos.conversation.v1`. The app hydrates prior messages on load, stores up to 60 turns, sends only the latest 12 non-error turns to `/api/solve`, and clears the thread through a minimal New Chat control.
+- `app/api/solve/route.ts`: Added server-side conversation history normalization and capping. Follow-up prompts such as `"why?"`, `"почему?"`, `"а если нет денег?"`, and `"объясни проще"` now activate a contextual follow-up instruction.
+- `lib/prompts.ts`: Updated advisor and streaming prompts so short follow-ups resolve the prior topic from context and avoid repeating the previous recommendation unless useful.
+- `docs/specs/0002-user-flow.md`, `docs/specs/0003-decision-engine.md`, and `docs/specs/0006-data-and-storage.md`: Documented ConversationThread behavior, storage key, bounded API context, and edge cases.
+
+### Why
+
+- SolveOS must feel like a continuing advisor, not a one-shot form. Users naturally ask short follow-ups; the system should understand the prior topic without forcing them to restate it.
+- Local conversation memory gives continuity without adding a dashboard or expanding the main UI.
+- Bounded context keeps prompts useful and avoids sending an ever-growing transcript.
+
+### Not done
+
+- ConversationThread remains browser-local only. It does not sync across devices.
+- No semantic summarization of very long conversations yet; the current rule is latest-turn recency.
+
+### Next
+
+- Watch whether repeated follow-ups produce new reasoning instead of repeating verdict language. If threads get longer, add a compact local summary layer.
+
+---
+
 ## 2026-05-05 — Answer first, then pressure flow
 
 ### Changed

@@ -15,6 +15,7 @@
 ## 3. Main objects
 
 - Decision: situation entered by the user.
+- ConversationHistory: recent local chat turns sent with the current request.
 - Verdict: final answer.
 - Action: required next step.
 - Risk: reason the decision could fail.
@@ -24,16 +25,19 @@
 ## 4. Logic (step-by-step)
 
 1. User submits a Decision.
-2. System reads UserState and Decision Journal.
-3. System detects request intent.
-4. System creates a Verdict.
-5. System creates an Action.
-6. System checks result quality.
-7. System returns result to the UI.
+2. Client sends the current Decision plus a bounded recent ConversationHistory window (last 8–12 turns).
+3. System reads UserState and Decision Journal.
+4. System detects request intent and whether the current message is a contextual follow-up.
+5. System injects ConversationHistory into prompt context so short follow-ups inherit the previous topic.
+6. System creates a Verdict or direct follow-up answer.
+7. System creates an Action when appropriate.
+8. System checks result quality and repeated-answer loops.
+9. System returns result to the UI.
 
 ## 5. Stored data
 
 - problem: user Decision.
+- conversationHistory: recent user/assistant turns; used for prompt context, loop detection, and pressure scoring.
 - recommendation: final Verdict.
 - confidenceScore: Decision confidence.
 - keyRisks: main risks.
@@ -53,6 +57,8 @@
 - Missing model key: use fallback or error path.
 - Invalid blueprint: normalize fields.
 - Repeated Verdict loop: force a different answer.
+- Contextual follow-up: answer against the prior topic instead of treating the short message as a new standalone decision.
+- Long or noisy ConversationHistory: sanitize and cap to the latest 12 turns before prompt injection.
 
 ## 7. Files involved
 

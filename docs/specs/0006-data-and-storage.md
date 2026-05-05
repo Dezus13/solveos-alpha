@@ -22,6 +22,7 @@
 - Decision Journal: saved list of past Decisions.
 - Outcome: recorded result of a past Decision.
 - ProductSettings: local UI preference object.
+- ConversationThread: local chat messages used only for continuity in the current browser.
 
 ## 4. Logic (step-by-step)
 
@@ -32,6 +33,7 @@
 5. User records outcome.
 6. System updates UserState.
 7. Future Decisions can use history.
+8. Chat messages are stored locally and a bounded recent window is sent with future solve requests.
 
 ## 5. Stored data
 
@@ -114,12 +116,28 @@ The score is displayed in the sidebar via `components/IdentityWidget.tsx`. Updat
 - Appearance values are delegated to `solveos_settings` so theme, accent, and density have one source of truth.
 - Invalid or missing settings fall back to `defaultSettings`.
 
+### ConversationThread (`solveos.conversation.v1`)
+
+- Stored in browser `localStorage` from `components/HomeExperience.tsx`.
+- Contains recent chat turns only: `id`, `role`, `content`, `isError`, and `timestamp`.
+- Maximum stored turns: 60.
+- Maximum turns sent to `/api/solve`: 12, excluding error turns.
+- Used for:
+  - follow-up continuity (`"why?"`, `"почему?"`, `"а если нет денег?"`)
+  - repeated-advice avoidance
+  - session pressure scoring
+  - language-consistent context continuation
+- Cleared by the minimal New Chat control and by delete-history/reset flows.
+- It is not the Decision Journal and does not replace saved Decision records.
+
 ## 6. Edge cases
 
 - File storage unavailable: use remote storage if configured.
 - Remote storage missing: use local file in development.
 - Browser storage missing: return empty state.
 - Invalid JSON: ignore bad data and continue.
+- ConversationThread invalid JSON: ignore it and start a clean chat.
+- ConversationThread too long: keep the latest 60 turns locally and send only the latest 12 turns to the solve API.
 - Decision not found: return safe API error.
 - Settings localStorage unavailable: use defaults and keep the app usable.
 
@@ -133,6 +151,7 @@ The score is displayed in the sidebar via `components/IdentityWidget.tsx`. Updat
 - `lib/userProfile.ts`
 - `lib/settings.ts`
 - `lib/settingsStore.ts`
+- `components/HomeExperience.tsx`
 - `components/IdentityWidget.tsx`
 - `app/api/memory/route.ts`
 - `app/api/outcomes/route.ts`

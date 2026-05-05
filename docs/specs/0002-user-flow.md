@@ -18,6 +18,7 @@
 - Decision: situation entered by the user.
 - Verdict: short Decision result.
 - Action: required step within 24 hours.
+- ConversationThread: local chat messages used for follow-up continuity.
 - UserState: behavior record after the user acts or avoids Action.
 - Decision Journal: saved list of Decisions.
 
@@ -60,11 +61,13 @@ When the user has an active action (not yet marked done), SolveOS applies a cont
 2. System checks: is there an active pending Action?
    - YES → block new Decision. Show: "{PressureMessage} — finish your previous action first".
    - NO → continue.
-3. System calls the AI. Streams the full answer immediately: verdict + reasoning + next action.
-4. After streaming completes, `DecisionGate` renders below the answer.
-5. Action is saved as ActionReminder (24h clock starts).
-6. Banner appears at top of page.
-7. User marks Done → score increases, banner clears.
+3. System sends the current input plus the last 8–12 local conversation messages to the AI.
+4. System calls the AI. Streams the full answer immediately: verdict + reasoning + next action.
+5. For short follow-ups (`"why?"`, `"почему?"`, `"а если нет денег?"`, `"объясни проще"`), the AI resolves the topic from ConversationThread and answers the follow-up directly instead of restarting the full decision flow.
+6. After streaming completes, `DecisionGate` renders below the answer.
+7. Action is saved as ActionReminder (24h clock starts).
+8. Banner appears at top of page.
+9. User marks Done → score increases, banner clears.
 
 ## 7. Execution loop (no action taken)
 
@@ -83,6 +86,7 @@ When the user has an active action (not yet marked done), SolveOS applies a cont
 
 - decisionId: record connected to the Action.
 - actionText: Action shown to the user.
+- conversationThread: local message list stored in browser storage for chat continuity.
 - status: `pending`, `done`, `blocked`, or `skipped`.
 - dueAt: Action deadline.
 - completedAt: time Action was marked done.
@@ -94,6 +98,8 @@ When the user has an active action (not yet marked done), SolveOS applies a cont
 
 - Empty situation: block submission.
 - Active pending Action: block new Decision, show pressure message.
+- Stored ConversationThread invalid or missing: start with an empty thread.
+- New chat: clear local ConversationThread and reset the current answer state.
 - Overdue Action: show category buttons to reduce the action.
 - Data missing: recreate safe reminder state.
 

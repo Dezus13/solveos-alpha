@@ -57,6 +57,10 @@ const SettingsModal = dynamic(() => import('@/components/SettingsModal'), {
   loading: () => null,
 });
 
+const CONVERSATION_STORAGE_KEY = 'solveos.conversation.v1';
+const MAX_STORED_TURNS = 60;
+const MAX_CONTEXT_TURNS = 12;
+
 const normalizeClientLanguage = (value?: string) => {
   const language = typeof value === 'string' && value.trim() ? value.trim() : 'en';
   return language === 'auto' ? 'en' : language;
@@ -122,8 +126,68 @@ const languageUx: Record<ConcreteLanguage, {
   },
 };
 
+function isStoredConversationTurn(value: unknown): value is ConversationTurn {
+  if (!value || typeof value !== 'object') return false;
+  const turn = value as Partial<ConversationTurn>;
+  return (
+    typeof turn.id === 'string' &&
+    (turn.role === 'user' || turn.role === 'assistant') &&
+    typeof turn.content === 'string' &&
+    typeof turn.timestamp === 'number'
+  );
+}
+
+function readStoredConversation(): ConversationTurn[] {
+  if (typeof window === 'undefined') return [];
+
+  try {
+    const raw = window.localStorage.getItem(CONVERSATION_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter(isStoredConversationTurn)
+      .filter((turn) => turn.content.trim())
+      .slice(-MAX_STORED_TURNS);
+  } catch {
+    return [];
+  }
+}
+
+function persistConversation(turns: ConversationTurn[]): void {
+  if (typeof window === 'undefined') return;
+
+  const compactTurns = turns
+    .filter((turn) => turn.content.trim())
+    .slice(-MAX_STORED_TURNS)
+    .map((turn) => ({
+      id: turn.id,
+      role: turn.role,
+      content: turn.content,
+      isError: turn.isError,
+      timestamp: turn.timestamp,
+    }));
+
+  if (compactTurns.length === 0) {
+    window.localStorage.removeItem(CONVERSATION_STORAGE_KEY);
+    return;
+  }
+
+  window.localStorage.setItem(CONVERSATION_STORAGE_KEY, JSON.stringify(compactTurns));
+}
+
+function recentContextTurns(turns: ConversationTurn[]): SolveRequest['conversationHistory'] {
+  return turns
+    .filter((turn) => !turn.isError && turn.content.trim())
+    .slice(-MAX_CONTEXT_TURNS)
+    .map((turn) => ({
+      role: turn.role,
+      content: turn.content,
+    }));
+}
+
 export default function HomeExperience() {
-  const [thread, setThread] = useState<ConversationTurn[]>([]);
+  const [thread, setThread] = useState<ConversationTurn[]>(() => readStoredConversation());
   const [loading, setLoading] = useState(false);
   const [streaming, setStreaming] = useState(false);
   const [settings, setSettings] = useState<ProductSettings>(() => readSettings());
@@ -140,6 +204,10 @@ export default function HomeExperience() {
   // Keep a stable ref to thread so handleSubmit always sees the latest value
   const threadRef = useRef<ConversationTurn[]>([]);
   useEffect(() => { threadRef.current = thread; }, [thread]);
+
+  useEffect(() => {
+    persistConversation(thread);
+  }, [thread]);
 
   useEffect(() => {
     writeSettings(settings);
@@ -228,10 +296,7 @@ export default function HomeExperience() {
           problem: message,
           language: requestLanguage,
           mode: mode === 'Risk' || mode === 'Scenarios' || mode === 'Red Team' ? mode : 'Strategy',
-          conversationHistory: threadRef.current.map((t) => ({
-            role: t.role,
-            content: t.content,
-          })),
+          conversationHistory: recentContextTurns(threadRef.current),
           streaming: true,
         };
 
@@ -259,19 +324,27 @@ export default function HomeExperience() {
           
           // Update the thread with the current content
           setThread((prev) => {
-            const newPrev = [...prev];
-            const last = newPrev[newPrev.length - 1];
+            const last = prev[prev.length - 1];
             if (last.role === 'assistant') {
-              last.content = assistantContent;
-            } else {
-              newPrev.push({
+              return [
+                ...prev.slice(0, -1),
+                {
+                  ...last,
+                  content: assistantContent,
+                  timestamp: Date.now(),
+                },
+              ];
+            }
+
+            return [
+              ...prev,
+              {
                 id: crypto.randomUUID(),
                 role: 'assistant',
                 content: assistantContent,
                 timestamp: Date.now(),
-              });
-            }
-            return newPrev;
+              },
+            ];
           });
         }
 
@@ -311,10 +384,7 @@ export default function HomeExperience() {
         problem: latestUserMessage,
         language: requestLanguage,
         mode: 'Risk',
-        conversationHistory: threadRef.current.map((t) => ({
-          role: t.role,
-          content: t.content,
-        })),
+        conversationHistory: recentContextTurns(threadRef.current),
       };
 
       const response = await fetch('/api/solve', {
@@ -358,14 +428,25 @@ export default function HomeExperience() {
             <SolveOSSymbol className="h-7 w-7" />
             <span className="font-semibold text-white">SolveOS</span>
           </div>
-          <button
-            type="button"
-            onClick={() => setSettingsOpen(true)}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-slate-400 hover:bg-white/[0.06] hover:text-white"
-            aria-label="Open settings"
-          >
-            <Settings className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            {thread.length > 0 && (
+              <button
+                type="button"
+                onClick={handleReset}
+                className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs font-medium text-slate-400 transition-colors hover:bg-white/[0.06] hover:text-white"
+              >
+                {activeCopy.newChat}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-slate-400 hover:bg-white/[0.06] hover:text-white"
+              aria-label="Open settings"
+            >
+              <Settings className="h-4 w-4" />
+            </button>
+          </div>
         </header>
 
         <DecisionConsole

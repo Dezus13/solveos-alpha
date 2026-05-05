@@ -27,23 +27,62 @@ function readContext(body: Partial<SolveRequest> | undefined): DecisionContext |
   return isRecord(body?.context) ? body.context as DecisionContext : undefined;
 }
 
-function readConversationContext(body: Partial<SolveRequest> | undefined): string {
-  if (!Array.isArray(body?.conversationHistory)) return '';
+function readConversationHistory(body: Partial<SolveRequest> | undefined): Array<{ role: string; content: string }> {
+  if (!Array.isArray(body?.conversationHistory)) return [];
 
-  const turns = body.conversationHistory
+  return body.conversationHistory
     .filter((turn) => isRecord(turn) && typeof turn.content === 'string' && turn.content.trim())
-    .slice(-10);
+    .map((turn) => {
+      const typedTurn = turn as { role?: string; content: string };
+      return {
+        role: typedTurn.role === 'assistant' ? 'assistant' : 'user',
+        content: typedTurn.content.trim().replace(/\s+/g, ' ').slice(0, 1200),
+      };
+    })
+    .slice(-12);
+}
+
+function readConversationContext(body: Partial<SolveRequest> | undefined): string {
+  const turns = readConversationHistory(body);
 
   if (turns.length === 0) return '';
 
   return turns
     .map((turn) => {
-      const typedTurn = turn as { role?: string; content: string };
-      const role = typedTurn.role === 'assistant' ? 'Prior SolveOS answer' : 'User';
-      const content = typedTurn.content.trim().replace(/\s+/g, ' ').slice(0, 900);
-      return `${role}: ${content}`;
+      const role = turn.role === 'assistant' ? 'Prior SolveOS answer' : 'User';
+      return `${role}: ${turn.content}`;
     })
     .join('\n');
+}
+
+function isContextualFollowUp(problem: string): boolean {
+  const text = problem.trim().toLowerCase();
+  if (!text) return false;
+  if (text.length <= 80) {
+    return [
+      /^why\??$/,
+      /^why not\??$/,
+      /^explain (it )?simpler\.?$/,
+      /^simpler\.?$/,
+      /^what if\b/,
+      /^and if\b/,
+      /^but if\b/,
+      /^почему\??$/,
+      /^почему нет\??$/,
+      /^объясни проще\.?$/,
+      /^проще\.?$/,
+      /^а если\b/,
+      /^и если\b/,
+      /^но если\b/,
+      /^warum\??$/,
+      /^warum nicht\??$/,
+      /^einfacher\.?$/,
+      /^erklär.*einfacher/,
+      /^was wenn\b/,
+      /^und wenn\b/,
+    ].some((pattern) => pattern.test(text));
+  }
+  return false;
 }
 
 function buildConversationMemoryNote(history: Array<{ role: string; content: string }>): string {
@@ -73,6 +112,18 @@ function buildConversationMemoryNote(history: Array<{ role: string; content: str
     themes.length > 0 ? `Repeated user themes: ${themes.join(', ')}.` : '',
     'Do not restate old advice. Answer the new ask, update assumptions, and name what changed.',
   ].filter(Boolean).join('\n');
+}
+
+function buildFollowUpInstruction(problem: string, hasHistory: boolean): string {
+  if (!hasHistory || !isContextualFollowUp(problem)) return '';
+
+  return [
+    'FOLLOW-UP MODE ACTIVE:',
+    'The current user message is short and context-dependent.',
+    'Resolve pronouns and missing details from the prior conversation before answering.',
+    'Do not ask what topic they mean unless the prior thread is genuinely ambiguous.',
+    'Answer the follow-up directly, then add only the new reasoning needed.',
+  ].join('\n');
 }
 
 function readMode(body: Partial<SolveRequest> | undefined): NonNullable<SolveRequest['mode']> {
@@ -574,9 +625,7 @@ export async function POST(req: Request) {
     const mode = readMode(body);
     const context = readContext(body);
     const rawConversationContext = readConversationContext(body);
-    const conversationHistoryForGuard = Array.isArray(body?.conversationHistory)
-      ? (body.conversationHistory as Array<{ role: string; content: string }>)
-      : [];
+    const conversationHistoryForGuard = readConversationHistory(body);
     const streaming = typeof body.streaming === 'boolean' ? body.streaming : false;
 
     if (!problem) {
@@ -648,7 +697,8 @@ export async function POST(req: Request) {
       console.info('Pressure mode active:', { pressureLevel, turnCount: conversationHistoryForGuard.filter((t) => t.role === 'user').length });
     }
     const conversationMemoryNote = buildConversationMemoryNote(conversationHistoryForGuard);
-    const conversationContext = [conversationMemoryNote, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
+    const followUpInstruction = buildFollowUpInstruction(problem, conversationHistoryForGuard.length > 0);
+    const conversationContext = [conversationMemoryNote, followUpInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
       .filter(Boolean)
       .join('\n\n')
       .trim();
