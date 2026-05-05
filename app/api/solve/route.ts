@@ -64,6 +64,10 @@ function isContextualFollowUp(problem: string): boolean {
       /^why not\??$/,
       /^explain (it )?simpler\.?$/,
       /^simpler\.?$/,
+      /^what if i fail\??$/,
+      /^what if this fails\??$/,
+      /^what would you do\??$/,
+      /^what would u do\??$/,
       /^what if\b/,
       /^and if\b/,
       /^but if\b/,
@@ -71,6 +75,10 @@ function isContextualFollowUp(problem: string): boolean {
       /^почему нет\??$/,
       /^объясни проще\.?$/,
       /^проще\.?$/,
+      /^а если я провалюсь\??$/,
+      /^а если не получится\??$/,
+      /^что бы ты сделал\??$/,
+      /^что бы ты сделала\??$/,
       /^а если\b/,
       /^и если\b/,
       /^но если\b/,
@@ -78,6 +86,9 @@ function isContextualFollowUp(problem: string): boolean {
       /^warum nicht\??$/,
       /^einfacher\.?$/,
       /^erklär.*einfacher/,
+      /^was wenn ich scheitere\??$/,
+      /^was würdest du tun\??$/,
+      /^was wuerdest du tun\??$/,
       /^was wenn\b/,
       /^und wenn\b/,
     ].some((pattern) => pattern.test(text));
@@ -124,6 +135,41 @@ function buildFollowUpInstruction(problem: string, hasHistory: boolean): string 
     'Do not ask what topic they mean unless the prior thread is genuinely ambiguous.',
     'Answer the follow-up directly, then add only the new reasoning needed.',
   ].join('\n');
+}
+
+function stableHash(value: string): number {
+  let hash = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    hash = ((hash << 5) - hash + value.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash);
+}
+
+function buildResponseStyleInstruction(problem: string, history: Array<{ role: string; content: string }>): string {
+  const styles = [
+    [
+      'RESPONSE STYLE VARIANT: thesis-first.',
+      'Open with the answer in one direct sentence, then explain the tradeoff and next action.',
+      'Use short paragraphs. Do not use section labels unless clarity requires them.',
+    ],
+    [
+      'RESPONSE STYLE VARIANT: contrast.',
+      'Frame the answer around the real choice: what happens if they act versus wait or stop.',
+      'Use compact bullets only if they make the contrast sharper.',
+    ],
+    [
+      'RESPONSE STYLE VARIANT: constraint-first.',
+      'Start from the hidden constraint, then show how it changes the recommendation.',
+      'End with the smallest useful action and the condition that would change your mind.',
+    ],
+    [
+      'RESPONSE STYLE VARIANT: advisor note.',
+      'Sound like a calm senior advisor writing a concise private note.',
+      'Name the risk respectfully, challenge weak assumptions, and avoid performance language.',
+    ],
+  ];
+  const index = stableHash(`${problem}:${history.length}`) % styles.length;
+  return styles[index].join('\n');
 }
 
 function readMode(body: Partial<SolveRequest> | undefined): NonNullable<SolveRequest['mode']> {
@@ -698,7 +744,8 @@ export async function POST(req: Request) {
     }
     const conversationMemoryNote = buildConversationMemoryNote(conversationHistoryForGuard);
     const followUpInstruction = buildFollowUpInstruction(problem, conversationHistoryForGuard.length > 0);
-    const conversationContext = [conversationMemoryNote, followUpInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
+    const responseStyleInstruction = buildResponseStyleInstruction(problem, conversationHistoryForGuard);
+    const conversationContext = [conversationMemoryNote, followUpInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
       .filter(Boolean)
       .join('\n\n')
       .trim();
