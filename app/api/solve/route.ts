@@ -365,6 +365,18 @@ function buildStrategicToolInstruction(problem: string, history: Array<{ role: s
   ].join('\n');
 }
 
+function buildFirstResponseQualityInstruction(): string {
+  return [
+    'FIRST RESPONSE QUALITY:',
+    'The first 1-2 lines must contain the strongest useful insight: biggest risk, key leverage, real tradeoff, or decisive next move.',
+    'Start with substance, not setup. No warm-up sentence.',
+    'Never open with: "That\'s an interesting question", "Certainly", "Let\'s analyze", "Here\'s a breakdown", "Based on your situation", or similar filler.',
+    'If using a structured format, put the sharp conclusion before the structure.',
+    'Use human rhythm: vary sentence length, include occasional short decisive sentences, and avoid making every answer look like the same template.',
+    'Streaming must reveal value immediately in the first tokens.',
+  ].join('\n');
+}
+
 function readMode(body: Partial<SolveRequest> | undefined): NonNullable<SolveRequest['mode']> {
   return body?.mode === 'Risk' || body?.mode === 'Scenarios' || body?.mode === 'Red Team' || body?.mode === 'Review'
     ? body.mode
@@ -940,7 +952,8 @@ export async function POST(req: Request) {
     const responseStyleInstruction = buildResponseStyleInstruction(problem, conversationHistoryForGuard);
     const adaptiveResponseInstruction = buildAdaptiveResponseInstruction(problem, conversationHistoryForGuard);
     const strategicToolInstruction = buildStrategicToolInstruction(problem, conversationHistoryForGuard);
-    const conversationContext = [conversationMemoryNote, followUpInstruction, adaptiveResponseInstruction, strategicToolInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
+    const firstResponseQualityInstruction = buildFirstResponseQualityInstruction();
+    const conversationContext = [conversationMemoryNote, followUpInstruction, firstResponseQualityInstruction, adaptiveResponseInstruction, strategicToolInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
       .filter(Boolean)
       .join('\n\n')
       .trim();
