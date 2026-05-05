@@ -198,6 +198,7 @@ function buildResponseStyleInstruction(problem: string, history: Array<{ role: s
 
 type UserMode = 'beginner' | 'analytical' | 'emotional' | 'strategic' | 'overwhelmed' | 'action-oriented';
 type ResponseDepth = 'short answer' | 'medium reasoning' | 'deep analysis';
+type AdvisorMode = 'operator' | 'strategist' | 'skeptic' | 'builder';
 type StrategicToolMode =
   | 'roadmap'
   | 'comparison'
@@ -314,6 +315,52 @@ function buildAdaptiveResponseInstruction(problem: string, history: Array<{ role
     depthGuidance[depth],
     'Maintain core identity: intelligent, calm, strategic, human, direct.',
     'Do not mention the inferred mode or that adaptation is happening.',
+  ].join('\n');
+}
+
+function inferAdvisorMode(problem: string, history: Array<{ role: string; content: string }>): AdvisorMode {
+  const recentUserText = history
+    .filter((turn) => turn.role === 'user')
+    .slice(-3)
+    .map((turn) => turn.content)
+    .join(' ');
+  const text = `${recentUserText} ${problem}`.toLowerCase();
+
+  if (/\bbuild\b|\bship\b|\bmvp\b|\bprototype\b|\bcode\b|\bprogramming\b|построить|собрать|запустить|код|программир|bauen|entwickeln|prototyp|programmier/.test(text)) {
+    return 'builder';
+  }
+  if (/\brisk\b|\bfail\b|\bwrong\b|\bwhat could\b|\bshould i not\b|риск|провал|не так|почему не|scheitern|risiko|falsch/.test(text)) {
+    return 'skeptic';
+  }
+  if (/\bstrategy\b|\bleverage\b|\bmarket\b|\bpositioning\b|\bscale\b|стратег|рынок|позиционир|масштаб|strategie|markt|positionierung|skalier/.test(text)) {
+    return 'strategist';
+  }
+  return 'operator';
+}
+
+function buildStrategicArchitectureInstruction(problem: string, history: Array<{ role: string; content: string }>): string {
+  const advisorMode = inferAdvisorMode(problem, history);
+  const modeGuidance: Record<AdvisorMode, string> = {
+    operator: 'Operator posture: prioritize execution realism, next action, owner, timebox, and what to stop doing.',
+    strategist: 'Strategist posture: prioritize leverage, positioning, opportunity cost, asymmetric upside, and second-order effects.',
+    skeptic: 'Skeptic posture: challenge the weak assumption, expose downside, and define the evidence that would kill the idea.',
+    builder: 'Builder posture: translate strategy into a build path, simplest useful version, validation loop, and constraints.',
+  };
+
+  return [
+    'STRATEGIC RESPONSE ARCHITECTURE:',
+    modeGuidance[advisorMode],
+    'Use this priority stack unless the user explicitly asks for another structure:',
+    '1. Biggest risk.',
+    '2. Biggest leverage.',
+    '3. Real tradeoff.',
+    '4. Decisive next step.',
+    '5. Optional nuance only if it changes action.',
+    'First sentence engine: identify the core issue, expose leverage, or challenge the wrong framing.',
+    'Anti-fluff filter: remove consultant phrasing, motivational filler, fake depth, overexplaining, and repetitive caution.',
+    'Strategic language engine: use direct observations, concrete consequences, asymmetric thinking, opportunity cost, and execution realism.',
+    'High-signal ending: end with action, uncertainty to resolve, next leverage point, or hidden risk. No generic summary.',
+    'Do not name the advisor posture or this architecture.',
   ].join('\n');
 }
 
@@ -976,10 +1023,11 @@ export async function POST(req: Request) {
     const followUpInstruction = buildFollowUpInstruction(problem, conversationHistoryForGuard.length > 0);
     const responseStyleInstruction = buildResponseStyleInstruction(problem, conversationHistoryForGuard);
     const adaptiveResponseInstruction = buildAdaptiveResponseInstruction(problem, conversationHistoryForGuard);
+    const strategicArchitectureInstruction = buildStrategicArchitectureInstruction(problem, conversationHistoryForGuard);
     const strategicToolInstruction = buildStrategicToolInstruction(problem, conversationHistoryForGuard);
     const firstResponseQualityInstruction = buildFirstResponseQualityInstruction();
     const persistentMemoryInstruction = buildPersistentMemoryInstruction(persistentConversationMemory);
-    const conversationContext = [persistentMemoryInstruction, conversationMemoryNote, followUpInstruction, firstResponseQualityInstruction, adaptiveResponseInstruction, strategicToolInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
+    const conversationContext = [persistentMemoryInstruction, conversationMemoryNote, followUpInstruction, firstResponseQualityInstruction, strategicArchitectureInstruction, adaptiveResponseInstruction, strategicToolInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
       .filter(Boolean)
       .join('\n\n')
       .trim();
