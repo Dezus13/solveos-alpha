@@ -649,6 +649,80 @@ function buildFirstResponseQualityInstruction(): string {
   ].join('\n');
 }
 
+function buildCompressionIntelligenceInstruction(problem: string, history: Array<{ role: string; content: string }>): string {
+  const wordCount = problem.trim().split(/\s+/).filter(Boolean).length;
+  const text = problem.toLowerCase().trim();
+
+  const isDirectComparison = /\bvs\.?\b|\bversus\b|\bor\b.{0,20}\b(option|choice|path|approach)\b|что лучше|которое лучше|oder.*besser/.test(text);
+  const isFastRecommendation = wordCount < 25 && /\bwhich\b|\bshould i\b|\bwhat.*(?:do|choose|pick|use|take)\b|\bbest (?:option|choice|path|approach)\b|\bwhat would you\b|что.*выбрать|что.*делать|empfiehlst du/.test(text);
+  const isConfirmation = /^(?:yes|no|ok|okay|sure|got it|understood|confirmed|right|correct|exactly|да|нет|ок|понял|понятно|ja|nein|verstanden)[\.\?!]?$/i.test(text);
+  const isObviousQuestion = wordCount <= 10 && (text.includes('?') || /^(?:is|are|can|will|should|does|did|was|were)\b/.test(text));
+  const isShortAnswerMode = isDirectComparison || isFastRecommendation || isConfirmation || isObviousQuestion;
+
+  const assistantTurns = history.filter((t) => t.role === 'assistant').map((t) => t.content);
+  const recentAssistant = assistantTurns.slice(-4);
+
+  const openings = recentAssistant.map((t) => t.trim().split(/\s+/).slice(0, 4).join(' ').toLowerCase());
+  const hasRepeatedOpening = openings.some((o, i) => openings.slice(0, i).some((prev) => prev === o && o.length > 0));
+
+  const closings = recentAssistant.map((t) => {
+    const sentences = t.trim().split(/(?<=[.!?])\s+/).filter(Boolean);
+    return (sentences.at(-1) ?? '').toLowerCase().slice(0, 50).trim();
+  });
+  const hasRepeatedClosing = closings.some((c, i) => c.length > 15 && closings.slice(0, i).some((prev) => prev === c));
+
+  const warningPhrases = [
+    'proceed with caution', 'be careful', 'keep in mind', 'make sure to', 'important to note',
+    'consider carefully', 'worth noting', 'don\'t forget',
+    'учтите', 'имейте в виду', 'будьте осторожны',
+    'beachten sie', 'vergessen sie nicht',
+  ];
+  const hasRepeatedWarnings = warningPhrases.some(
+    (phrase) => recentAssistant.filter((t) => t.toLowerCase().includes(phrase)).length >= 2,
+  );
+
+  const emotionalFramings = [
+    'this is a tough', 'this is a hard', 'it\'s natural to feel', 'it makes sense that',
+    'это непростое', 'это сложное', 'естественно что',
+    'es ist verständlich', 'das ist schwierig',
+  ];
+  const hasRepeatedEmotionalFraming = emotionalFramings.some(
+    (phrase) => recentAssistant.filter((t) => t.toLowerCase().includes(phrase)).length >= 2,
+  );
+
+  const lines: string[] = ['RESPONSE COMPRESSION INTELLIGENCE:'];
+
+  if (isShortAnswerMode) {
+    lines.push('SHORT ANSWER MODE ACTIVE: The user asked a direct, obvious, or confirmatory question.');
+    lines.push('Lead with the shortest complete answer — 1 to 3 sentences. No preamble. No section headers. No bullets unless comparing 2+ options.');
+    lines.push('Expand only if a critical risk or tradeoff materially changes the recommendation. Otherwise, stop.');
+  } else {
+    lines.push('Signal density: every sentence must introduce new information. No sentence can restate what was already said in a different way.');
+    lines.push('Length discipline: length is earned by new insight, not by added emphasis. If the complete answer fits in 2-3 sentences, stop there. Do not pad to reach a target word count.');
+  }
+
+  if (hasRepeatedOpening) {
+    lines.push('Opening variation required: recent responses began with similar first words. Change the entry point — start from a different angle, insight type, or sentence structure.');
+  }
+
+  if (hasRepeatedClosing) {
+    lines.push('Closing variation required: recent responses ended with similar conclusions. End this response differently — a specific next move, a hidden risk, a key tradeoff, or an unexplored leverage point.');
+  }
+
+  if (hasRepeatedWarnings) {
+    lines.push('Warning fatigue detected: the same caution appeared in multiple recent turns. Drop repeated warnings. Surface only the one warning that changes behavior this turn.');
+  }
+
+  if (hasRepeatedEmotionalFraming) {
+    lines.push('Emotional framing fatigue: similar empathy language appeared recently. Skip the framing and go directly to strategy.');
+  }
+
+  lines.push('Structure gate: before adding bullets or sections, ask whether two or more distinct items genuinely need visual separation. If not, use prose.');
+  lines.push('Ending gate: the last sentence must be one specific item — next move, key tradeoff, hidden risk, or leverage point. No generic summary or closing paragraph.');
+
+  return lines.join('\n');
+}
+
 function readMode(body: Partial<SolveRequest> | undefined): NonNullable<SolveRequest['mode']> {
   return body?.mode === 'Risk' || body?.mode === 'Scenarios' || body?.mode === 'Red Team' || body?.mode === 'Review'
     ? body.mode
@@ -1229,6 +1303,7 @@ export async function POST(req: Request) {
     const contradictionIntelligenceInstruction = buildContradictionIntelligenceInstruction(problem, conversationHistoryForGuard);
     const strategicToolInstruction = buildStrategicToolInstruction(problem, conversationHistoryForGuard);
     const firstResponseQualityInstruction = buildFirstResponseQualityInstruction();
+    const compressionIntelligenceInstruction = buildCompressionIntelligenceInstruction(problem, conversationHistoryForGuard);
     const persistentMemoryInstruction = buildPersistentMemoryInstruction(persistentConversationMemory);
     const domain = context?.domain;
     let memoryContext = '';
@@ -1250,7 +1325,7 @@ export async function POST(req: Request) {
       // Continue analysis without memory enrichment.
     }
 
-    const conversationContext = [persistentMemoryInstruction, outcomeLearningInstruction, conversationMemoryNote, followUpInstruction, firstResponseQualityInstruction, conversationalFlowInstruction, strategicArchitectureInstruction, contradictionIntelligenceInstruction, adaptiveResponseInstruction, strategicToolInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
+    const conversationContext = [persistentMemoryInstruction, outcomeLearningInstruction, conversationMemoryNote, followUpInstruction, firstResponseQualityInstruction, compressionIntelligenceInstruction, conversationalFlowInstruction, strategicArchitectureInstruction, contradictionIntelligenceInstruction, adaptiveResponseInstruction, strategicToolInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
       .filter(Boolean)
       .join('\n\n')
       .trim();
