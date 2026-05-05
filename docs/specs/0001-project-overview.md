@@ -55,7 +55,42 @@ Each part has one clear role.
 
 This makes the system simple and scalable.
 
-## 7. System principle
+## 7. Target Audience
+
+SolveOS is built for:
+→ early-stage builders and solopreneurs
+
+People who:
+- are building something (product, startup, project)
+- get stuck in decisions
+- overthink instead of acting
+
+Core pain:
+"I know what to do, but I don't do it."
+
+## 8. Positioning
+
+SolveOS is not a chat assistant.
+SolveOS is a decision pressure tool.
+
+### What this means in the UI
+
+- The opening question is confrontational: "What decision are you avoiding right now?"
+- The subtext is direct: "No more overthinking. Get a decision and a next step."
+- Example prompts are framed as avoidance questions, not feature demos:
+  - "Should I launch this?"
+  - "Am I wasting time on this idea?"
+  - "What am I avoiding?"
+- The input placeholder says "Describe the decision..." — not "Ask SolveOS..."
+- No assistant-like language anywhere in the interface.
+
+### What this means in the system
+
+- Every response ends with a required Action — not a suggestion.
+- The pressure system escalates tone as the user continues without deciding.
+- SolveOS does not comfort. It forces a binary: decide or accept the cost.
+
+## 9. System principle
 
 SolveOS is not a chatbot.
 
@@ -68,16 +103,15 @@ It is a system that:
 
 The goal is not thinking — the goal is Action.
 
-## 8. UI principle
+## 10. UI principle
 
 The interface is minimal, not decorative.
 
 - The UI clears the path to Action.
-- The layout is focused like Claude — clean, direct, no noise.
-- But the product behavior is SolveOS-specific, not general chat.
+- The layout is focused — clean, direct, no noise.
+- Product behavior is SolveOS-specific, not general chat.
 - Score and history are internal behavior systems, not always-visible UI blocks.
 - Pressure appears only when the user has an unfinished Action.
-- The first view asks one question: "What decision are we thinking through?"
 
 SolveOS is not a general chat clone.
 SolveOS is a decision-to-action system.

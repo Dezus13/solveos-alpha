@@ -13,10 +13,14 @@ When the user opens the app with no session history:
 
 1. The empty state shows one confrontational question: "What decision are you avoiding right now?"
 2. A pulsing accent dot signals the system is live and waiting — not idle.
-3. The subtext is direct: "No more circles. Get a verdict and a next step."
-4. Suggestion pills are optional (controlled by `showSuggestions` setting).
-5. The user types anything that names a decision — no minimum length barrier.
-6. On submit, the input routes immediately into the full decision engine (Strategy mode). No casual chat, no clarification loop.
+3. The subtext is direct: "No more overthinking. Get a decision and a next step."
+4. Three example prompts are shown (if `showSuggestions` is enabled):
+   - "Should I launch this?"
+   - "Am I wasting time on this idea?"
+   - "What am I avoiding?"
+5. The input placeholder reads "Describe the decision..." — no assistant-like framing.
+6. The user types anything that names a decision — no minimum length barrier.
+7. On submit, the input routes immediately into the full decision engine (Strategy mode). No casual chat, no clarification loop.
 
 ### Why this matters
 
