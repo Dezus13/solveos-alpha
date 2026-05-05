@@ -133,6 +133,7 @@ function buildAssistantAnswer(blueprint: DecisionBlueprint): string {
   return [
     coreProblem ? `The decision: ${coreProblem}` : '',
     avoiding ? `What you're avoiding: ${avoiding}` : '',
+    'If you don\'t decide now, this will cost you time, energy, and missed opportunities.',
   ].filter(Boolean).join('\n');
 }
 

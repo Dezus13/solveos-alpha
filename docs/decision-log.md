@@ -4,6 +4,32 @@ This file tracks what we change, why we change it, and what we do next.
 
 ---
 
+## 2026-05-05 — Strengthen monetization pressure copy
+
+### Changed
+
+- `components/HomeExperience.tsx`: Added consequence line to `buildAssistantAnswer` output: "If you don't decide now, this will cost you time, energy, and missed opportunities." Appended as the third line after the problem and avoidance.
+- `components/DecisionConsole.tsx`: Replaced weak paywall copy in `DecisionGate` pre-unlock state. Old: "You're still avoiding the decision. / Unlock the verdict + exact next step." New: "You already know the answer. / You're avoiding acting on it. / Unlock the verdict and stop wasting time." Added helper text under the button: "One clear decision can change the next 24 hours."
+- `docs/specs/0008-monetization.md`: Updated flow step 3 and step 6 to reflect new copy.
+
+### Why
+
+- "You're still avoiding the decision" is descriptive. "You already know the answer" is confrontational — it names what is actually happening.
+- The consequence line in the partial response creates urgency before the gate appears.
+- The helper text under the button reduces friction by making the value concrete: one decision, 24 hours.
+- No structural change to the gate — only copy. Pressure system and identity logic untouched.
+
+### Not done
+
+- No analytics on unlock clicks.
+- No A/B test infrastructure.
+
+### Next
+
+- Observe click rate with new copy. Compare to prior phrasing.
+
+---
+
 ## 2026-05-05 — Fake decision unlock monetization gate
 
 ### Changed

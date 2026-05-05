@@ -26,12 +26,15 @@
 3. `buildAssistantAnswer` produces only the partial content:
    - "The decision: [coreProblem]"
    - "What you're avoiding: [hiddenPain or keyRisks]"
+   - "If you don't decide now, this will cost you time, energy, and missed opportunities."
 4. The partial content streams as the assistant message.
 5. After streaming completes, `DecisionGate` renders below the message.
 6. Pre-unlock state shows:
-   - "You're still avoiding the decision."
-   - "Unlock the verdict + exact next step."
+   - "You already know the answer."
+   - "You're avoiding acting on it."
+   - "Unlock the verdict and stop wasting time."
    - Button: "Unlock decision — €5"
+   - Helper text: "One clear decision can change the next 24 hours."
 7. User clicks the button → `isUnlocked = true`.
 8. Post-unlock state shows:
    - Verdict (from `blueprint.recommendation`)

@@ -248,10 +248,13 @@ function DecisionGate({ turn }: { turn: ConversationTurn }) {
     return (
       <div className="mt-3 rounded-xl border border-amber-400/20 bg-amber-400/[0.03] px-4 py-4">
         <p className="text-sm font-semibold text-slate-200">
-          You&apos;re still avoiding the decision.
+          You already know the answer.
         </p>
-        <p className="mt-1 text-[13px] leading-relaxed text-slate-400">
-          Unlock the verdict + exact next step.
+        <p className="text-sm font-semibold text-slate-200">
+          You&apos;re avoiding acting on it.
+        </p>
+        <p className="mt-2 text-[13px] leading-relaxed text-slate-400">
+          Unlock the verdict and stop wasting time.
         </p>
         <button
           type="button"
@@ -260,6 +263,9 @@ function DecisionGate({ turn }: { turn: ConversationTurn }) {
         >
           Unlock decision — €5
         </button>
+        <p className="mt-2 text-[11px] text-slate-500">
+          One clear decision can change the next 24 hours.
+        </p>
       </div>
     );
   }
