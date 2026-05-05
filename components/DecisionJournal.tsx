@@ -29,8 +29,8 @@ const VERDICT_COLORS: Record<string, string> = {
   '—': 'text-slate-600',
 };
 
-function relativeDate(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
+function relativeDate(iso: string, now: number): string {
+  const diff = now - new Date(iso).getTime();
   const m = Math.floor(diff / 60000);
   if (m < 60) return `${m}m`;
   const h = Math.floor(m / 60);
@@ -113,7 +113,7 @@ export default function DecisionJournal({ refreshTrigger, currentDecisionId, onR
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-1">
                 <span className="text-[11px] text-slate-300 leading-snug truncate">{problem}</span>
-                <span className="text-[9px] text-slate-600 flex-shrink-0 font-mono">{relativeDate(entry.timestamp)}</span>
+                <span className="text-[9px] text-slate-600 flex-shrink-0 font-mono">{relativeDate(entry.timestamp, now)}</span>
               </div>
               <div className="flex items-center gap-2 mt-0.5">
                 <span className={`text-[8px] font-black uppercase tracking-wider ${VERDICT_COLORS[vc]}`}>{vc}</span>
