@@ -199,6 +199,9 @@ function buildResponseStyleInstruction(problem: string, history: Array<{ role: s
 
 type UserMode = 'beginner' | 'analytical' | 'emotional' | 'strategic' | 'overwhelmed' | 'action-oriented';
 type ResponseDepth = 'short answer' | 'medium reasoning' | 'deep analysis';
+type FlowLength = 'very short' | 'short' | 'medium' | 'deep';
+type EmotionalSignal = 'uncertainty' | 'urgency' | 'overwhelm' | 'ambition' | 'avoidance' | 'confidence';
+type StrategicTension = 'push' | 'simplify' | 'challenge' | 'reassure' | 'narrow focus' | 'force prioritization';
 type AdvisorMode = 'operator' | 'strategist' | 'skeptic' | 'builder';
 type BlindSpotSignal = {
   name: string;
@@ -323,6 +326,107 @@ function buildAdaptiveResponseInstruction(problem: string, history: Array<{ role
     'Maintain core identity: intelligent, calm, strategic, human, direct.',
     'Do not mention the inferred mode or that adaptation is happening.',
   ].join('\n');
+}
+
+function detectEmotionalSignals(problem: string, history: Array<{ role: string; content: string }>): EmotionalSignal[] {
+  const recentUserText = history
+    .filter((turn) => turn.role === 'user')
+    .slice(-4)
+    .map((turn) => turn.content)
+    .join(' ');
+  const text = `${recentUserText} ${problem}`.toLowerCase();
+  const signals: EmotionalSignal[] = [];
+
+  if (/\bmaybe\b|\bnot sure\b|\bconfused\b|\bshould i\b|\bwhat if\b|не уверен|не уверена|может|не знаю|а если|verwirrt|nicht sicher|vielleicht|was wenn/.test(text)) {
+    signals.push('uncertainty');
+  }
+  if (/\burgent\b|\basap\b|\bright now\b|\btoday\b|\bdeadline\b|\bsoon\b|срочно|сейчас|сегодня|дедлайн|быстро|dringend|sofort|heute|frist/.test(text)) {
+    signals.push('urgency');
+  }
+  if (/\boverwhelmed\b|\btoo much\b|\bstuck\b|\bcan'?t decide\b|\bno idea\b|слишком много|застрял|застряла|не могу решить|перегруж|ueberfordert|überfordert|zu viel|festgefahren/.test(text)) {
+    signals.push('overwhelm');
+  }
+  if (/\bscale\b|\b10k\b|\b100k\b|\bmillion\b|\bfreedom\b|\bbig\b|\bfast\b|масштаб|миллион|свобод|быстро|больш|skalier|million|freiheit|schnell|gross|groß/.test(text)) {
+    signals.push('ambition');
+  }
+  if (/\blater\b|\bnot ready\b|\bresearch more\b|\bwait\b|\bavoid\b|\bstill\b|потом|не готов|не готова|подожд|избег|ещ[её] думаю|später|spaeter|nicht bereit|warten|vermeid/.test(text)) {
+    signals.push('avoidance');
+  }
+  if (/\bi know\b|\bclearly\b|\bi will\b|\bdecided\b|\bready\b|я знаю|точно|решил|решила|готов|готова|ich weiss|ich weiß|klar|entschieden|bereit/.test(text)) {
+    signals.push('confidence');
+  }
+
+  return Array.from(new Set(signals)).slice(0, 3);
+}
+
+function inferFlowLength(problem: string, signals: EmotionalSignal[], history: Array<{ role: string; content: string }>): FlowLength {
+  const wordCount = problem.trim().split(/\s+/).filter(Boolean).length;
+  const questionCount = (problem.match(/[?？]/g) || []).length;
+  const hasHighStakes = /\bquit|fire|hire|funding|debt|runway|family|visa|move|shutdown|lawsuit|health|увол|наним|долг|ранвей|семь|виза|переезд|закрыть|суд|здоров|kündigen|kuendigen|einstellen|schulden|familie|visum|umzug|schliessen|schließen|gesund/.test(problem.toLowerCase());
+  const recentLooping = history
+    .filter((turn) => turn.role === 'user')
+    .slice(-4)
+    .filter((turn) => isContextualFollowUp(turn.content) || /\bwhy\b|почему|warum/i.test(turn.content))
+    .length >= 2;
+
+  if (signals.includes('overwhelm') || recentLooping) return 'short';
+  if (wordCount <= 10 && questionCount <= 1 && !hasHighStakes) return 'very short';
+  if (hasHighStakes || questionCount >= 3 || wordCount > 70) return 'deep';
+  return 'medium';
+}
+
+function inferStrategicTension(signals: EmotionalSignal[], problem: string, history: Array<{ role: string; content: string }>): StrategicTension {
+  const userTurns = history.filter((turn) => turn.role === 'user');
+  const recentText = `${userTurns.slice(-5).map((turn) => turn.content).join(' ')} ${problem}`.toLowerCase();
+  const driftSignals = userTurns.slice(-4).map((turn) => turn.content.toLowerCase()).filter((content, index, arr) => (
+    index > 0 && content.split(/\s+/).filter((word) => word.length > 5 && arr[index - 1].includes(word)).length <= 1
+  )).length;
+
+  if (signals.includes('overwhelm')) return 'simplify';
+  if (signals.includes('avoidance')) return 'push';
+  if (/\btoo many\b|everything|all at once|вс[её] сразу|слишком много|alles auf einmal|zu viel/.test(recentText)) return 'force prioritization';
+  if (driftSignals >= 2 || /\bnew idea\b|\banother idea\b|\bpivot\b|другая идея|новая идея|пивот|andere idee|neue idee/.test(recentText)) return 'narrow focus';
+  if (signals.includes('uncertainty')) return 'reassure';
+  return 'challenge';
+}
+
+function buildConversationalFlowInstruction(problem: string, history: Array<{ role: string; content: string }>): string {
+  const signals = detectEmotionalSignals(problem, history);
+  const flowLength = inferFlowLength(problem, signals, history);
+  const tension = inferStrategicTension(signals, problem, history);
+  const recentUserTurns = history.filter((turn) => turn.role === 'user').slice(-4);
+  const rapidDirectionChange = recentUserTurns.length >= 3 && tension === 'narrow focus';
+  const questionCount = (problem.match(/[?？]/g) || []).length;
+  const asksForClarification = /\bwhich\b|\bchoose\b|\bprioriti[sz]e\b|что выбрать|что важнее|приорит|was wählen|was waehlen|priorisieren/.test(problem.toLowerCase());
+
+  const lengthGuidance: Record<FlowLength, string> = {
+    'very short': 'Answer in 40-90 words. Skip sections unless one bullet list is clearly useful.',
+    short: 'Answer in 70-140 words. Keep one clear point, one reason, and one next move.',
+    medium: 'Answer in 120-220 words with natural paragraphs or a compact list.',
+    deep: 'Use 220-360 words only if stakes or ambiguity justify it. Keep structure crisp and avoid report-like sprawl.',
+  };
+  const tensionGuidance: Record<StrategicTension, string> = {
+    push: 'Push gently toward evidence or action. Reduce analysis loops.',
+    simplify: 'Simplify the decision and remove options. One next step beats a full framework.',
+    challenge: 'Challenge the weakest assumption respectfully and tie it to consequences.',
+    reassure: 'Create steadiness by naming the likely uncertainty, then move back to strategy.',
+    'narrow focus': 'Reconnect the new question to the main objective and prevent scattered execution.',
+    'force prioritization': 'Name the incompatible priorities and force a sequence.',
+  };
+
+  return [
+    'CONVERSATIONAL FLOW INTELLIGENCE:',
+    `Response length target: ${flowLength}. ${lengthGuidance[flowLength]}`,
+    signals.length ? `Lightweight emotional signals: ${signals.join(', ')}. Use only for pacing and framing; never label the user.` : 'No strong emotional signal. Keep the response calm, direct, and strategic.',
+    `Strategic tension control: ${tension}. ${tensionGuidance[tension]}`,
+    rapidDirectionChange ? 'Interruption intelligence: the user may be shifting direction quickly. Briefly reconnect to the main objective before answering the new angle.' : '',
+    questionCount >= 2 && !asksForClarification ? 'Question discipline: answer the highest-leverage question first instead of responding to every sub-question equally.' : '',
+    'Question discipline: ask at most one question, and only if the missing information materially changes the recommendation. Prefer a stated assumption plus next action.',
+    'Momentum: avoid unnecessary caveats, summaries, robotic transitions, and excessive structure.',
+    'Human rhythm: vary paragraph shape and sentence openings. Do not make the answer look like the previous template.',
+    'Confidence calibration: match confidence to evidence. Be clear without fake certainty and decisive without pretending missing facts are known.',
+    'No visible mode labels, emotional indicators, dashboards, scores, or meta commentary about flow control.',
+  ].filter(Boolean).join('\n');
 }
 
 function inferAdvisorMode(problem: string, history: Array<{ role: string; content: string }>): AdvisorMode {
@@ -1120,6 +1224,7 @@ export async function POST(req: Request) {
     const followUpInstruction = buildFollowUpInstruction(problem, conversationHistoryForGuard.length > 0);
     const responseStyleInstruction = buildResponseStyleInstruction(problem, conversationHistoryForGuard);
     const adaptiveResponseInstruction = buildAdaptiveResponseInstruction(problem, conversationHistoryForGuard);
+    const conversationalFlowInstruction = buildConversationalFlowInstruction(problem, conversationHistoryForGuard);
     const strategicArchitectureInstruction = buildStrategicArchitectureInstruction(problem, conversationHistoryForGuard);
     const contradictionIntelligenceInstruction = buildContradictionIntelligenceInstruction(problem, conversationHistoryForGuard);
     const strategicToolInstruction = buildStrategicToolInstruction(problem, conversationHistoryForGuard);
@@ -1145,7 +1250,7 @@ export async function POST(req: Request) {
       // Continue analysis without memory enrichment.
     }
 
-    const conversationContext = [persistentMemoryInstruction, outcomeLearningInstruction, conversationMemoryNote, followUpInstruction, firstResponseQualityInstruction, strategicArchitectureInstruction, contradictionIntelligenceInstruction, adaptiveResponseInstruction, strategicToolInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
+    const conversationContext = [persistentMemoryInstruction, outcomeLearningInstruction, conversationMemoryNote, followUpInstruction, firstResponseQualityInstruction, conversationalFlowInstruction, strategicArchitectureInstruction, contradictionIntelligenceInstruction, adaptiveResponseInstruction, strategicToolInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
       .filter(Boolean)
       .join('\n\n')
       .trim();
