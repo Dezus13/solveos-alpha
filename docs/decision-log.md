@@ -4,6 +4,33 @@ This file tracks what we change, why we change it, and what we do next.
 
 ---
 
+## 2026-05-05 — Core session pressure system
+
+### Changed
+
+- `lib/pressureEngine.ts` (new): Hesitation detection and tone escalation engine. `scoreHesitation()` scores avoidance signals from user messages (hedging language, short follow-ups, multiple questions, turn count). `computeSessionPressureLevel()` converts score to 0 | 1 | 2. `buildPressureDirective()` returns an AI prompt directive: empty at level 0, "PRESSURE MODE ACTIVE" at level 1, "CONFRONTATIONAL MODE ACTIVE" at level 2.
+- `app/api/solve/route.ts`: Imported `computeSessionPressureLevel` and `buildPressureDirective`. After computing `intentInstruction`, computes `pressureLevel` and `pressureDirective` from `conversationHistoryForGuard`. Pressure directive is injected into `conversationContext` alongside existing `intentInstruction` and `diversityInstruction`. Review mode bypasses pressure (set to level 0). `sessionPressureLevel` added to API response.
+- `lib/types.ts`: Added `sessionPressureLevel?: 0 | 1 | 2` to `SolveResponse`.
+- `docs/specs/0005-identity-and-pressure.md`: Added Session Pressure System documentation — hesitation signal table, pressure level table, and per-request computation rules.
+
+### Why
+
+- SolveOS must not behave like a chat assistant. A user who submits 3+ turns without committing to an action is avoiding, not thinking.
+- The AI tone must respond to that pattern — softer responses reward avoidance. The pressure directive forces the model to cut analysis and push toward a decision.
+- The hesitation scoring is deterministic and runs server-side from existing conversation history — no new storage, no new UI, no new API fields required from the client.
+- Review mode is exempt because milestone reviews are analytical, not decisions under avoidance.
+
+### Not done
+
+- `sessionPressureLevel` is returned in the API response but not yet used in the UI. Reserved for future display (e.g., subtle indicator or tone label).
+- Hesitation scoring does not yet compare semantic similarity between turns (repeated problem restatements). Deferred.
+
+### Next
+
+- Monitor: does level 1 pressure produce meaningfully more direct responses? Does level 2 feel useful or harsh?
+
+---
+
 ## 2026-05-05 — Hide behavior score from main sidebar
 
 ### Changed

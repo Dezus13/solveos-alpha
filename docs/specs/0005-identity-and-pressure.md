@@ -4,6 +4,7 @@
 
 - Define the Identity Engine.
 - Define the Pressure Layer.
+- Define the Session Pressure System (in-session hesitation detection and tone escalation).
 
 ## 2. Where it is used
 
@@ -11,16 +12,20 @@
 - Persistent action banner.
 - Home summary lines.
 - User profile updates.
+- AI prompt construction (session pressure directive injected per turn).
 
 ## 3. Main objects
 
 - UserState: behavior record after Action outcomes.
 - Identity Engine: system that turns UserState into identity feedback.
 - Pressure Layer: system that reacts to delay based on elapsed time.
+- Session Pressure System: detects in-session hesitation from conversation history and escalates AI tone.
 - IdentityLabel: short behavior label for the user.
 - DecisionScore: score based on follow-through.
 - PressureState: current urgency level of a pending Action.
 - PressureLine: message shown based on PressureState.
+- SessionPressureLevel: 0 (normal) | 1 (pressure) | 2 (confrontational) — computed from conversation history per request.
+- HesitationSignal: detected avoidance pattern in user messages (hedging language, short follow-ups, multiple questions, repeated turns).
 - ActionStatus: `pending`, `done`, `blocked`, or `skipped`.
 - BlockerCategory: reason the user did not act (`fear`, `unclear`, `lazy`, `external`).
 
@@ -144,11 +149,49 @@ The overdue penalty is applied once per action via `overdueScorePenaltyApplied` 
 - Missing profile: use default profile.
 - Browser storage blocked: keep UI usable.
 
-## 10. Files involved
+## 10. Session Pressure System
+
+Detects hesitation within a single conversation session and escalates the AI response tone. No UI change — pressure is expressed through the AI's language only.
+
+### Hesitation signals (detected from user messages)
+
+| Signal | Score added |
+|---|---|
+| 4+ turns without resolution | +4 |
+| 3 turns without resolution | +2 |
+| 2nd turn | +1 |
+| 2+ hedging phrases in last message | +3 |
+| 1 hedging phrase in last message | +2 |
+| Seeking more analysis instead of deciding | +2 |
+| Short follow-up (<45 chars) | +1 |
+| 2+ questions in one message | +2 |
+
+### Pressure levels
+
+| Level | Score threshold | Mode | AI tone |
+|---|---|---|---|
+| 0 | 0–2 | Normal | Standard analysis |
+| 1 | 3–6 | Pressure | Verdict-first, one risk, one action, no hedging |
+| 2 | 7+ | Confrontational | Cost of inaction first, one sentence verdict, mirror tone |
+
+### Session pressure is computed per request
+
+- `computeSessionPressureLevel(conversationHistory)` runs in `app/api/solve/route.ts` on every POST.
+- Skipped for Review mode (review analysis should not be confrontational).
+- `buildPressureDirective(level)` returns a string injected into `conversationContext` alongside `intentInstruction` and `diversityInstruction`.
+- `sessionPressureLevel` is included in the API response for future UI use.
+
+### Stored data
+
+- No additional storage. Pressure is derived from `conversationHistory` sent with each request.
+
+## 11. Files involved
 
 - `lib/identityEngine.ts`
 - `lib/userProfile.ts`
 - `lib/actionReminders.ts`
+- `lib/pressureEngine.ts` — session pressure detection and directive building
+- `app/api/solve/route.ts` — pressure level computed and injected per request
 - `components/DecisionConsole.tsx`
 - `components/IdentityWidget.tsx`
 - `components/PersistentActionBanner.tsx`

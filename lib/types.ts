@@ -333,6 +333,7 @@ export interface SolveResponse {
   calibrationConfidence?: 'high' | 'medium' | 'low' | 'none';
   decisionAccuracy?: number;
   calibrationScore?: number;
+  sessionPressureLevel?: 0 | 1 | 2;
 }
 
 export interface DecisionOutcome {

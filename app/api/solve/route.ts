@@ -4,6 +4,7 @@ import { getMemoryIntelligenceFromHistory } from '@/lib/memory-graph';
 import { computeNetworkIntelligence, calibrateScore, buildCalibrationContext, computeDecisionAccuracy, computeCalibrationScore } from '@/lib/benchmarks';
 import { isPlanModeRequest, isReviewModeRequest, semanticVerdictForQuestion, shouldRejectDecisionOutput, detectVerdictLoop, buildForceDiversityInstruction, semanticVerdictExcluding, extractVerdictClass, buildIntentInstruction, enforceIntentRouting, detectSolveRequestIntent, extractLiteralOutput } from '@/lib/semantic-guards';
 import { buildProfileDirective, applyProfileAdjustments, scoreMessageFor } from '@/lib/profileEngine';
+import { computeSessionPressureLevel, buildPressureDirective } from '@/lib/pressureEngine';
 import type { CouncilMetrics, CounterfactualPath, DecisionBlueprint, DecisionContext, ExecutionPlanWeek, MilestoneMetric, MilestoneStatus, PreMortemRisk, ScenarioBranch, SecondOrderEffect, SolveRequest, SolveResponse, UserProfileData, WarRoomDebate } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -609,7 +610,12 @@ export async function POST(req: Request) {
     }
     const diversityInstruction = bannedVerdict ? buildForceDiversityInstruction(bannedVerdict) : '';
     const intentInstruction = isReview ? '' : buildIntentInstruction(problem, conversationHistoryForGuard);
-    const conversationContext = [rawConversationContext, diversityInstruction, intentInstruction]
+    const pressureLevel = isReview ? 0 : computeSessionPressureLevel(conversationHistoryForGuard);
+    const pressureDirective = buildPressureDirective(pressureLevel);
+    if (pressureLevel > 0) {
+      console.info('Pressure mode active:', { pressureLevel, turnCount: conversationHistoryForGuard.filter((t) => t.role === 'user').length });
+    }
+    const conversationContext = [rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
       .filter(Boolean)
       .join('\n\n')
       .trim();
@@ -737,6 +743,7 @@ export async function POST(req: Request) {
       calibrationConfidence: calibration.confidence,
       decisionAccuracy,
       calibrationScore,
+      sessionPressureLevel: pressureLevel,
     };
 
     return NextResponse.json(response);
