@@ -6,6 +6,7 @@ import { isPlanModeRequest, isReviewModeRequest, semanticVerdictForQuestion, sho
 import { detectInputLanguage } from '@/lib/i18n';
 import { buildOutcomeLearningInstruction } from '@/lib/outcomeLearning';
 import { buildLongitudinalMemoryInstruction } from '@/lib/longitudinalMemory';
+import { buildExecutionCapacityInstruction } from '@/lib/executionCapacity';
 import { buildProfileDirective, applyProfileAdjustments, scoreMessageFor } from '@/lib/profileEngine';
 import { computeSessionPressureLevel, buildPressureDirective } from '@/lib/pressureEngine';
 import type { CouncilMetrics, CounterfactualPath, DecisionBlueprint, DecisionContext, ExecutionPlanWeek, MilestoneMetric, MilestoneStatus, PreMortemRisk, ScenarioBranch, SecondOrderEffect, SolveRequest, SolveResponse, UserProfileData, WarRoomDebate } from '@/lib/types';
@@ -1305,6 +1306,7 @@ export async function POST(req: Request) {
     const strategicToolInstruction = buildStrategicToolInstruction(problem, conversationHistoryForGuard);
     const firstResponseQualityInstruction = buildFirstResponseQualityInstruction();
     const compressionIntelligenceInstruction = buildCompressionIntelligenceInstruction(problem, conversationHistoryForGuard);
+    const executionCapacityInstruction = buildExecutionCapacityInstruction(problem, conversationHistoryForGuard);
     const persistentMemoryInstruction = buildPersistentMemoryInstruction(persistentConversationMemory);
     const domain = context?.domain;
     let memoryContext = '';
@@ -1313,6 +1315,7 @@ export async function POST(req: Request) {
     let calibrationNote = '';
     let outcomeLearningInstruction = '';
     let longitudinalMemoryInstruction = '';
+    let executionCapacityInstructionWithHistory = executionCapacityInstruction;
 
     try {
       const intel = getMemoryIntelligenceFromHistory(problem, history, context);
@@ -1324,11 +1327,13 @@ export async function POST(req: Request) {
       calibrationNote = buildCalibrationContext(history, domain);
       outcomeLearningInstruction = buildOutcomeLearningInstruction(history, problem, context);
       longitudinalMemoryInstruction = buildLongitudinalMemoryInstruction(problem, history);
+      // Rebuild execution capacity with history signals now available
+      executionCapacityInstructionWithHistory = buildExecutionCapacityInstruction(problem, conversationHistoryForGuard, history);
     } catch {
       // Continue analysis without memory enrichment.
     }
 
-    const conversationContext = [persistentMemoryInstruction, longitudinalMemoryInstruction, outcomeLearningInstruction, conversationMemoryNote, followUpInstruction, firstResponseQualityInstruction, compressionIntelligenceInstruction, conversationalFlowInstruction, strategicArchitectureInstruction, contradictionIntelligenceInstruction, adaptiveResponseInstruction, strategicToolInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
+    const conversationContext = [persistentMemoryInstruction, longitudinalMemoryInstruction, outcomeLearningInstruction, conversationMemoryNote, followUpInstruction, firstResponseQualityInstruction, compressionIntelligenceInstruction, conversationalFlowInstruction, strategicArchitectureInstruction, contradictionIntelligenceInstruction, executionCapacityInstructionWithHistory, adaptiveResponseInstruction, strategicToolInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
       .filter(Boolean)
       .join('\n\n')
       .trim();
