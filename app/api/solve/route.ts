@@ -55,6 +55,15 @@ function readConversationContext(body: Partial<SolveRequest> | undefined): strin
     .join('\n');
 }
 
+function readConversationMemory(body: Partial<SolveRequest> | undefined): string {
+  const memory = typeof body?.conversationMemory === 'string' ? body.conversationMemory.trim() : '';
+  if (!memory) return '';
+  return memory
+    .replace(/\s+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .slice(0, 1800);
+}
+
 function isContextualFollowUp(problem: string): boolean {
   const text = problem.trim().toLowerCase();
   if (!text) return false;
@@ -123,6 +132,21 @@ function buildConversationMemoryNote(history: Array<{ role: string; content: str
     themes.length > 0 ? `Repeated user themes: ${themes.join(', ')}.` : '',
     'Do not restate old advice. Answer the new ask, update assumptions, and name what changed.',
   ].filter(Boolean).join('\n');
+}
+
+function buildPersistentMemoryInstruction(memory: string): string {
+  if (!memory) return '';
+
+  return [
+    'PERSISTENT CONVERSATIONAL MEMORY:',
+    memory,
+    '',
+    'Use this memory naturally, only when relevant.',
+    'Do not dump the memory back to the user.',
+    'Adapt to known goals, fears, constraints, business ideas, prior decisions, and unfinished actions.',
+    'If the user has progressed, acknowledge the progression briefly: what changed, what is now the bottleneck, and what advice should no longer be repeated.',
+    'Avoid repeating prior warnings or motivational framing unless the current message asks for a recap.',
+  ].join('\n');
 }
 
 function buildFollowUpInstruction(problem: string, hasHistory: boolean): string {
@@ -876,6 +900,7 @@ export async function POST(req: Request) {
     const mode = readMode(body);
     const context = readContext(body);
     const rawConversationContext = readConversationContext(body);
+    const persistentConversationMemory = readConversationMemory(body);
     const conversationHistoryForGuard = readConversationHistory(body);
     const streaming = typeof body.streaming === 'boolean' ? body.streaming : false;
 
@@ -953,7 +978,8 @@ export async function POST(req: Request) {
     const adaptiveResponseInstruction = buildAdaptiveResponseInstruction(problem, conversationHistoryForGuard);
     const strategicToolInstruction = buildStrategicToolInstruction(problem, conversationHistoryForGuard);
     const firstResponseQualityInstruction = buildFirstResponseQualityInstruction();
-    const conversationContext = [conversationMemoryNote, followUpInstruction, firstResponseQualityInstruction, adaptiveResponseInstruction, strategicToolInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
+    const persistentMemoryInstruction = buildPersistentMemoryInstruction(persistentConversationMemory);
+    const conversationContext = [persistentMemoryInstruction, conversationMemoryNote, followUpInstruction, firstResponseQualityInstruction, adaptiveResponseInstruction, strategicToolInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
       .filter(Boolean)
       .join('\n\n')
       .trim();

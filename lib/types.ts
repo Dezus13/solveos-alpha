@@ -135,6 +135,7 @@ export interface SolveRequest {
   mode?: 'Strategy' | 'Risk' | 'Scenarios' | 'Red Team' | 'Review';
   context?: DecisionContext;
   conversationHistory?: Array<{ role: 'user' | 'assistant'; content: string }>;
+  conversationMemory?: string;
   userProfile?: string;           // legacy text description (kept for backwards compat)
   userProfileData?: UserProfileData; // structured profile for active engine adjustments
   streaming?: boolean;

@@ -186,6 +186,98 @@ function recentContextTurns(turns: ConversationTurn[]): SolveRequest['conversati
     }));
 }
 
+function uniqueLimited(items: string[], limit: number): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const item of items) {
+    const compact = item.replace(/\s+/g, ' ').trim();
+    if (!compact || seen.has(compact.toLowerCase())) continue;
+    seen.add(compact.toLowerCase());
+    result.push(compact.length > 180 ? `${compact.slice(0, 177).trim()}...` : compact);
+    if (result.length >= limit) break;
+  }
+  return result;
+}
+
+function matchingSnippets(turns: ConversationTurn[], patterns: RegExp[], limit: number, role: ConversationTurn['role'] = 'user'): string[] {
+  const snippets = turns
+    .filter((turn) => turn.role === role && !turn.isError)
+    .flatMap((turn) => turn.content.split(/(?<=[.!?。！？])\s+|\n+/))
+    .filter((text) => patterns.some((pattern) => pattern.test(text.toLowerCase())));
+  return uniqueLimited(snippets, limit);
+}
+
+function buildConversationMemory(turns: ConversationTurn[]): string {
+  const cleanTurns = turns.filter((turn) => !turn.isError && turn.content.trim()).slice(-MAX_STORED_TURNS);
+  if (cleanTurns.length === 0) return '';
+
+  const userTurns = cleanTurns.filter((turn) => turn.role === 'user');
+  const assistantTurns = cleanTurns.filter((turn) => turn.role === 'assistant');
+  const goals = matchingSnippets(userTurns, [
+    /\bgoal\b/, /\bi want\b/, /\bi need\b/, /\breach\b/, /\bgrow\b/, /\bearn\b/, /\brevenue\b/, /\b10k\b/,
+    /цель/, /хочу/, /нужно/, /достичь/, /заработ/, /выручк/, /доход/,
+    /ziel/, /ich will/, /ich möchte/, /ich moechte/, /erreichen/, /umsatz/,
+  ], 3);
+  const fears = matchingSnippets(userTurns, [
+    /\bfear\b/, /\bafraid\b/, /\bscared\b/, /\bworried\b/, /\bfail\b/, /\bpressure\b/,
+    /боюсь/, /страшно/, /пережива/, /провал/, /давлен/,
+    /angst/, /sorge/, /scheiter/, /druck/,
+  ], 3);
+  const constraints = matchingSnippets(userTurns, [
+    /\bbudget\b/, /\bmoney\b/, /\bno cash\b/, /\blimited\b/, /\btime\b/, /\bfamily\b/, /\baustria\b/, /\bjob\b/, /\bvisa\b/,
+    /бюджет/, /денег/, /нет денег/, /огранич/, /время/, /семь/, /австри/, /работ/, /виза/,
+    /budget/, /geld/, /wenig/, /zeit/, /familie/, /österreich/, /oesterreich/, /job/, /visum/,
+  ], 4);
+  const businessIdeas = matchingSnippets(userTurns, [
+    /\bbusiness\b/, /\bstartup\b/, /\bidea\b/, /\bproduct\b/, /\bapp\b/, /\bagency\b/, /\bsaas\b/,
+    /бизнес/, /стартап/, /иде/, /продукт/, /прилож/, /агентств/,
+    /geschäft/, /geschaeft/, /startup/, /idee/, /produkt/, /app/, /agentur/,
+  ], 4);
+  const actionSignals = matchingSnippets(assistantTurns, [
+    /\bnext\b/, /\btoday\b/, /\bdo this\b/, /\btest\b/, /\bvalidate\b/, /\bcall\b/, /\bship\b/,
+    /следующ/, /сегодня/, /сделай/, /проверь/, /тест/, /запусти/,
+    /nächste/, /naechste/, /heute/, /testen/, /validier/, /starte/,
+  ], 3, 'assistant');
+  const experiments = matchingSnippets(userTurns, [
+    /\btested\b/, /\bvalidated\b/, /\bexperiment\b/, /\binterview\b/, /\blaunched\b/, /\bshipped\b/,
+    /проверил/, /проверила/, /валидир/, /эксперимент/, /интервью/, /запустил/, /запустила/,
+    /getestet/, /validiert/, /experiment/, /interview/, /gestartet/,
+  ], 3);
+  const winsFailures = matchingSnippets(userTurns, [
+    /\bworked\b/, /\bwon\b/, /\bsuccess\b/, /\bfailed\b/, /\bdidn'?t work\b/, /\bno one\b/, /\brejected\b/,
+    /получилось/, /сработало/, /успех/, /провал/, /не сработало/, /отказ/,
+    /funktioniert/, /erfolg/, /gescheitert/, /hat nicht funktioniert/, /abgelehnt/,
+  ], 3);
+  const currentStage = matchingSnippets(userTurns, [
+    /\bnow\b/, /\bcurrently\b/, /\bat this stage\b/, /\bthis month\b/, /\bnext month\b/,
+    /сейчас/, /теперь/, /на этом этапе/, /в этом месяце/, /следующий месяц/,
+    /jetzt/, /aktuell/, /in dieser phase/, /diesen monat/, /nächsten monat/, /naechsten monat/,
+  ], 2);
+  const decisions = assistantTurns
+    .map((turn) => turn.content.split(/\n/)[0] || turn.content)
+    .filter((line) => /^(Full Commit|Reversible Experiment|Delay|Kill The Idea|Review|Обратимый|Отлож|Запускай|Не делай|Reversibles|Verzögere|Stoppe)/i.test(line.trim()));
+  const recurringThemes = uniqueLimited(
+    ['budget', 'family pressure', 'Austria', 'learning programming', 'execution speed', 'market validation', 'fear of failure']
+      .filter((theme) => cleanTurns.map((turn) => turn.content.toLowerCase()).join(' ').includes(theme.toLowerCase())),
+    5
+  );
+
+  const lines = [
+    goals.length ? `Goals: ${goals.join(' | ')}` : '',
+    fears.length ? `Fears/pressure: ${fears.join(' | ')}` : '',
+    constraints.length ? `Constraints: ${constraints.join(' | ')}` : '',
+    businessIdeas.length ? `Business ideas/context: ${businessIdeas.join(' | ')}` : '',
+    experiments.length ? `Experiments already tried: ${experiments.join(' | ')}` : '',
+    winsFailures.length ? `Wins/failures: ${winsFailures.join(' | ')}` : '',
+    currentStage.length ? `Current stage: ${currentStage.join(' | ')}` : '',
+    decisions.length ? `Decisions already advised: ${uniqueLimited(decisions, 3).join(' | ')}` : '',
+    actionSignals.length ? `Unfinished or proposed actions: ${actionSignals.join(' | ')}` : '',
+    recurringThemes.length ? `Recurring themes: ${recurringThemes.join(', ')}` : '',
+  ].filter(Boolean);
+
+  return lines.length ? lines.join('\n').slice(0, 1800) : '';
+}
+
 export default function HomeExperience() {
   const [thread, setThread] = useState<ConversationTurn[]>(() => readStoredConversation());
   const [loading, setLoading] = useState(false);
@@ -297,6 +389,7 @@ export default function HomeExperience() {
           language: requestLanguage,
           mode: mode === 'Risk' || mode === 'Scenarios' || mode === 'Red Team' ? mode : 'Strategy',
           conversationHistory: recentContextTurns(threadRef.current),
+          conversationMemory: buildConversationMemory(threadRef.current),
           streaming: true,
         };
 
@@ -385,6 +478,7 @@ export default function HomeExperience() {
         language: requestLanguage,
         mode: 'Risk',
         conversationHistory: recentContextTurns(threadRef.current),
+        conversationMemory: buildConversationMemory(threadRef.current),
       };
 
       const response = await fetch('/api/solve', {
