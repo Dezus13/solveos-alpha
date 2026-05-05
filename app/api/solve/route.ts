@@ -172,6 +172,199 @@ function buildResponseStyleInstruction(problem: string, history: Array<{ role: s
   return styles[index].join('\n');
 }
 
+type UserMode = 'beginner' | 'analytical' | 'emotional' | 'strategic' | 'overwhelmed' | 'action-oriented';
+type ResponseDepth = 'short answer' | 'medium reasoning' | 'deep analysis';
+type StrategicToolMode =
+  | 'roadmap'
+  | 'comparison'
+  | 'risk analysis'
+  | 'execution plan'
+  | 'decision breakdown'
+  | 'priority ranking'
+  | 'SWOT analysis';
+
+function countMatches(text: string, patterns: RegExp[]): number {
+  return patterns.reduce((count, pattern) => count + (pattern.test(text) ? 1 : 0), 0);
+}
+
+function inferUserMode(problem: string, history: Array<{ role: string; content: string }>): UserMode {
+  const recentUserText = history
+    .filter((turn) => turn.role === 'user')
+    .slice(-4)
+    .map((turn) => turn.content)
+    .join(' ');
+  const text = `${recentUserText} ${problem}`.toLowerCase();
+  const wordCount = problem.trim().split(/\s+/).filter(Boolean).length;
+  const questionCount = (problem.match(/[?？]/g) || []).length;
+
+  const scores: Record<UserMode, number> = {
+    beginner: 0,
+    analytical: 0,
+    emotional: 0,
+    strategic: 0,
+    overwhelmed: 0,
+    'action-oriented': 0,
+  };
+
+  scores.beginner += countMatches(text, [
+    /\bexplain simply\b/, /\bexplain simpler\b/, /\bsimple terms\b/, /\bi'?m new\b/, /\bbeginner\b/,
+    /объясни проще/, /простыми словами/, /я новичок/, /einfach erklären/, /einfacher/,
+  ]) * 3;
+  if (wordCount <= 8 && questionCount <= 1) scores.beginner += 1;
+
+  scores.analytical += countMatches(text, [
+    /\bcompare\b/, /\btrade[- ]?off\b/, /\bframework\b/, /\bcriteria\b/, /\bscenario\b/, /\bmetrics?\b/, /\bassumption\b/, /\banalysis\b/,
+    /сравни/, /критерии/, /метрик/, /сценари/, /анализ/, /предположен/,
+    /vergleichen/, /kriterien/, /szenario/, /analyse/, /annahme/,
+  ]) * 2;
+  if (wordCount > 45 || questionCount >= 2) scores.analytical += 2;
+
+  scores.emotional += countMatches(text, [
+    /\bafraid\b/, /\bscared\b/, /\banxious\b/, /\bstressed\b/, /\bworried\b/, /\bfeel\b/, /\bfear\b/,
+    /боюсь/, /страшно/, /тревож/, /пережива/, /чувств/, /паник/,
+    /angst/, /sorge/, /gestresst/, /fühle/, /fuehle/,
+  ]) * 3;
+
+  scores.strategic += countMatches(text, [
+    /\bleverage\b/, /\bpositioning\b/, /\bmarket\b/, /\bdistribution\b/, /\bmoat\b/, /\bstrategy\b/, /\bscale\b/, /\bfundraising\b/,
+    /стратег/, /рынок/, /позиционир/, /масштаб/, /инвестиц/, /раунд/, /рычаг/,
+    /strategie/, /markt/, /positionierung/, /skalier/, /finanzierung/,
+  ]) * 2;
+
+  scores.overwhelmed += countMatches(text, [
+    /\boverwhelmed\b/, /\btoo much\b/, /\bconfused\b/, /\bstuck\b/, /\bdon'?t know\b/, /\bno idea\b/, /\bcan'?t decide\b/,
+    /не знаю/, /запутал/, /слишком много/, /не могу решить/, /застрял/, /застряла/,
+    /überfordert/, /ueberfordert/, /verwirrt/, /ich weiß nicht/, /ich weiss nicht/,
+  ]) * 4;
+  if (questionCount >= 3) scores.overwhelmed += 2;
+
+  scores['action-oriented'] += countMatches(text, [
+    /\bwhat should i do\b/, /\bnext step\b/, /\bdo now\b/, /\baction plan\b/, /\broadmap\b/, /\bexecute\b/, /\btoday\b/,
+    /что делать/, /следующий шаг/, /сегодня/, /план действий/, /как выполнить/,
+    /was soll ich tun/, /nächster schritt/, /naechster schritt/, /heute/, /umsetzen/,
+  ]) * 3;
+
+  const ranked = Object.entries(scores).sort((a, b) => b[1] - a[1]) as Array<[UserMode, number]>;
+  if (ranked[0][1] <= 0) {
+    if (wordCount > 55) return 'analytical';
+    if (isContextualFollowUp(problem)) return 'action-oriented';
+    return 'strategic';
+  }
+  return ranked[0][0];
+}
+
+function inferResponseDepth(problem: string, mode: UserMode, history: Array<{ role: string; content: string }>): ResponseDepth {
+  const wordCount = problem.trim().split(/\s+/).filter(Boolean).length;
+  const questionCount = (problem.match(/[?？]/g) || []).length;
+  const hasDeepAsk = /\b(deep|detailed|full|thorough|analy[sz]e|break down|framework)\b|подроб|глубок|разбери|analysiere|ausführlich|ausfuehrlich/i.test(problem);
+  const recentFollowUps = history.filter((turn) => turn.role === 'user').slice(-3).filter((turn) => isContextualFollowUp(turn.content)).length;
+
+  if (mode === 'overwhelmed' || mode === 'emotional' || (isContextualFollowUp(problem) && !hasDeepAsk)) return 'short answer';
+  if (hasDeepAsk || wordCount > 65 || questionCount >= 3 || mode === 'analytical') return 'deep analysis';
+  if (recentFollowUps >= 2 || mode === 'action-oriented' || wordCount < 18) return 'medium reasoning';
+  return 'medium reasoning';
+}
+
+function buildAdaptiveResponseInstruction(problem: string, history: Array<{ role: string; content: string }>): string {
+  const mode = inferUserMode(problem, history);
+  const depth = inferResponseDepth(problem, mode, history);
+  const modeGuidance: Record<UserMode, string> = {
+    beginner: 'Use plain language, define implied concepts briefly, and avoid dense strategy vocabulary.',
+    analytical: 'Use clearer structure, tradeoffs, assumptions, and evidence thresholds. Keep it rigorous but not long-winded.',
+    emotional: 'Lower the aggression. Name the emotional pressure calmly, then give a grounded next move.',
+    strategic: 'Focus on leverage, positioning, constraints, tradeoffs, and second-order consequences.',
+    overwhelmed: 'Make it shorter, calmer, and reduce the decision to one next step. Avoid piling on options.',
+    'action-oriented': 'Lead with the next action, then give only the reasoning needed to execute it.',
+  };
+  const depthGuidance: Record<ResponseDepth, string> = {
+    'short answer': 'Keep the answer concise: 60-120 words or 2-3 compact bullets.',
+    'medium reasoning': 'Use moderate depth: 120-220 words, enough reasoning to feel useful without becoming a report.',
+    'deep analysis': 'Use deeper reasoning: 220-380 words if needed, with crisp structure and no fake metrics.',
+  };
+
+  return [
+    'ADAPTIVE RESPONSE INTELLIGENCE:',
+    `Inferred user mode: ${mode}.`,
+    `Response depth: ${depth}.`,
+    modeGuidance[mode],
+    depthGuidance[depth],
+    'Maintain core identity: intelligent, calm, strategic, human, direct.',
+    'Do not mention the inferred mode or that adaptation is happening.',
+  ].join('\n');
+}
+
+function inferStrategicToolMode(problem: string, history: Array<{ role: string; content: string }>): StrategicToolMode {
+  const recentUserText = history
+    .filter((turn) => turn.role === 'user')
+    .slice(-3)
+    .map((turn) => turn.content)
+    .join(' ');
+  const text = `${recentUserText} ${problem}`.toLowerCase();
+
+  if (/\bswot\b|strengths?.*weakness|сильн.*слаб|swot-анализ|stärken.*schwächen|staerken.*schwaechen/.test(text)) {
+    return 'SWOT analysis';
+  }
+  if (/\bcompare\b|\bversus\b|\bvs\b|\bwhich (one|idea|option)\b|сравни|вариант.*вариант|что лучше|vergleiche|vergleich|oder\b/.test(text)) {
+    return 'comparison';
+  }
+  if (/\bprioriti[sz]e\b|\brank\b|\bfirst\b|\bwhat matters most\b|приорит|ранжир|что важнее|priorisieren|rang|was zuerst/.test(text)) {
+    return 'priority ranking';
+  }
+  if (/\bwhat could fail\b|\brisk\b|\bfailure\b|\bgo wrong\b|\bred team\b|что может.*(слом|пойти не так)|риск|провал|scheitern|risiko|schiefgehen/.test(text)) {
+    return 'risk analysis';
+  }
+  if (/\bhow do i reach\b|\bhow to reach\b|\broadmap\b|\b10k\b|\b10 k\b|\b\$10k\b|\bmonth\b|\bmilestone\b|как.*(дойти|достичь)|дорожн|месяц|roadmap|fahrplan|erreichen/.test(text)) {
+    return 'roadmap';
+  }
+  if (/\bexecution plan\b|\baction plan\b|\bstep by step\b|\bnext steps?\b|\bwhat should i do\b|\bdo now\b|план действий|по шагам|следующий шаг|что делать|umsetzungsplan|aktionsplan|nächste schritte|naechste schritte/.test(text)) {
+    return 'execution plan';
+  }
+  return 'decision breakdown';
+}
+
+function buildStrategicToolInstruction(problem: string, history: Array<{ role: string; content: string }>): string {
+  const toolMode = inferStrategicToolMode(problem, history);
+  const guidance: Record<StrategicToolMode, string[]> = {
+    roadmap: [
+      'Use a concise roadmap: current constraint, milestone sequence, first 7 days, next 30 days, proof signal.',
+      'Do not invent revenue probabilities. Use concrete actions and observable checkpoints.',
+    ],
+    comparison: [
+      'Use a simple comparison: options, upside, downside, hidden constraint, best fit, recommendation.',
+      'A small table is allowed if it improves clarity.',
+    ],
+    'risk analysis': [
+      'Use risk analysis: top risks, trigger, early warning signal, mitigation, stop condition.',
+      'Focus on the risks that would actually change the decision.',
+    ],
+    'execution plan': [
+      'Use an execution plan: next action, owner, timebox, resource constraint, kill criterion.',
+      'Keep it practical and near-term.',
+    ],
+    'decision breakdown': [
+      'Use a decision breakdown: core choice, hidden constraint, tradeoff, recommendation, next move.',
+      'Make the decision easier to act on, not more complex.',
+    ],
+    'priority ranking': [
+      'Use priority ranking: order the options/actions, explain why, name what to ignore for now.',
+      'Rank by leverage, urgency, reversibility, and evidence value.',
+    ],
+    'SWOT analysis': [
+      'Use SWOT only if useful: strengths, weaknesses, opportunities, threats, then a decision implication.',
+      'Keep SWOT concise and avoid generic business-school filler.',
+    ],
+  };
+
+  return [
+    'STRUCTURED STRATEGIC TOOL MODE:',
+    `Selected mode: ${toolMode}.`,
+    ...guidance[toolMode],
+    'Keep the structure inside the normal chat response. No dashboards, no fake percentages, no simulated metrics.',
+    'Use sections, bullets, simple tables, or step-by-step plans only when they make the answer clearer.',
+    'Use previous conversation context to fill missing details, but do not repeat prior advice unless it is needed.',
+  ].join('\n');
+}
+
 function readMode(body: Partial<SolveRequest> | undefined): NonNullable<SolveRequest['mode']> {
   return body?.mode === 'Risk' || body?.mode === 'Scenarios' || body?.mode === 'Red Team' || body?.mode === 'Review'
     ? body.mode
@@ -745,7 +938,9 @@ export async function POST(req: Request) {
     const conversationMemoryNote = buildConversationMemoryNote(conversationHistoryForGuard);
     const followUpInstruction = buildFollowUpInstruction(problem, conversationHistoryForGuard.length > 0);
     const responseStyleInstruction = buildResponseStyleInstruction(problem, conversationHistoryForGuard);
-    const conversationContext = [conversationMemoryNote, followUpInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
+    const adaptiveResponseInstruction = buildAdaptiveResponseInstruction(problem, conversationHistoryForGuard);
+    const strategicToolInstruction = buildStrategicToolInstruction(problem, conversationHistoryForGuard);
+    const conversationContext = [conversationMemoryNote, followUpInstruction, adaptiveResponseInstruction, strategicToolInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
       .filter(Boolean)
       .join('\n\n')
       .trim();
