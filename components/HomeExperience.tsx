@@ -418,7 +418,7 @@ export default function HomeExperience() {
           forcedAction: actionForReminder || undefined,
         });
         if (actionForReminder) {
-          ensureActionReminder(assistantTurn.id, actionForReminder, message);
+          ensureActionReminder(assistantTurn.id, actionForReminder, message, blueprint.language);
         }
 
         if (!blueprint.isReviewMode && fetchGenRef.current === submitGen) {

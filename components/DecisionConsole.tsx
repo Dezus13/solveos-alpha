@@ -2,7 +2,7 @@
 
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, BookmarkCheck, BookmarkPlus, Check, Clipboard, Loader2, Send, Sparkles, ThumbsDown, ThumbsUp } from 'lucide-react';
-import type { UiCopy } from '@/lib/i18n';
+import { uiCopy, type UiCopy } from '@/lib/i18n';
 import type { ProductSettings } from '@/lib/settings';
 import type { ConversationTurn } from '@/lib/types';
 import { isDecisionSaved } from '@/lib/savedDecisions';
@@ -14,7 +14,6 @@ import {
   formatCountdown,
   generateSmallerAction,
   getActiveReminder,
-  getPressureMessage,
   getPressureState,
   restartWithSmallerAction,
   updateActionReminder,
@@ -49,11 +48,24 @@ function actionFromTurn(turn: ConversationTurn): string {
   return action.replace(/\s+/g, ' ').trim();
 }
 
-function completionEmotion(streak: number): string {
-  if (streak >= 10) return 'You are operating differently now';
-  if (streak >= 5) return 'This is discipline';
-  if (streak >= 2) return 'You are building momentum';
-  return 'Good. You execute.';
+function completionEmotion(streak: number, copy: UiCopy): string {
+  if (streak >= 10) return copy.completionOperating;
+  if (streak >= 5) return copy.completionDiscipline;
+  if (streak >= 2) return copy.completionMomentum;
+  return copy.completionDefault;
+}
+
+function resolveCopy(blueprintLanguage: string | undefined, fallback: UiCopy): UiCopy {
+  if (!blueprintLanguage) return fallback;
+  const key = blueprintLanguage as keyof typeof uiCopy;
+  return uiCopy[key] ?? fallback;
+}
+
+function pressureMessageFromCopy(state: 'normal' | 'pressure_2h' | 'pressure_12h' | 'overdue', copy: UiCopy): string {
+  if (state === 'pressure_2h') return copy.pressureStillNotDone;
+  if (state === 'pressure_12h') return copy.pressureAvoiding;
+  if (state === 'overdue') return copy.pressureMissedDeadline;
+  return copy.pressureLabel;
 }
 
 function useStreamingText(text: string, active: boolean, speed = 18): string {
@@ -84,14 +96,16 @@ function UserMessage({ content }: { content: string }) {
   );
 }
 
-const CATEGORY_LABELS: Record<BlockerCategory, string> = {
-  fear: 'Fear',
-  unclear: 'Not clear',
-  lazy: 'No energy',
-  external: 'Blocked externally',
-};
+function categoryLabels(copy: UiCopy): Record<BlockerCategory, string> {
+  return {
+    fear: copy.executionBlockerFear,
+    unclear: copy.executionBlockerUnclear,
+    lazy: copy.executionBlockerNoEnergy,
+    external: copy.executionBlockerExternal,
+  };
+}
 
-function ExecutionPressure({ turn }: { turn: ConversationTurn }) {
+function ExecutionPressure({ turn, copy }: { turn: ConversationTurn; copy: UiCopy }) {
   const action = actionFromTurn(turn);
   const [store, setStore] = useState<ActionReminderStore>(() => ensureActionReminder(turn.id, action));
   const [category, setCategory] = useState<BlockerCategory | null>(() => store[turn.id]?.blockerCategory || null);
@@ -107,7 +121,7 @@ function ExecutionPressure({ turn }: { turn: ConversationTurn }) {
     window.addEventListener(PROFILE_UPDATED_EVENT, refresh);
     return () => window.removeEventListener(PROFILE_UPDATED_EVENT, refresh);
   }, []);
-  const pressureLabel = pressureState !== 'normal' ? getPressureMessage(pressureState) : 'Do this within 24h';
+  const pressureLabel = pressureMessageFromCopy(pressureState, copy);
 
   const persist = useCallback((patch: Partial<ActionReminderRecord> & { action: string }) => {
     const next = updateActionReminder(turn.id, patch);
@@ -154,25 +168,25 @@ function ExecutionPressure({ turn }: { turn: ConversationTurn }) {
         <div>
           <div className={`text-[10px] font-black uppercase tracking-widest ${labelColor}`}>{pressureLabel}</div>
           <div className="mt-1 text-[11px] font-semibold text-amber-200">
-            {record?.dueAt ? formatCountdown(record.dueAt) : '24h left'}
+            {record?.dueAt ? formatCountdown(record.dueAt) : '24h'}
           </div>
           <div className="mt-1 text-[11px] font-semibold text-slate-300">Score: <span className={score >= 70 ? 'text-emerald-300' : score >= 40 ? 'text-amber-300' : 'text-rose-300'}>{score}</span>/100</div>
           <div className="mt-1 text-[11px] font-semibold text-slate-400">{getIdentityLabel(score)}</div>
         </div>
         {status === 'done' ? (
           <div className="action-complete-pulse rounded-xl border border-emerald-500/25 bg-emerald-500/[0.1] px-3 py-2 text-[11px] font-black uppercase tracking-widest text-emerald-200">
-            {completionEmotion(streak)}
+            {completionEmotion(streak, copy)}
           </div>
         ) : (
           <div className="space-y-2">
-            <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">Did you do this?</div>
+            <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">{copy.pressureDidYou}</div>
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={markDone}
                 className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.1] px-3 py-2 text-[11px] font-black uppercase tracking-widest text-emerald-300 hover:bg-emerald-500/[0.16]"
               >
-                Yes
+                {copy.pressureYes}
               </button>
               {!showNotYetReasons && status !== 'blocked' && (
                 <button
@@ -180,7 +194,7 @@ function ExecutionPressure({ turn }: { turn: ConversationTurn }) {
                   onClick={markBlocked}
                   className="rounded-xl border border-amber-500/25 bg-amber-500/[0.08] px-3 py-2 text-[11px] font-black uppercase tracking-widest text-amber-300 hover:bg-amber-500/[0.14]"
                 >
-                  Not yet
+                  {copy.pressureNotYet}
                 </button>
               )}
             </div>
@@ -191,16 +205,16 @@ function ExecutionPressure({ turn }: { turn: ConversationTurn }) {
       {/* Why not done? — category selection */}
       {(showNotYetReasons || status === 'blocked') && !category && status !== 'done' && (
         <div className="mt-3 border-t border-white/[0.06] pt-3">
-          <div className="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-400">Why not done?</div>
+          <div className="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-400">{copy.pressureWhyNotDone}</div>
           <div className="flex flex-wrap gap-1.5">
-            {(Object.keys(CATEGORY_LABELS) as BlockerCategory[]).map((cat) => (
+            {(Object.keys(categoryLabels(copy)) as BlockerCategory[]).map((cat) => (
               <button
                 key={cat}
                 type="button"
                 onClick={() => handlePickCategory(cat)}
                 className="rounded-lg border border-amber-500/20 bg-amber-500/[0.07] px-3 py-1.5 text-[11px] font-black uppercase tracking-widest text-amber-200 hover:bg-amber-500/[0.13]"
               >
-                {CATEGORY_LABELS[cat]}
+                {categoryLabels(copy)[cat]}
               </button>
             ))}
           </div>
@@ -210,7 +224,7 @@ function ExecutionPressure({ turn }: { turn: ConversationTurn }) {
       {/* Smaller action after category picked */}
       {(showNotYetReasons || status === 'blocked') && smallerPreview && status !== 'done' && (
         <div className="mt-3 border-t border-white/[0.06] pt-3">
-          <div className="mb-1 text-[10px] font-black uppercase tracking-widest text-slate-400">Smaller step</div>
+          <div className="mb-1 text-[10px] font-black uppercase tracking-widest text-slate-400">{copy.pressureSmallerStep}</div>
           <div className="text-sm font-semibold text-white">{smallerPreview}</div>
           <div className="mt-2 flex gap-2">
             <button
@@ -218,14 +232,14 @@ function ExecutionPressure({ turn }: { turn: ConversationTurn }) {
               onClick={handleRestartSmaller}
               className="rounded-lg border border-emerald-400/25 bg-emerald-500/[0.1] px-3 py-1.5 text-[11px] font-black uppercase tracking-widest text-emerald-200 hover:bg-emerald-500/[0.16]"
             >
-              I&apos;ll do this now
+              {copy.pressureIllDoThis}
             </button>
             <button
               type="button"
               onClick={() => setCategory(null)}
               className="rounded-lg border border-white/10 px-3 py-1.5 text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-200"
             >
-              Back
+              {copy.pressureBack}
             </button>
           </div>
         </div>
@@ -234,7 +248,7 @@ function ExecutionPressure({ turn }: { turn: ConversationTurn }) {
   );
 }
 
-function DecisionGate({ turn }: { turn: ConversationTurn }) {
+function DecisionGate({ turn, copy }: { turn: ConversationTurn; copy: UiCopy }) {
   const [unlocked, setUnlocked] = useState(false);
   const blueprint = turn.blueprint;
   if (!blueprint) return null;
@@ -242,26 +256,26 @@ function DecisionGate({ turn }: { turn: ConversationTurn }) {
   const hiddenPain = blueprint.hiddenPain;
   const whatCouldBreak = blueprint.skepticView?.whatCouldBreak;
 
-  if (!hiddenPain && !whatCouldBreak) return <ExecutionPressure turn={turn} />;
+  if (!hiddenPain && !whatCouldBreak) return <ExecutionPressure turn={turn} copy={copy} />;
 
   if (!unlocked) {
     return (
       <div className="mt-3 rounded-xl border border-amber-400/20 bg-amber-400/[0.03] px-4 py-4">
         <p className="text-sm font-semibold text-slate-200">
-          Want to see what&apos;s actually driving this?
+          {copy.gateHeadline}
         </p>
         <p className="mt-1 text-[13px] leading-relaxed text-slate-400">
-          Unlock the hidden motivation map and 24h commitment tracker.
+          {copy.gateSubtext}
         </p>
         <button
           type="button"
           onClick={() => setUnlocked(true)}
           className="mt-4 rounded-xl border border-amber-400/30 bg-amber-400/[0.1] px-5 py-2.5 text-[11px] font-black uppercase tracking-widest text-amber-200 transition-colors hover:bg-amber-400/[0.18]"
         >
-          Unlock full blueprint — €5
+          {copy.gateButton}
         </button>
         <p className="mt-2 text-[11px] text-slate-500">
-          See what could break — before it does.
+          {copy.gateHelper}
         </p>
       </div>
     );
@@ -274,7 +288,7 @@ function DecisionGate({ turn }: { turn: ConversationTurn }) {
           {hiddenPain && (
             <div>
               <div className="mb-1 text-[10px] font-black uppercase tracking-widest text-amber-400">
-                What you&apos;re avoiding
+                {copy.gateWhatAvoiding}
               </div>
               <div className="text-sm leading-snug text-slate-200">{hiddenPain}</div>
             </div>
@@ -282,14 +296,14 @@ function DecisionGate({ turn }: { turn: ConversationTurn }) {
           {whatCouldBreak && (
             <div>
               <div className="mb-1 text-[10px] font-black uppercase tracking-widest text-rose-400">
-                What could break
+                {copy.gateWhatCouldBreak}
               </div>
               <div className="text-sm leading-snug text-slate-200">{whatCouldBreak}</div>
             </div>
           )}
         </div>
       )}
-      <ExecutionPressure turn={turn} />
+      <ExecutionPressure turn={turn} copy={copy} />
     </div>
   );
 }
@@ -301,6 +315,7 @@ function AssistantMessage({ turn, isLatest, copy, onSaveDecision }: {
   onSaveDecision?: (turnId: string) => void;
 }) {
   const streamed = useStreamingText(turn.content, isLatest);
+  const turnCopy = resolveCopy(turn.blueprint?.language, copy);
   const [copied, setCopied] = useState(false);
   const [feedback, setFeedback] = useState<'up' | 'down' | null>(null);
   const [saved, setSaved] = useState(() => isDecisionSaved(turn.id));
@@ -339,7 +354,7 @@ function AssistantMessage({ turn, isLatest, copy, onSaveDecision }: {
             <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-purple-300 align-middle" />
           )}
         </div>
-        {turn.blueprint && (!isLatest || streamed === turn.content) && <DecisionGate turn={turn} />}
+        {turn.blueprint && (!isLatest || streamed === turn.content) && <DecisionGate turn={turn} copy={turnCopy} />}
         <div className="mt-2 flex items-center gap-1.5 text-slate-500">
           <button
             type="button"
@@ -433,19 +448,21 @@ function OpenCommitmentView({
   nowTs,
   done,
   onDone,
+  copy,
 }: {
   reminder: ActionReminderRecord | null;
   pressureState: 'normal' | 'pressure_2h' | 'pressure_12h' | 'overdue';
   nowTs: number;
   done: boolean;
   onDone: () => void;
+  copy: UiCopy;
 }) {
   if (done) {
     return (
       <div className="mx-auto flex max-w-xl flex-1 flex-col items-center justify-center px-4">
         <div className="text-center">
-          <div className="text-[11px] font-black uppercase tracking-widest text-emerald-300">Done.</div>
-          <div className="mt-3 text-xs text-slate-500">Next?</div>
+          <div className="text-[11px] font-black uppercase tracking-widest text-emerald-300">{copy.pressureDone}</div>
+          <div className="mt-3 text-xs text-slate-500">{copy.pressureNext}</div>
         </div>
       </div>
     );
@@ -454,8 +471,9 @@ function OpenCommitmentView({
   if (!reminder) return null;
 
   const isOverdue = pressureState === 'overdue';
-  const headerMsg =
-    pressureState === 'normal' ? 'You have an open commitment' : getPressureMessage(pressureState);
+  const headerMsg = pressureState === 'normal'
+    ? copy.pressureOpenCommitment
+    : pressureMessageFromCopy(pressureState, copy);
   const msgColor =
     isOverdue ? 'text-rose-300'
     : pressureState === 'pressure_12h' ? 'text-orange-300'
@@ -483,7 +501,7 @@ function OpenCommitmentView({
           onClick={onDone}
           className="rounded-xl border border-emerald-400/25 bg-emerald-400/[0.08] px-4 py-2.5 text-[11px] font-black uppercase tracking-widest text-emerald-300 transition-colors hover:bg-emerald-400/[0.14]"
         >
-          Done
+          {copy.pressureDone}
         </button>
       </div>
     </div>
@@ -550,15 +568,14 @@ function DecisionConsole({ thread, loading, onSubmit, copy, settings, mode, onMo
       setBlockedReminder(active);
       setSkipMessage(null);
       const pState = getPressureState(active[1]);
-      const pMsg = getPressureMessage(pState);
-      setError(`${pMsg} — finish your previous action first`);
+      setError(`${pressureMessageFromCopy(pState, copy)} — ${copy.pressureFinishFirst}`);
       return;
     }
     setError(null);
     setBlockedReminder(null);
     setInput('');
     onSubmit(text, mode);
-  }, [copy.emptyPromptError, mode, onSubmit]);
+  }, [copy, mode, onSubmit]);
 
   const skipBlockedReminder = useCallback(() => {
     if (!blockedReminder) return;
@@ -598,6 +615,7 @@ function DecisionConsole({ thread, loading, onSubmit, copy, settings, mode, onMo
             nowTs={commitmentNow}
             done={commitmentDone}
             onDone={handleCommitmentDone}
+            copy={copy}
           />
         ) : !hasThread && !loading ? (
           <EmptyState onPick={submitText} copy={copy} showSuggestions={settings.general.showSuggestions} />

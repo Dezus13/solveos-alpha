@@ -41,6 +41,34 @@ export interface UiCopy {
   executionBlockerUnclear: string;
   executionBlockerNoEnergy: string;
   executionBlockerExternal: string;
+  // DecisionGate
+  gateHeadline: string;
+  gateSubtext: string;
+  gateButton: string;
+  gateHelper: string;
+  gateWhatAvoiding: string;
+  gateWhatCouldBreak: string;
+  // ExecutionPressure / PersistentActionBanner
+  pressureLabel: string;
+  pressureDidYou: string;
+  pressureYes: string;
+  pressureNotYet: string;
+  pressureWhyNotDone: string;
+  pressureSmallerStep: string;
+  pressureIllDoThis: string;
+  pressureBack: string;
+  pressureDone: string;
+  pressureNext: string;
+  pressureOpenCommitment: string;
+  pressureStillNotDone: string;
+  pressureAvoiding: string;
+  pressureMissedDeadline: string;
+  pressureFinishFirst: string;
+  // Completion emotions
+  completionDefault: string;
+  completionMomentum: string;
+  completionDiscipline: string;
+  completionOperating: string;
 }
 
 export const languageOptions: Array<{ id: SupportedLanguage; label: string; nativeLabel: string }> = [
@@ -103,6 +131,31 @@ export const uiCopy: Record<Exclude<SupportedLanguage, 'auto'>, UiCopy> = {
     executionBlockerUnclear: 'Not clear',
     executionBlockerNoEnergy: 'No energy',
     executionBlockerExternal: 'Blocked externally',
+    gateHeadline: "Want to see what's actually driving this?",
+    gateSubtext: 'Unlock the hidden motivation map and 24h commitment tracker.',
+    gateButton: 'Unlock full blueprint — €5',
+    gateHelper: 'See what could break — before it does.',
+    gateWhatAvoiding: "What you're avoiding",
+    gateWhatCouldBreak: 'What could break',
+    pressureLabel: 'Do this within 24h',
+    pressureDidYou: 'Did you do this?',
+    pressureYes: 'Yes',
+    pressureNotYet: 'Not yet',
+    pressureWhyNotDone: 'Why not done?',
+    pressureSmallerStep: 'Smaller step',
+    pressureIllDoThis: "I'll do this now",
+    pressureBack: 'Back',
+    pressureDone: 'Done',
+    pressureNext: 'Next?',
+    pressureOpenCommitment: 'You have an open commitment',
+    pressureStillNotDone: 'Still not done?',
+    pressureAvoiding: 'You are avoiding this',
+    pressureMissedDeadline: 'You missed your deadline. Why?',
+    pressureFinishFirst: 'finish your previous action first',
+    completionDefault: 'Good. You execute.',
+    completionMomentum: 'You are building momentum',
+    completionDiscipline: 'This is discipline',
+    completionOperating: 'You are operating differently now',
   },
   German: {
     appName: 'SolveOS',
@@ -149,6 +202,31 @@ export const uiCopy: Record<Exclude<SupportedLanguage, 'auto'>, UiCopy> = {
     executionBlockerUnclear: 'Unklar',
     executionBlockerNoEnergy: 'Kein Antrieb',
     executionBlockerExternal: 'Extern blockiert',
+    gateHeadline: 'Was treibt diese Entscheidung wirklich an?',
+    gateSubtext: 'Entschlüssle deine versteckte Motivation und starte den 24h-Tracker.',
+    gateButton: 'Vollständigen Plan freischalten — €5',
+    gateHelper: 'Sieh, was schiefgehen könnte — bevor es passiert.',
+    gateWhatAvoiding: 'Was du vermeidest',
+    gateWhatCouldBreak: 'Was scheitern könnte',
+    pressureLabel: 'Tu das innerhalb von 24h',
+    pressureDidYou: 'Hast du das getan?',
+    pressureYes: 'Ja',
+    pressureNotYet: 'Noch nicht',
+    pressureWhyNotDone: 'Warum nicht erledigt?',
+    pressureSmallerStep: 'Kleinerer Schritt',
+    pressureIllDoThis: 'Das mache ich jetzt',
+    pressureBack: 'Zurück',
+    pressureDone: 'Erledigt',
+    pressureNext: 'Weiter?',
+    pressureOpenCommitment: 'Du hast eine offene Verpflichtung',
+    pressureStillNotDone: 'Noch nicht erledigt?',
+    pressureAvoiding: 'Du weichst dem aus',
+    pressureMissedDeadline: 'Du hast deine Frist verpasst. Warum?',
+    pressureFinishFirst: 'beende zuerst deine vorherige Aufgabe',
+    completionDefault: 'Gut. Du handelst.',
+    completionMomentum: 'Du baust Schwung auf',
+    completionDiscipline: 'Das ist Disziplin',
+    completionOperating: 'Du agierst jetzt anders',
   },
   Russian: {
     appName: 'SolveOS',
@@ -195,6 +273,31 @@ export const uiCopy: Record<Exclude<SupportedLanguage, 'auto'>, UiCopy> = {
     executionBlockerUnclear: 'Непонятно',
     executionBlockerNoEnergy: 'Нет энергии',
     executionBlockerExternal: 'Внешние блокеры',
+    gateHeadline: 'Хочешь понять, что на самом деле движет этим решением?',
+    gateSubtext: 'Разблокируй карту скрытых мотивов и трекер 24-часового обязательства.',
+    gateButton: 'Разблокировать полный план — €5',
+    gateHelper: 'Узнай, что может пойти не так — заранее.',
+    gateWhatAvoiding: 'Чего ты избегаешь',
+    gateWhatCouldBreak: 'Что может сломаться',
+    pressureLabel: 'Сделай это в течение 24 часов',
+    pressureDidYou: 'Ты это сделал?',
+    pressureYes: 'Да',
+    pressureNotYet: 'Ещё нет',
+    pressureWhyNotDone: 'Почему не сделано?',
+    pressureSmallerStep: 'Меньший шаг',
+    pressureIllDoThis: 'Я сделаю это сейчас',
+    pressureBack: 'Назад',
+    pressureDone: 'Готово',
+    pressureNext: 'Дальше?',
+    pressureOpenCommitment: 'У тебя есть незавершённое обязательство',
+    pressureStillNotDone: 'Всё ещё не сделано?',
+    pressureAvoiding: 'Ты это избегаешь',
+    pressureMissedDeadline: 'Ты пропустил дедлайн. Почему?',
+    pressureFinishFirst: 'сначала заверши предыдущее действие',
+    completionDefault: 'Хорошо. Ты действуешь.',
+    completionMomentum: 'Ты набираешь темп',
+    completionDiscipline: 'Это дисциплина',
+    completionOperating: 'Ты работаешь по-другому теперь',
   },
   Arabic: {
     appName: 'SolveOS',
@@ -241,6 +344,31 @@ export const uiCopy: Record<Exclude<SupportedLanguage, 'auto'>, UiCopy> = {
     executionBlockerUnclear: 'غير واضح',
     executionBlockerNoEnergy: 'لا طاقة',
     executionBlockerExternal: 'محجوب خارجياً',
+    gateHeadline: 'هل تريد معرفة ما يحرك هذا القرار فعلاً؟',
+    gateSubtext: 'افتح خريطة الدوافع الخفية ومتتبع الالتزام لـ 24 ساعة.',
+    gateButton: 'فتح الخطة الكاملة — €5',
+    gateHelper: 'اعرف ما قد ينكسر — قبل أن يحدث.',
+    gateWhatAvoiding: 'ما تتجنبه',
+    gateWhatCouldBreak: 'ما قد ينكسر',
+    pressureLabel: 'افعل هذا خلال 24 ساعة',
+    pressureDidYou: 'هل فعلت هذا؟',
+    pressureYes: 'نعم',
+    pressureNotYet: 'ليس بعد',
+    pressureWhyNotDone: 'لماذا لم يُنجز؟',
+    pressureSmallerStep: 'خطوة أصغر',
+    pressureIllDoThis: 'سأفعل هذا الآن',
+    pressureBack: 'رجوع',
+    pressureDone: 'تم',
+    pressureNext: 'التالي؟',
+    pressureOpenCommitment: 'لديك التزام مفتوح',
+    pressureStillNotDone: 'لم يُنجز بعد؟',
+    pressureAvoiding: 'أنت تتجنب هذا',
+    pressureMissedDeadline: 'فاتك الموعد النهائي. لماذا؟',
+    pressureFinishFirst: 'أنهِ إجراءك السابق أولاً',
+    completionDefault: 'جيد. أنت تتصرف.',
+    completionMomentum: 'أنت تبني الزخم',
+    completionDiscipline: 'هذا انضباط',
+    completionOperating: 'أنت تعمل بشكل مختلف الآن',
   },
   Spanish: {
     appName: 'SolveOS',
@@ -287,6 +415,31 @@ export const uiCopy: Record<Exclude<SupportedLanguage, 'auto'>, UiCopy> = {
     executionBlockerUnclear: 'No está claro',
     executionBlockerNoEnergy: 'Sin energía',
     executionBlockerExternal: 'Bloqueado externamente',
+    gateHeadline: '¿Quieres ver qué impulsa realmente esta decisión?',
+    gateSubtext: 'Desbloquea el mapa de motivaciones ocultas y el rastreador de 24h.',
+    gateButton: 'Desbloquear plan completo — €5',
+    gateHelper: 'Ve lo que podría fallar — antes de que ocurra.',
+    gateWhatAvoiding: 'Lo que estás evitando',
+    gateWhatCouldBreak: 'Lo que podría fallar',
+    pressureLabel: 'Haz esto en 24h',
+    pressureDidYou: '¿Lo hiciste?',
+    pressureYes: 'Sí',
+    pressureNotYet: 'Aún no',
+    pressureWhyNotDone: '¿Por qué no está hecho?',
+    pressureSmallerStep: 'Paso más pequeño',
+    pressureIllDoThis: 'Lo haré ahora',
+    pressureBack: 'Atrás',
+    pressureDone: 'Hecho',
+    pressureNext: '¿Siguiente?',
+    pressureOpenCommitment: 'Tienes un compromiso abierto',
+    pressureStillNotDone: '¿Aún no está hecho?',
+    pressureAvoiding: 'Estás evitando esto',
+    pressureMissedDeadline: 'Perdiste tu plazo. ¿Por qué?',
+    pressureFinishFirst: 'termina primero tu acción anterior',
+    completionDefault: 'Bien. Actúas.',
+    completionMomentum: 'Estás ganando impulso',
+    completionDiscipline: 'Esto es disciplina',
+    completionOperating: 'Estás operando de forma diferente',
   },
   Chinese: {
     appName: 'SolveOS',
@@ -333,6 +486,31 @@ export const uiCopy: Record<Exclude<SupportedLanguage, 'auto'>, UiCopy> = {
     executionBlockerUnclear: '不清楚',
     executionBlockerNoEnergy: '没有动力',
     executionBlockerExternal: '外部阻碍',
+    gateHeadline: '想了解真正驱动这个决策的是什么吗？',
+    gateSubtext: '解锁隐藏动机图谱和24小时承诺追踪器。',
+    gateButton: '解锁完整方案 — €5',
+    gateHelper: '提前了解可能出现的问题。',
+    gateWhatAvoiding: '你在回避什么',
+    gateWhatCouldBreak: '可能出问题的是什么',
+    pressureLabel: '在24小时内完成',
+    pressureDidYou: '你做到了吗？',
+    pressureYes: '是',
+    pressureNotYet: '还没有',
+    pressureWhyNotDone: '为什么还没做？',
+    pressureSmallerStep: '更小的步骤',
+    pressureIllDoThis: '我现在就去做',
+    pressureBack: '返回',
+    pressureDone: '完成',
+    pressureNext: '下一步？',
+    pressureOpenCommitment: '你有一个未完成的承诺',
+    pressureStillNotDone: '还没做完？',
+    pressureAvoiding: '你在回避这件事',
+    pressureMissedDeadline: '你错过了截止日期。为什么？',
+    pressureFinishFirst: '先完成之前的行动',
+    completionDefault: '好。你在行动。',
+    completionMomentum: '你正在积累动力',
+    completionDiscipline: '这是纪律',
+    completionOperating: '你现在的方式不同了',
   },
 };
 

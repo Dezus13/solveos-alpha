@@ -7,7 +7,6 @@ import {
   formatCountdown,
   generateSmallerAction,
   getActiveReminder,
-  getPressureMessage,
   getPressureState,
   restartWithSmallerAction,
   updateActionReminder,
@@ -16,13 +15,20 @@ import {
 } from '@/lib/actionReminders';
 import { updateDecisionScoreOnActionCompletion, updateDecisionScoreOnActionOverdue } from '@/lib/userProfile';
 import { generateIdentityLabel } from '@/lib/identityEngine';
+import { uiCopy, type UiCopy } from '@/lib/i18n';
 
-const CATEGORY_LABELS: Record<BlockerCategory, string> = {
-  fear: 'Fear',
-  unclear: 'Not clear',
-  lazy: 'No energy',
-  external: 'Blocked externally',
-};
+function getBannerCopy(language: string | undefined): UiCopy {
+  if (!language) return uiCopy.English;
+  const key = language as keyof typeof uiCopy;
+  return uiCopy[key] ?? uiCopy.English;
+}
+
+function pressureMessageFromCopy(state: 'normal' | 'pressure_2h' | 'pressure_12h' | 'overdue', copy: UiCopy): string {
+  if (state === 'pressure_2h') return copy.pressureStillNotDone;
+  if (state === 'pressure_12h') return copy.pressureAvoiding;
+  if (state === 'overdue') return copy.pressureMissedDeadline;
+  return copy.pressureLabel;
+}
 
 function readActive(): [string, ActionReminderRecord] | null {
   try {
@@ -36,9 +42,6 @@ function readActive(): [string, ActionReminderRecord] | null {
   }
 }
 
-function completionEmotion(): string {
-  return 'Done.';
-}
 
 export default function PersistentActionBanner() {
   const [mounted, setMounted] = useState(false);
@@ -113,7 +116,8 @@ export default function PersistentActionBanner() {
       action: active[1].action,
       completedAt: new Date().toISOString(),
     });
-    setCompletionMessage(completionEmotion());
+    const bannerLang = active[1].language;
+    setCompletionMessage(getBannerCopy(bannerLang).pressureDone);
     window.setTimeout(() => setCompletionMessage(null), 2200);
     refresh();
   }, [active, mounted, refresh]);
@@ -141,8 +145,8 @@ export default function PersistentActionBanner() {
     return (
       <div className="fixed left-0 right-0 top-0 z-[120] border-b border-emerald-400/25 bg-[#07130D]/95 px-4 py-3 shadow-[0_18px_60px_rgba(0,0,0,0.35)] backdrop-blur-xl">
         <div className="mx-auto flex max-w-5xl items-center justify-between">
-          <div className="text-sm font-black uppercase tracking-widest text-emerald-200">Done.</div>
-          <div className="text-[11px] text-slate-500">Next?</div>
+          <div className="text-sm font-black uppercase tracking-widest text-emerald-200">{completionMessage}</div>
+          <div className="text-[11px] text-slate-500">{getBannerCopy(undefined).pressureNext}</div>
         </div>
       </div>
     );
@@ -151,6 +155,7 @@ export default function PersistentActionBanner() {
   if (!active) return null;
 
   const [, reminder] = active;
+  const copy = getBannerCopy(reminder.language);
 
   if (pressureState === 'normal') {
     return (
@@ -165,14 +170,14 @@ export default function PersistentActionBanner() {
             onClick={markDone}
             className="flex-shrink-0 rounded-lg border border-white/8 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-600 transition-colors hover:border-emerald-400/20 hover:text-emerald-400"
           >
-            Done
+            {copy.pressureDone}
           </button>
         </div>
       </div>
     );
   }
   const identity = generateIdentityLabel();
-  const headerMessage = getPressureMessage(pressureState);
+  const headerMessage = pressureMessageFromCopy(pressureState, copy);
 
   const bannerBg = isOverdue
     ? 'bg-[#1A0810]/96 border-rose-500/30'
@@ -225,7 +230,7 @@ export default function PersistentActionBanner() {
               className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-400/25 bg-emerald-400/[0.1] px-3 py-2 text-[11px] font-black uppercase tracking-widest text-emerald-200 hover:bg-emerald-400/[0.16]"
             >
               <CheckCircle2 className="h-3.5 w-3.5" />
-              Done
+              {copy.pressureDone}
             </button>
           </div>
         </div>
@@ -234,17 +239,20 @@ export default function PersistentActionBanner() {
         {isOverdue && !smallerPreview && (
           <div className="border-t border-white/[0.07] pt-3">
             <div className="mb-2 text-[10px] font-black uppercase tracking-widest text-rose-300">
-              Why not done?
+              {copy.pressureWhyNotDone}
             </div>
             <div className="flex flex-wrap gap-2">
-              {(Object.keys(CATEGORY_LABELS) as BlockerCategory[]).map((cat) => (
+              {(['fear', 'unclear', 'lazy', 'external'] as BlockerCategory[]).map((cat) => (
                 <button
                   key={cat}
                   type="button"
                   onClick={() => handlePickCategory(cat)}
                   className="rounded-lg border border-rose-400/20 bg-rose-500/[0.08] px-3 py-1.5 text-[11px] font-black uppercase tracking-widest text-rose-200 hover:bg-rose-500/[0.14]"
                 >
-                  {CATEGORY_LABELS[cat]}
+                  {cat === 'fear' ? copy.executionBlockerFear
+                    : cat === 'unclear' ? copy.executionBlockerUnclear
+                    : cat === 'lazy' ? copy.executionBlockerNoEnergy
+                    : copy.executionBlockerExternal}
                 </button>
               ))}
             </div>
@@ -255,7 +263,7 @@ export default function PersistentActionBanner() {
         {isOverdue && smallerPreview && (
           <div className="border-t border-white/[0.07] pt-3">
             <div className="mb-1 text-[10px] font-black uppercase tracking-widest text-rose-300">
-              Smaller step
+              {copy.pressureSmallerStep}
             </div>
             <div className="text-sm font-semibold text-white">{smallerPreview}</div>
             <div className="mt-3 flex gap-2">
@@ -264,14 +272,14 @@ export default function PersistentActionBanner() {
                 onClick={handleRestartSmaller}
                 className="rounded-lg border border-emerald-400/25 bg-emerald-500/[0.1] px-3 py-2 text-[11px] font-black uppercase tracking-widest text-emerald-200 hover:bg-emerald-500/[0.16]"
               >
-                I&apos;ll do this now
+                {copy.pressureIllDoThis}
               </button>
               <button
                 type="button"
                 onClick={handleBackCategory}
                 className="rounded-lg border border-white/10 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-200"
               >
-                Back
+                {copy.pressureBack}
               </button>
             </div>
           </div>

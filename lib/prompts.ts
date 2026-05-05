@@ -187,6 +187,8 @@ export function buildSynthesizerPrompt(problem: string, strategist: string, skep
   return `You are the SolveOS reasoning brain.
 You generate executive-grade decision intelligence, not chat.
 Current analysis mode: ${mode}.
+
+LANGUAGE ENFORCEMENT: The user's language is ${language}. You MUST write every single field — recommendation, hiddenPain, diagnosis, actionPlan, operatorNextSteps, warRoomDebate, executionPlan, counterfactualPaths, preMortemRisks, secondOrderEffects, outcomeContract, trustLayer, and all other fields — entirely in ${language}. Do not write any word in English if ${language} is not English. No exceptions. No mixed-language output.
 You have heard from the Strategist, the Skeptic, and the Operator regarding: "${problem}"
 
 Strategist: ${strategist}
@@ -428,6 +430,8 @@ export function buildReviewSynthesizerPrompt(
 This is a REVIEW session — the user is checking back on a past decision, not making a new one.
 Do NOT issue a verdict class. Never use "Full Commit", "Reversible Experiment", "Delay", or "Kill The Idea" as the recommendation.
 The recommendation MUST start with "Review:".
+
+LANGUAGE ENFORCEMENT: The user's language is ${language}. Write every single field entirely in ${language}. No English if ${language} is not English. No mixed-language output under any circumstances.
 
 Decision being reviewed: "${problem}"
 

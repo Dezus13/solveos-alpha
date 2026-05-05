@@ -3,6 +3,7 @@ import { saveDecision, getDecisionHistory } from '@/lib/memory';
 import { getMemoryIntelligenceFromHistory } from '@/lib/memory-graph';
 import { computeNetworkIntelligence, calibrateScore, buildCalibrationContext, computeDecisionAccuracy, computeCalibrationScore } from '@/lib/benchmarks';
 import { isPlanModeRequest, isReviewModeRequest, semanticVerdictForQuestion, shouldRejectDecisionOutput, detectVerdictLoop, buildForceDiversityInstruction, semanticVerdictExcluding, extractVerdictClass, buildIntentInstruction, enforceIntentRouting, detectSolveRequestIntent, extractLiteralOutput } from '@/lib/semantic-guards';
+import { detectInputLanguage } from '@/lib/i18n';
 import { buildProfileDirective, applyProfileAdjustments, scoreMessageFor } from '@/lib/profileEngine';
 import { computeSessionPressureLevel, buildPressureDirective } from '@/lib/pressureEngine';
 import type { CouncilMetrics, CounterfactualPath, DecisionBlueprint, DecisionContext, ExecutionPlanWeek, MilestoneMetric, MilestoneStatus, PreMortemRisk, ScenarioBranch, SecondOrderEffect, SolveRequest, SolveResponse, UserProfileData, WarRoomDebate } from '@/lib/types';
@@ -13,11 +14,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-function readLanguage(body: Partial<SolveRequest> | undefined): string {
-  const language = typeof body?.language === 'string' && body.language.trim()
-    ? body.language.trim()
-    : 'en';
-  return language;
+function readLanguage(body: Partial<SolveRequest> | undefined, problem: string): string {
+  const clientLang = typeof body?.language === 'string' ? body.language.trim() : '';
+  if (clientLang && clientLang !== 'en' && clientLang !== 'auto') return clientLang;
+  // Client didn't detect or defaulted — run server-side detection so the fallback
+  // is the actual user input language, never hard-coded English.
+  const detected = detectInputLanguage(problem);
+  return detected;
 }
 
 function readContext(body: Partial<SolveRequest> | undefined): DecisionContext | undefined {
@@ -528,7 +531,7 @@ export async function POST(req: Request) {
     const parsedBody = await req.json().catch(() => ({}));
     const body = isRecord(parsedBody) ? parsedBody as Partial<SolveRequest> : {};
     const problem = typeof body.problem === 'string' ? body.problem.trim() : '';
-    const language = readLanguage(body);
+    const language = readLanguage(body, problem);
     const mode = readMode(body);
     const context = readContext(body);
     const rawConversationContext = readConversationContext(body);

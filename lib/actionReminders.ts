@@ -13,6 +13,7 @@ export interface ActionReminderRecord {
   status: ActionStatus;
   action: string;
   decisionText?: string;
+  language?: string;
   blocker?: string;
   blockerCategory?: BlockerCategory;
   smallerAction?: string;
@@ -43,23 +44,24 @@ export function writeActionReminders(store: ActionReminderStore): void {
   window.dispatchEvent(new Event(ACTION_REMINDER_EVENT));
 }
 
-export function createReminderRecord(action: string, status: ActionStatus = 'not yet', decisionText?: string): ActionReminderRecord {
+export function createReminderRecord(action: string, status: ActionStatus = 'not yet', decisionText?: string, language?: string): ActionReminderRecord {
   const now = new Date();
   const createdAt = now.toISOString();
   return {
     status,
     action,
     decisionText,
+    language,
     createdAt,
     dueAt: new Date(now.getTime() + ACTION_REMINDER_WINDOW_MS).toISOString(),
     updatedAt: createdAt,
   };
 }
 
-export function ensureActionReminder(id: string, action: string, decisionText?: string): ActionReminderStore {
+export function ensureActionReminder(id: string, action: string, decisionText?: string, language?: string): ActionReminderStore {
   const store = readActionReminders();
   if (!action || store[id]) return store;
-  const next = { ...store, [id]: createReminderRecord(action, 'not yet', decisionText) };
+  const next = { ...store, [id]: createReminderRecord(action, 'not yet', decisionText, language) };
   writeActionReminders(next);
   return next;
 }
