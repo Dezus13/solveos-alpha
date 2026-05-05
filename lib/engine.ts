@@ -19,10 +19,12 @@ interface AgentState {
   memoryContext: string;
   conversationContext: string; // injected from prior conversation thread
   mode: string;
+  streaming: boolean;
   strategistAnalysis: string;
   skepticAnalysis: string;
   operatorAnalysis: string;
   finalBlueprint: DecisionBlueprint | null;
+  finalText?: string;
 }
 
 function logPrompt(label: string, prompt: string): void {
@@ -292,6 +294,37 @@ async function synthesizerNode(state: AgentState): Promise<Partial<AgentState>> 
         state.mode || 'Strategy',
       );
 
+  if (state.streaming) {
+    // For streaming, generate the assistant message text directly
+    const streamingPrompt = `${basePrompt}
+
+Generate the assistant response message as plain text, not JSON. The response should be the final answer the assistant gives to the user, summarizing the decision recommendation, key reasoning, and next action. Keep it concise, around 100-200 words. Start with the verdict class (Full Commit, Reversible Experiment, Delay, or Kill The Idea), then brief reasoning, then next action.`;
+
+    logPrompt(`streaming-synthesizer:${state.mode}`, `${systemPrompt}\n\n${streamingPrompt}`);
+    const response = await getOpenAIClient().chat.completions.create({
+      model: 'gpt-4o',
+      stream: true,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: streamingPrompt },
+      ],
+      temperature: 0.8,
+      top_p: 0.95,
+      max_tokens: 1000,
+    });
+
+    let fullText = '';
+    for await (const chunk of response) {
+      const content = chunk.choices[0]?.delta?.content;
+      if (content) {
+        fullText += content;
+      }
+    }
+
+    // For streaming, we return the text
+    return { finalText: fullText };
+  }
+
   const createBlueprint = async (prompt: string) => {
     logPrompt(`synthesizer:${state.mode}`, `${systemPrompt}\n\n${prompt}`);
     const response = await getOpenAIClient().chat.completions.create({
@@ -379,10 +412,12 @@ function buildWorkflow() {
       memoryContext: { value: (_a, b) => b, default: () => '' },
       conversationContext: { value: (_a, b) => b, default: () => '' },
       mode: { value: (_a, b) => b, default: () => 'Strategy' },
+      streaming: { value: (_a, b) => b, default: () => false },
       strategistAnalysis: { value: (_a, b) => b, default: () => '' },
       skepticAnalysis: { value: (_a, b) => b, default: () => '' },
       operatorAnalysis: { value: (_a, b) => b, default: () => '' },
       finalBlueprint: { value: (_a, b) => b, default: () => null },
+      finalText: { value: (_a, b) => b, default: () => undefined },
     }
   })
     .addNode('detect', detectionNode)
@@ -403,13 +438,79 @@ function getEngine() {
   return compiledEngine;
 }
 
-export async function solveDecision(
+export async function streamingSolveDecision(
   problem: string,
   overrideLanguage?: string,
   memoryContext?: string,
   conversationContext?: string,
   mode: string = 'Strategy'
-): Promise<DecisionBlueprint> {
+): Promise<ReadableStream<Uint8Array>> {
+  const language = normalizeLanguage(overrideLanguage || 'en');
+  const systemPrompt = buildModeSystemPrompt(mode);
+  const isReview = mode === 'Review';
+  const basePrompt = isReview
+    ? buildReviewSynthesizerPrompt(
+        problem,
+        '', // strategistAnalysis - for streaming, we skip the graph
+        '',
+        '',
+        language,
+        memoryContext,
+        conversationContext,
+      )
+    : buildSynthesizerPrompt(
+        problem,
+        '',
+        '',
+        '',
+        language,
+        memoryContext,
+        conversationContext,
+        mode,
+      );
+
+  const streamingPrompt = `${basePrompt}
+
+Generate the assistant response message as plain text, not JSON. The response should be the final answer the assistant gives to the user, summarizing the decision recommendation, key reasoning, and next action. Keep it concise, around 100-200 words. Start with the verdict class (Full Commit, Reversible Experiment, Delay, or Kill The Idea), then brief reasoning, then next action.`;
+
+  logPrompt(`streaming-synthesizer:${mode}`, `${systemPrompt}\n\n${streamingPrompt}`);
+  const response = await getOpenAIClient().chat.completions.create({
+    model: 'gpt-4o',
+    stream: true,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: streamingPrompt },
+    ],
+    temperature: 0.8,
+    top_p: 0.95,
+    max_tokens: 1000,
+  });
+
+  return new ReadableStream({
+    async start(controller) {
+      try {
+        for await (const chunk of response) {
+          const content = chunk.choices[0]?.delta?.content;
+          if (content) {
+            controller.enqueue(new TextEncoder().encode(content));
+          }
+        }
+        controller.close();
+      } catch (error) {
+        controller.error(error);
+      }
+    },
+  });
+}
+
+export async function solveDecision(
+  problem: string,
+  overrideLanguage?: string,
+  memoryContext?: string,
+  conversationContext?: string,
+  mode: string = 'Strategy',
+  streaming: boolean = false
+): Promise<DecisionBlueprint | string> {
   try {
     const startLanguage = normalizeLanguage(overrideLanguage || 'en');
     const safeProblem = typeof problem === 'string' ? problem : '';
@@ -420,6 +521,7 @@ export async function solveDecision(
       memoryContext: memoryContext || '',
       conversationContext: conversationContext || '',
       mode,
+      streaming,
       strategistAnalysis: '',
       skepticAnalysis: '',
       operatorAnalysis: '',
@@ -430,6 +532,10 @@ export async function solveDecision(
       result.finalBlueprint.language = normalizeLanguage(result.finalBlueprint.language || startLanguage);
     }
     
+    if (streaming && result.finalText) {
+      return result.finalText;
+    }
+    
     if (!result.finalBlueprint) {
       throw new Error('Engine failed to generate a final blueprint.');
     }
@@ -438,6 +544,10 @@ export async function solveDecision(
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Real Engine failed, falling back to Demo Mode:', errorMessage);
+    
+    if (streaming) {
+      return 'Demo Mode: Full Commit - This appears to be a strong opportunity. Proceed with implementation while monitoring key risks. Next: Start execution within the next 24 hours.';
+    }
     
     if (errorMessage.includes('429') || errorMessage.includes('quota')) {
       console.warn('OPENAI QUOTA EXCEEDED: Engaging Demo Simulation Mode.');

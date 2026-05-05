@@ -538,6 +538,7 @@ export async function POST(req: Request) {
     const conversationHistoryForGuard = Array.isArray(body?.conversationHistory)
       ? (body.conversationHistory as Array<{ role: string; content: string }>)
       : [];
+    const streaming = typeof body.streaming === 'boolean' ? body.streaming : false;
 
     if (!problem) {
       return NextResponse.json(
@@ -630,6 +631,18 @@ export async function POST(req: Request) {
     }
 
     const fullContext = [memoryContext, calibrationNote, userProfileCtx, profileDirective].filter(Boolean).join('\n\n');
+    
+    if (streaming) {
+      const { streamingSolveDecision } = await import('@/lib/engine');
+      const stream = await streamingSolveDecision(problem, language, fullContext, conversationContext, effectiveMode);
+      return new Response(stream, {
+        headers: {
+          'Content-Type': 'text/plain',
+          'Cache-Control': 'no-cache',
+        },
+      });
+    }
+    
     const { solveDecision } = await import('@/lib/engine');
     const rawBlueprint = await solveDecision(problem, language, fullContext, conversationContext, effectiveMode);
     const blueprint = normalizeBlueprint(rawBlueprint, problem, language, effectiveMode);

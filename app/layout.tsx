@@ -1,5 +1,4 @@
 import './globals.css';
-import PersistentActionBanner from '@/components/PersistentActionBanner';
 import SettingsHydrator from '@/components/SettingsHydrator';
 
 export const metadata = {
@@ -21,7 +20,6 @@ export default function RootLayout({
    <html lang="en">
       <body>
          <SettingsHydrator />
-         <PersistentActionBanner />
          {children}
       </body>
    </html>

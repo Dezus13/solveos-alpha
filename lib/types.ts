@@ -137,6 +137,7 @@ export interface SolveRequest {
   conversationHistory?: Array<{ role: 'user' | 'assistant'; content: string }>;
   userProfile?: string;           // legacy text description (kept for backwards compat)
   userProfileData?: UserProfileData; // structured profile for active engine adjustments
+  streaming?: boolean;
 }
 
 export interface DecisionContext {
