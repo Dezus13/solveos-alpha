@@ -30,10 +30,49 @@ function readContext(body: Partial<SolveRequest> | undefined): DecisionContext |
 function readConversationContext(body: Partial<SolveRequest> | undefined): string {
   if (!Array.isArray(body?.conversationHistory)) return '';
 
-  return body.conversationHistory
-    .filter((turn) => isRecord(turn) && typeof turn.content === 'string')
-    .map((turn, i) => `${i % 2 === 0 ? 'User' : 'Prior analysis'}: ${(turn as { content: string }).content}`)
+  const turns = body.conversationHistory
+    .filter((turn) => isRecord(turn) && typeof turn.content === 'string' && turn.content.trim())
+    .slice(-10);
+
+  if (turns.length === 0) return '';
+
+  return turns
+    .map((turn) => {
+      const typedTurn = turn as { role?: string; content: string };
+      const role = typedTurn.role === 'assistant' ? 'Prior SolveOS answer' : 'User';
+      const content = typedTurn.content.trim().replace(/\s+/g, ' ').slice(0, 900);
+      return `${role}: ${content}`;
+    })
     .join('\n');
+}
+
+function buildConversationMemoryNote(history: Array<{ role: string; content: string }>): string {
+  if (history.length === 0) return '';
+
+  const userTurns = history.filter((turn) => turn.role === 'user' && turn.content.trim());
+  const assistantTurns = history.filter((turn) => turn.role === 'assistant' && turn.content.trim());
+  const lastAssistant = assistantTurns.at(-1)?.content || '';
+  const lastUser = userTurns.at(-1)?.content || '';
+  const verdict = extractVerdictClass(lastAssistant);
+  const repeatedUserThemes = userTurns
+    .flatMap((turn) => turn.content.toLowerCase().match(/\b(runway|money|revenue|launch|shutdown|quit|fear|customers|time|team|risk|деньги|запуск|страх|клиенты|время|риск)\b/g) || [])
+    .reduce<Record<string, number>>((acc, word) => {
+      acc[word] = (acc[word] || 0) + 1;
+      return acc;
+    }, {});
+  const themes = Object.entries(repeatedUserThemes)
+    .filter(([, count]) => count >= 2)
+    .map(([word]) => word)
+    .slice(0, 5);
+
+  return [
+    'CONVERSATION MEMORY DIRECTIVE:',
+    'Treat this as a continuing conversation, not a fresh isolated prompt.',
+    lastUser ? `Most recent prior user concern: ${lastUser.slice(0, 500)}` : '',
+    verdict ? `Previous answer verdict class: ${verdict}. Repeat it only if new reasoning makes it necessary.` : '',
+    themes.length > 0 ? `Repeated user themes: ${themes.join(', ')}.` : '',
+    'Do not restate old advice. Answer the new ask, update assumptions, and name what changed.',
+  ].filter(Boolean).join('\n');
 }
 
 function readMode(body: Partial<SolveRequest> | undefined): NonNullable<SolveRequest['mode']> {
@@ -608,7 +647,8 @@ export async function POST(req: Request) {
     if (pressureLevel > 0) {
       console.info('Pressure mode active:', { pressureLevel, turnCount: conversationHistoryForGuard.filter((t) => t.role === 'user').length });
     }
-    const conversationContext = [rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
+    const conversationMemoryNote = buildConversationMemoryNote(conversationHistoryForGuard);
+    const conversationContext = [conversationMemoryNote, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
       .filter(Boolean)
       .join('\n\n')
       .trim();

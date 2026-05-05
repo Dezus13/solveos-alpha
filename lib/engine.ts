@@ -6,7 +6,8 @@ import {
   buildOperatorPrompt,
   buildSynthesizerPrompt,
   buildReviewSynthesizerPrompt,
-  buildModeSystemPrompt,
+  buildAdvisorSystemPrompt,
+  buildStreamingAnswerPrompt,
 } from './prompts';
 import { DecisionBlueprint, CouncilMetrics, ScenarioBranch } from './types';
 import { getMockBlueprint } from './mocks';
@@ -64,6 +65,26 @@ function normalizeLanguage(language?: string): string {
   if (lower === 'zh' || lower === 'chinese') return 'Chinese';
 
   return value;
+}
+
+function buildLocalizedStreamingFallback(language: string): string {
+  const normalized = normalizeLanguage(language);
+  if (normalized === 'Russian') {
+    return 'Обратимый эксперимент: сейчас не стоит делать большой необратимый шаг. Сначала проверь главный риск маленьким тестом: один сегмент, один критерий успеха, один срок. Если за 7-14 дней нет понятного сигнала от реальных пользователей, денег или поведения, решение нужно пересмотреть.';
+  }
+  if (normalized === 'German') {
+    return 'Reversibles Experiment: Mach jetzt keinen großen irreversiblen Schritt. Teste zuerst die wichtigste Annahme mit einem kleinen Versuch: ein Segment, ein Erfolgskriterium, ein Zeitfenster. Wenn nach 7-14 Tagen kein klares Signal von echten Nutzern, Umsatz oder Verhalten sichtbar ist, ändere die Entscheidung.';
+  }
+  if (normalized === 'Spanish') {
+    return 'Experimento reversible: no hagas ahora un movimiento grande e irreversible. Prueba primero la suposición más frágil con un test pequeño: un segmento, un criterio de éxito y un plazo. Si en 7-14 días no aparece una señal real de usuarios, ingresos o comportamiento, cambia la decisión.';
+  }
+  if (normalized === 'Arabic') {
+    return 'تجربة قابلة للتراجع: لا تتخذ الآن خطوة كبيرة يصعب الرجوع عنها. اختبر أولاً الفرضية الأكثر هشاشة بتجربة صغيرة: شريحة واحدة، معيار نجاح واحد، ومدة محددة. إذا لم تظهر خلال 7-14 يومًا إشارة واضحة من مستخدمين حقيقيين أو إيراد أو سلوك، غيّر القرار.';
+  }
+  if (normalized === 'Chinese') {
+    return '可逆实验：现在不要做大的不可逆决定。先用一个小测试验证最脆弱的假设：一个用户群、一个成功标准、一个时间窗口。如果 7-14 天内没有来自真实用户、收入或行为的明确信号，就调整这个决定。';
+  }
+  return 'Reversible Experiment: do not make a large irreversible move yet. Test the riskiest assumption with one segment, one success metric, and one timebox. If real users, revenue, or behavior do not produce a clear signal within 7-14 days, change the decision.';
 }
 
 /**
@@ -217,7 +238,7 @@ async function detectionNode(state: AgentState): Promise<Partial<AgentState>> {
 
 async function strategistNode(state: AgentState): Promise<Partial<AgentState>> {
   const language = normalizeLanguage(state.language);
-  const systemPrompt = buildModeSystemPrompt(state.mode);
+  const systemPrompt = buildAdvisorSystemPrompt(state.mode, language);
   const userPrompt = buildStrategistPrompt(state.problem || '', language, state.memoryContext || undefined);
   logPrompt(`strategist:${state.mode}`, `${systemPrompt}\n\n${userPrompt}`);
   const response = await getOpenAIClient().chat.completions.create({
@@ -235,7 +256,7 @@ async function strategistNode(state: AgentState): Promise<Partial<AgentState>> {
 
 async function skepticNode(state: AgentState): Promise<Partial<AgentState>> {
   const language = normalizeLanguage(state.language);
-  const systemPrompt = buildModeSystemPrompt(state.mode);
+  const systemPrompt = buildAdvisorSystemPrompt(state.mode, language);
   const userPrompt = buildSkepticPrompt(state.problem || '', state.strategistAnalysis || '', language);
   logPrompt(`skeptic:${state.mode}`, `${systemPrompt}\n\n${userPrompt}`);
   const response = await getOpenAIClient().chat.completions.create({
@@ -253,7 +274,7 @@ async function skepticNode(state: AgentState): Promise<Partial<AgentState>> {
 
 async function operatorNode(state: AgentState): Promise<Partial<AgentState>> {
   const language = normalizeLanguage(state.language);
-  const systemPrompt = buildModeSystemPrompt(state.mode);
+  const systemPrompt = buildAdvisorSystemPrompt(state.mode, language);
   const userPrompt = buildOperatorPrompt(state.problem || '', state.strategistAnalysis || '', state.skepticAnalysis || '', language);
   logPrompt(`operator:${state.mode}`, `${systemPrompt}\n\n${userPrompt}`);
   const response = await getOpenAIClient().chat.completions.create({
@@ -271,7 +292,7 @@ async function operatorNode(state: AgentState): Promise<Partial<AgentState>> {
 
 async function synthesizerNode(state: AgentState): Promise<Partial<AgentState>> {
   const language = normalizeLanguage(state.language);
-  const systemPrompt = buildModeSystemPrompt(state.mode);
+  const systemPrompt = buildAdvisorSystemPrompt(state.mode, language);
   const isReview = state.mode === 'Review';
   const basePrompt = isReview
     ? buildReviewSynthesizerPrompt(
@@ -295,10 +316,13 @@ async function synthesizerNode(state: AgentState): Promise<Partial<AgentState>> 
       );
 
   if (state.streaming) {
-    // For streaming, generate the assistant message text directly
-    const streamingPrompt = `${basePrompt}
-
-Generate the assistant response message as plain text, not JSON. The response should be the final answer the assistant gives to the user, summarizing the decision recommendation, key reasoning, and next action. Keep it concise, around 100-200 words. Start with the verdict class (Full Commit, Reversible Experiment, Delay, or Kill The Idea), then brief reasoning, then next action.`;
+    const streamingPrompt = buildStreamingAnswerPrompt({
+      problem: state.problem || '',
+      language,
+      memoryContext: state.memoryContext || undefined,
+      conversationContext: state.conversationContext || undefined,
+      mode: state.mode || 'Strategy',
+    });
 
     logPrompt(`streaming-synthesizer:${state.mode}`, `${systemPrompt}\n\n${streamingPrompt}`);
     const response = await getOpenAIClient().chat.completions.create({
@@ -446,32 +470,14 @@ export async function streamingSolveDecision(
   mode: string = 'Strategy'
 ): Promise<ReadableStream<Uint8Array>> {
   const language = normalizeLanguage(overrideLanguage || 'en');
-  const systemPrompt = buildModeSystemPrompt(mode);
-  const isReview = mode === 'Review';
-  const basePrompt = isReview
-    ? buildReviewSynthesizerPrompt(
-        problem,
-        '', // strategistAnalysis - for streaming, we skip the graph
-        '',
-        '',
-        language,
-        memoryContext,
-        conversationContext,
-      )
-    : buildSynthesizerPrompt(
-        problem,
-        '',
-        '',
-        '',
-        language,
-        memoryContext,
-        conversationContext,
-        mode,
-      );
-
-  const streamingPrompt = `${basePrompt}
-
-Generate the assistant response message as plain text, not JSON. The response should be the final answer the assistant gives to the user, summarizing the decision recommendation, key reasoning, and next action. Keep it concise, around 100-200 words. Start with the verdict class (Full Commit, Reversible Experiment, Delay, or Kill The Idea), then brief reasoning, then next action.`;
+  const systemPrompt = buildAdvisorSystemPrompt(mode, language);
+  const streamingPrompt = buildStreamingAnswerPrompt({
+    problem,
+    language,
+    memoryContext,
+    conversationContext,
+    mode,
+  });
 
   logPrompt(`streaming-synthesizer:${mode}`, `${systemPrompt}\n\n${streamingPrompt}`);
   const response = await getOpenAIClient().chat.completions.create({
@@ -546,7 +552,7 @@ export async function solveDecision(
     console.error('Real Engine failed, falling back to Demo Mode:', errorMessage);
     
     if (streaming) {
-      return 'Demo Mode: Full Commit - This appears to be a strong opportunity. Proceed with implementation while monitoring key risks. Next: Start execution within the next 24 hours.';
+      return buildLocalizedStreamingFallback(overrideLanguage || 'English');
     }
     
     if (errorMessage.includes('429') || errorMessage.includes('quota')) {

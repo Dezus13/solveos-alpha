@@ -2,7 +2,7 @@
 
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { Loader2, Send, Sparkles } from 'lucide-react';
-import { uiCopy, type UiCopy } from '@/lib/i18n';
+import { type UiCopy } from '@/lib/i18n';
 import type { ProductSettings } from '@/lib/settings';
 import type { ConversationTurn } from '@/lib/types';
 
@@ -20,8 +20,8 @@ function useStreamingText(text: string, active: boolean, speed = 18): string {
 
   useEffect(() => {
     if (!active) {
-      setDisplayed(text);
-      return;
+      const id = window.setTimeout(() => setDisplayed(text), 0);
+      return () => window.clearTimeout(id);
     }
 
     const words = text.split(' ');
@@ -48,11 +48,10 @@ function UserMessage({ content }: { content: string }) {
   );
 }
 
-function AssistantMessage({ turn, isLatest, streaming, copy }: {
+function AssistantMessage({ turn, isLatest, streaming }: {
   turn: ConversationTurn;
   isLatest: boolean;
   streaming: boolean;
-  copy: UiCopy;
 }) {
   const streamed = useStreamingText(turn.content, isLatest && streaming);
 
@@ -145,7 +144,7 @@ function DecisionConsole({ thread, loading, streaming, onSubmit, copy, settings 
             {thread.map((turn, index) => (
               turn.role === 'user'
                 ? <UserMessage key={turn.id} content={turn.content} />
-                : <AssistantMessage key={turn.id} turn={turn} isLatest={index === thread.length - 1} streaming={streaming} copy={copy} />
+                : <AssistantMessage key={turn.id} turn={turn} isLatest={index === thread.length - 1} streaming={streaming} />
             ))}
             {loading && <ThinkingMessage copy={copy} />}
             <div ref={endRef} />

@@ -547,6 +547,57 @@ const russianTransliterationWeak = [
   'kogda',
 ];
 
+const englishMarkers = [
+  'should',
+  'what',
+  'why',
+  'how',
+  'when',
+  'launch',
+  'startup',
+  'business',
+  'decision',
+  'risk',
+  'revenue',
+  'customers',
+  'job',
+  'quit',
+  'team',
+  'market',
+];
+
+const germanMarkers = [
+  'ich',
+  'du',
+  'wir',
+  'soll',
+  'sollte',
+  'sollten',
+  'entscheidung',
+  'risiko',
+  'kunden',
+  'umsatz',
+  'unternehmen',
+  'grunden',
+  'kündigen',
+  'kuendigen',
+];
+
+const spanishMarkers = [
+  'deberia',
+  'deberíamos',
+  'deberiamos',
+  'quiero',
+  'riesgo',
+  'decision',
+  'decisión',
+  'clientes',
+  'ingresos',
+  'negocio',
+  'lanzar',
+  'trabajo',
+];
+
 function hasRussianTransliteration(text: string): boolean {
   const lower = text.toLowerCase().replace(/[^a-z\s]/g, ' ').replace(/\s+/g, ' ').trim();
   if (!lower) return false;
@@ -561,12 +612,25 @@ export function detectInputLanguage(
   text: string,
   fallback: Exclude<SupportedLanguage, 'auto'> = 'English',
 ): Exclude<SupportedLanguage, 'auto'> {
-  if (/[\u0600-\u06FF]/.test(text)) return 'Arabic';
-  if (/[\u4E00-\u9FFF]/.test(text)) return 'Chinese';
-  if (/[\u0400-\u04FF]/.test(text)) return 'Russian';
+  const trimmed = text.trim();
+  if (!trimmed) return fallback;
+  if (/[\u0600-\u06FF]/.test(trimmed)) return 'Arabic';
+  if (/[\u4E00-\u9FFF]/.test(trimmed)) return 'Chinese';
+  if (/[\u0400-\u04FF]/.test(trimmed)) return 'Russian';
   const lower = text.toLowerCase();
   if (hasRussianTransliteration(text)) return 'Russian';
-  if (/[äöüß]/i.test(text) || /\b(und|oder|nicht|sollten|entscheidung|risiko)\b/.test(lower)) return 'German';
-  if (/[áéíóúñ¿¡]/i.test(text) || /\b(deberíamos|riesgo|decisión|crecimiento|próximo)\b/.test(lower)) return 'Spanish';
+  const words: string[] = lower
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .match(/[a-z]+/g) ?? [];
+  const markerHits = (markers: string[]) => markers.filter((marker) => {
+    const normalized = marker.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    return words.includes(normalized);
+  }).length;
+
+  if (/[äöüß]/i.test(text) || markerHits(germanMarkers) >= 2) return 'German';
+  if (/[áéíóúñ¿¡]/i.test(text) || markerHits(spanishMarkers) >= 2) return 'Spanish';
+  if (markerHits(englishMarkers) >= 1) return 'English';
+  if (/^[\x00-\x7F\s.,!?'"():;$%€£+-]+$/.test(trimmed) && words.length >= 3) return 'English';
   return fallback;
 }

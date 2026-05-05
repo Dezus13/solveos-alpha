@@ -5,10 +5,9 @@ import dynamic from 'next/dynamic';
 import { Settings, Sparkles } from 'lucide-react';
 import DecisionConsole from '@/components/DecisionConsole';
 import SolveOSSymbol from '@/components/SolveOSSymbol';
-import { detectInputLanguage, uiCopy } from '@/lib/i18n';
+import { detectInputLanguage, uiCopy, type SupportedLanguage } from '@/lib/i18n';
 import { readSettings, type ProductSettings, writeSettings } from '@/lib/settings';
 import { SETTINGS_UPDATED, type AppSettings } from '@/lib/settingsStore';
-import type { IntelligenceSnapshot } from '@/components/IntelligenceRail';
 import type { ConversationTurn, DecisionBlueprint, SolveRequest } from '@/lib/types';
 
 import en from '@/locales/en/common.json';
@@ -39,31 +38,16 @@ const localeLoaders: Record<string, () => Promise<Record<string, string>>> = {
   Chinese: () => import('@/locales/zh/common.json').then((m) => m.default),
 };
 
-const RailSkeleton = () => (
-  <aside className="hidden xl:flex flex-col w-72 space-y-4 ml-6">
-    {[0, 1, 2].map((item) => (
-      <div key={item} className="rounded-2xl border border-white/10 bg-[#0B1020]/50 p-6">
-        <div className="h-3 w-24 rounded-full bg-white/10" />
-        <div className="mt-6 h-16 rounded-xl bg-white/[0.04]" />
-      </div>
-    ))}
-  </aside>
-);
-
 const ResultsSkeleton = () => (
-  <div className="mt-8 w-full rounded-3xl border border-white/10 bg-[#0B1020]/70 p-6">
+  <div className="w-full rounded-2xl border border-white/10 bg-white/[0.025] p-6">
     <div className="h-3 w-32 rounded-full bg-white/10" />
-    <div className="mt-5 grid grid-cols-3 gap-3">
+    <div className="mt-5 space-y-3">
       {[0, 1, 2].map((item) => (
-        <div key={item} className="h-20 rounded-2xl bg-white/[0.04]" />
+        <div key={item} className="h-16 rounded-xl bg-white/[0.04]" />
       ))}
     </div>
   </div>
 );
-
-const IntelligenceRail = dynamic(() => import('@/components/IntelligenceRail'), {
-  loading: () => <RailSkeleton />,
-});
 
 const SimulationResults = dynamic(() => import('@/components/SimulationResults'), {
   loading: () => <ResultsSkeleton />,
@@ -73,62 +57,70 @@ const SettingsModal = dynamic(() => import('@/components/SettingsModal'), {
   loading: () => null,
 });
 
-const idleSnapshot: IntelligenceSnapshot = {
-  status: 'idle',
-  successProbability: 0,
-  downsideRisk: 0,
-  blackSwanExposure: 0,
-  recommendedPath: 'Run a simulation to unlock the recommended path.',
-  verdict: 'Awaiting decision input.',
-};
-
-const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
-
 const normalizeClientLanguage = (value?: string) => {
   const language = typeof value === 'string' && value.trim() ? value.trim() : 'en';
   return language === 'auto' ? 'en' : language;
 };
 
-function buildIntelligenceSnapshot(
-  blueprint: DecisionBlueprint | null,
-  status: IntelligenceSnapshot['status'],
-): IntelligenceSnapshot {
-  if (!blueprint) {
-    return status === 'running'
-      ? {
-          status,
-          successProbability: 42,
-          downsideRisk: 34,
-          blackSwanExposure: 28,
-          recommendedPath: 'Running scenario branches...',
-          verdict: 'Simulation is testing the obvious move against harder futures.',
-        }
-      : idleSnapshot;
-  }
+type ConcreteLanguage = Exclude<SupportedLanguage, 'auto'>;
 
-  const score = clamp(Number(blueprint.score) || 68, 0, 100);
-  const downsideRisk = clamp(100 - score + 12, 8, 82);
-  const blackSwanExposure = clamp(
-    Math.round((downsideRisk + (blueprint.paths?.bold?.cons?.length || 1) * 9) / 2),
-    6,
-    76,
-  );
-  const pathName =
-    score >= 82
-      ? 'Bold path with staged safeguards'
-      : score >= 58
-        ? 'Balanced path with explicit kill criteria'
-        : 'Safe path until evidence improves';
-
-  return {
-    status,
-    successProbability: score,
-    downsideRisk,
-    blackSwanExposure,
-    recommendedPath: pathName,
-    verdict: blueprint.recommendation || 'Proceed only after validating the core assumption.',
-  };
-}
+const languageUx: Record<ConcreteLanguage, {
+  failedGenerate: string;
+  failedAdvanced: string;
+  noBody: string;
+  deepAnalysis: string;
+  loadingDeep: string;
+  emptyDeep: string;
+}> = {
+  English: {
+    failedGenerate: 'Failed to generate response.',
+    failedAdvanced: 'Failed to generate deeper analysis.',
+    noBody: 'Failed to generate response.',
+    deepAnalysis: 'Deep analysis',
+    loadingDeep: 'Loading deep analysis...',
+    emptyDeep: 'Deep analysis will appear here once ready.',
+  },
+  German: {
+    failedGenerate: 'Antwort konnte nicht generiert werden.',
+    failedAdvanced: 'Tiefe Analyse konnte nicht generiert werden.',
+    noBody: 'Antwort konnte nicht generiert werden.',
+    deepAnalysis: 'Tiefe Analyse',
+    loadingDeep: 'Tiefe Analyse wird geladen...',
+    emptyDeep: 'Die tiefe Analyse erscheint hier, sobald sie bereit ist.',
+  },
+  Russian: {
+    failedGenerate: 'Не удалось сгенерировать ответ.',
+    failedAdvanced: 'Не удалось сгенерировать глубокий анализ.',
+    noBody: 'Не удалось сгенерировать ответ.',
+    deepAnalysis: 'Глубокий анализ',
+    loadingDeep: 'Загружаю глубокий анализ...',
+    emptyDeep: 'Глубокий анализ появится здесь, когда будет готов.',
+  },
+  Arabic: {
+    failedGenerate: 'تعذر إنشاء الرد.',
+    failedAdvanced: 'تعذر إنشاء التحليل العميق.',
+    noBody: 'تعذر إنشاء الرد.',
+    deepAnalysis: 'تحليل عميق',
+    loadingDeep: 'جار تحميل التحليل العميق...',
+    emptyDeep: 'سيظهر التحليل العميق هنا عندما يكون جاهزًا.',
+  },
+  Spanish: {
+    failedGenerate: 'No se pudo generar la respuesta.',
+    failedAdvanced: 'No se pudo generar el análisis profundo.',
+    noBody: 'No se pudo generar la respuesta.',
+    deepAnalysis: 'Análisis profundo',
+    loadingDeep: 'Cargando análisis profundo...',
+    emptyDeep: 'El análisis profundo aparecerá aquí cuando esté listo.',
+  },
+  Chinese: {
+    failedGenerate: '无法生成回复。',
+    failedAdvanced: '无法生成深度分析。',
+    noBody: '无法生成回复。',
+    deepAnalysis: '深度分析',
+    loadingDeep: '正在加载深度分析...',
+    emptyDeep: '深度分析准备好后会显示在这里。',
+  },
+};
 
 export default function HomeExperience() {
   const [thread, setThread] = useState<ConversationTurn[]>([]);
@@ -141,7 +133,7 @@ export default function HomeExperience() {
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [locales, setLocales] = useState<LocaleDictionary>(initialLocales);
   const [latestBlueprint, setLatestBlueprint] = useState<DecisionBlueprint | null>(null);
-  const [intelligence, setIntelligence] = useState<IntelligenceSnapshot>(idleSnapshot);
+  const [activeLanguage, setActiveLanguage] = useState<ConcreteLanguage>(() => readSettings().language.uiLanguage);
   const [resetKey, setResetKey] = useState(0);
   const fetchGenRef = useRef(0);
 
@@ -181,7 +173,9 @@ export default function HomeExperience() {
 
   const interfaceLanguage = settings.language.uiLanguage;
   const t = locales[interfaceLanguage as string] || locales.English;
-  const copy = uiCopy[interfaceLanguage] || uiCopy.English;
+  const interfaceCopy = uiCopy[interfaceLanguage] || uiCopy.English;
+  const activeCopy = uiCopy[activeLanguage] || uiCopy[interfaceLanguage] || uiCopy.English;
+  const ux = languageUx[activeLanguage] || languageUx.English;
 
   const ensureLocale = useCallback(
     async (next: string) => {
@@ -224,9 +218,12 @@ export default function HomeExperience() {
       setLoading(true);
       setStreaming(true);
       fetchGenRef.current += 1;
+      const requestLanguage = detectInputLanguage(message, settings.language.uiLanguage);
+      const requestUx = languageUx[requestLanguage] || languageUx.English;
+      setActiveLanguage(requestLanguage);
+      void ensureLocale(requestLanguage);
 
       try {
-        const requestLanguage = detectInputLanguage(message, settings.language.uiLanguage);
         const body: SolveRequest = {
           problem: message,
           language: requestLanguage,
@@ -245,11 +242,11 @@ export default function HomeExperience() {
           body: JSON.stringify(body),
         });
 
-        if (!response.ok) throw new Error('Failed to generate solution');
+        if (!response.ok) throw new Error(requestUx.failedGenerate);
 
         // Handle streaming response
         const reader = response.body?.getReader();
-        if (!reader) throw new Error('No response body');
+        if (!reader) throw new Error(requestUx.noBody);
 
         let assistantContent = '';
         const decoder = new TextDecoder();
@@ -281,7 +278,7 @@ export default function HomeExperience() {
         // Finalize
         setStreaming(false);
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
+        const message = err instanceof Error && err.message ? err.message : requestUx.failedGenerate;
         const errorTurn: ConversationTurn = {
           id: crypto.randomUUID(),
           role: 'assistant',
@@ -295,7 +292,7 @@ export default function HomeExperience() {
         setLoading(false);
       }
     },
-    [settings.language.uiLanguage],
+    [ensureLocale, settings.language.uiLanguage],
   );
 
   const handleLoadAdvancedAnalysis = useCallback(async () => {
@@ -304,9 +301,12 @@ export default function HomeExperience() {
     setAdvancedOpen(true);
     if (latestBlueprint) return;
     setAnalysisLoading(true);
+    const requestLanguage = detectInputLanguage(latestUserMessage, settings.language.uiLanguage);
+    const requestUx = languageUx[requestLanguage] || languageUx.English;
+    setActiveLanguage(requestLanguage);
+    void ensureLocale(requestLanguage);
 
     try {
-      const requestLanguage = detectInputLanguage(latestUserMessage, settings.language.uiLanguage);
       const body: SolveRequest = {
         problem: latestUserMessage,
         language: requestLanguage,
@@ -326,20 +326,19 @@ export default function HomeExperience() {
 
       const data = await response.json();
       if (!response.ok || !data.result) {
-        throw new Error(data.error || 'Failed to fetch deeper analysis');
+        throw new Error(requestUx.failedAdvanced);
       }
 
       const blueprint = data.result as DecisionBlueprint;
-      blueprint.language = blueprint.language || 'English';
+      blueprint.language = requestLanguage;
       setLatestBlueprint(blueprint);
-      setIntelligence(buildIntelligenceSnapshot(blueprint, 'complete'));
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to load deeper analysis.';
+      const message = error instanceof Error && error.message ? error.message : requestUx.failedAdvanced;
       setAnalysisError(message);
     } finally {
       setAnalysisLoading(false);
     }
-  }, [latestBlueprint, latestUserMessage, settings.language.uiLanguage]);
+  }, [ensureLocale, latestBlueprint, latestUserMessage, settings.language.uiLanguage]);
 
   const resultKey = useMemo(
     () => `${latestUserMessage}-${latestBlueprint?.recommendation || ''}`,
@@ -374,7 +373,7 @@ export default function HomeExperience() {
           loading={loading}
           streaming={streaming}
           onSubmit={handleSubmit}
-          copy={copy}
+          copy={activeCopy}
           settings={settings}
           key={resetKey}
         />
@@ -388,7 +387,7 @@ export default function HomeExperience() {
                 className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-white/[0.06] hover:text-white"
               >
                 <Sparkles className="h-4 w-4" />
-                {analysisLoading ? 'Loading deeper analysis…' : 'Want deeper analysis?'}
+                {analysisLoading ? ux.loadingDeep : ux.deepAnalysis}
               </button>
               {analysisError && (
                 <p className="mt-2 text-sm text-rose-300">{analysisError}</p>
@@ -403,15 +402,13 @@ export default function HomeExperience() {
               <div className="mx-auto max-w-5xl space-y-6">
                 {analysisLoading && !latestBlueprint ? (
                   <div className="rounded-3xl border border-white/10 bg-white/[0.02] px-6 py-8 text-center text-sm text-slate-400">
-                    Loading deeper analysis…
+                    {ux.loadingDeep}
                   </div>
                 ) : latestBlueprint ? (
                   <>
-                    <IntelligenceRail snapshot={intelligence} />
                     <SimulationResults
                       key={resultKey}
                       result={latestBlueprint}
-                      intelligence={intelligence}
                       submittedProblem={latestUserMessage}
                       initialShowBoard={false}
                       t={t}
@@ -419,7 +416,7 @@ export default function HomeExperience() {
                   </>
                 ) : (
                   <div className="rounded-3xl border border-white/10 bg-white/[0.02] px-6 py-8 text-center text-sm text-slate-400">
-                    Deeper analysis will appear here once ready.
+                    {ux.emptyDeep}
                   </div>
                 )}
               </div>
@@ -434,7 +431,7 @@ export default function HomeExperience() {
           onClose={() => setSettingsOpen(false)}
           settings={settings}
           onSettingsChange={updateSettings}
-          copy={copy}
+          copy={interfaceCopy}
           conversations={thread}
           onDeleteHistory={handleReset}
         />
