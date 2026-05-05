@@ -4,6 +4,35 @@ This file tracks what we change, why we change it, and what we do next.
 
 ---
 
+## 2026-05-05 — Fake decision unlock monetization gate
+
+### Changed
+
+- `components/HomeExperience.tsx`: Modified `buildAssistantAnswer` to produce only the partial "pressure diagnostic" content — "The decision: [coreProblem]" and "What you're avoiding: [hiddenPain or keyRisks]". Verdict and next action are no longer included in the streamed text.
+- `components/DecisionConsole.tsx`: Added `DecisionGate` component. Pre-unlock: amber paywall block with "You're still avoiding the decision. Unlock the verdict + exact next step." and "Unlock decision — €5" button. Post-unlock: verdict + next action from `blueprint`, followed by `ExecutionPressure` (24h commitment). Replaced `<ExecutionPressure turn={turn} />` in `AssistantMessage` with `<DecisionGate turn={turn} />`.
+- `docs/specs/0008-monetization.md` (new): Full spec for the fake gate — flow, objects, tone rules, signal to watch, next steps if signal is positive.
+- `docs/specs/0001-project-overview.md`: Added `DecisionGate` to main objects. Updated logic steps to reflect the gate in the flow.
+
+### Why
+
+- Building Stripe first is premature. The gate tests one question: will users click to unlock for €5?
+- The partial response (problem + avoidance) creates enough tension to motivate the click without giving away the answer.
+- If the click rate is meaningful, the signal validates the price point and the value framing before any payment infrastructure is built.
+- Unlock state is local and resets on reload — intentional. The test is behavioral, not transactional.
+
+### Not done
+
+- No Stripe integration, no payment validation, no analytics event on click.
+- Gate does not persist across page reloads — each session starts locked.
+- No unlock rate tracking yet — observe manually.
+
+### Next
+
+- Observe: do users click? At what point in the session?
+- If yes: add Stripe €5 one-time checkout. If no: revisit the partial content framing.
+
+---
+
 ## 2026-05-05 — Core session pressure system
 
 ### Changed

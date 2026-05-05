@@ -107,14 +107,6 @@ function readableThreadTitle(message: string): string {
   return title.length > 42 ? `${title.slice(0, 42)}...` : title;
 }
 
-const conciseLabels: Record<string, { verdict: string; why: string; next: string; score: string; identity: string; pattern: string; follow: string; ignore: string; deadline: string }> = {
-  English: { verdict: 'Verdict', why: 'Why', next: 'Do this next', score: 'Score', identity: 'Identity', pattern: 'Pattern', follow: 'You follow through', ignore: 'You ignore your own rules', deadline: 'Deadline' },
-  Russian: { verdict: 'Вердикт', why: 'Почему', next: 'Сделай дальше', score: 'Оценка', identity: 'Идентичность', pattern: 'Паттерн', follow: 'Ты доводишь до конца', ignore: 'Ты игнорируешь свои правила', deadline: 'Дедлайн' },
-  German: { verdict: 'Urteil', why: 'Warum', next: 'Als Nächstes tun', score: 'Score', identity: 'Identität', pattern: 'Muster', follow: 'Du setzt konsequent um', ignore: 'Du ignorierst deine eigenen Regeln', deadline: 'Frist' },
-  Spanish: { verdict: 'Veredicto', why: 'Por qué', next: 'Haz esto ahora', score: 'Puntuación', identity: 'Identidad', pattern: 'Patrón', follow: 'Cumples lo que decides', ignore: 'Ignoras tus propias reglas', deadline: 'Fecha límite' },
-  Arabic: { verdict: 'الحكم', why: 'السبب', next: 'افعل هذا الآن', score: 'النتيجة', identity: 'الهوية', pattern: 'النمط', follow: 'أنت تلتزم بالتنفيذ', ignore: 'أنت تتجاهل قواعدك', deadline: 'الموعد النهائي' },
-  Chinese: { verdict: '结论', why: '原因', next: '下一步', score: '分数', identity: '身份', pattern: '模式', follow: '你会执行到底', ignore: '你忽视自己的规则', deadline: '截止时间' },
-};
 
 function oneLine(value: string | undefined, max = 150): string {
   const text = (value || '').replace(/\s+/g, ' ').trim();
@@ -131,24 +123,16 @@ function actionText(blueprint: DecisionBlueprint, language: string): string {
 }
 
 function buildAssistantAnswer(blueprint: DecisionBlueprint): string {
-  const language = blueprint.language || 'English';
-  const labels = conciseLabels[language] || conciseLabels.English;
-  const verdict = oneLine(blueprint.recommendation || 'Decision analysis completed.', 150);
-  const why = [
-    oneLine(blueprint.diagnosis?.coreProblem, 110),
-    oneLine(blueprint.diagnosis?.keyRisks || blueprint.skepticView?.whatCouldBreak, 110),
-  ].filter(Boolean).slice(0, 2);
-  const score = typeof blueprint.confidenceScore === 'number' || typeof blueprint.score === 'number'
-    ? `${labels.score}: ${blueprint.confidenceScore ?? blueprint.score}/100`
-    : '';
-  const next = actionText(blueprint, language);
-
+  const coreProblem = oneLine(blueprint.diagnosis?.coreProblem, 150);
+  const avoiding = oneLine(
+    blueprint.hiddenPain ||
+    blueprint.diagnosis?.keyRisks ||
+    blueprint.skepticView?.whatCouldBreak,
+    150,
+  );
   return [
-    score,
-    `${labels.verdict}: ${verdict}`,
-    why.length ? `${labels.why}: ${why.join(' ')}` : '',
-    `${labels.next}: ${next || verdict}`,
-    `${labels.deadline}: 24h`,
+    coreProblem ? `The decision: ${coreProblem}` : '',
+    avoiding ? `What you're avoiding: ${avoiding}` : '',
   ].filter(Boolean).join('\n');
 }
 

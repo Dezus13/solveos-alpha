@@ -19,15 +19,19 @@
 - Action: required next step after the Verdict.
 - UserState: behavior record used by the Identity Engine and Pressure Layer.
 - Decision Journal: saved list of past Decisions.
+- DecisionGate: paywall component that hides the Verdict and Action until the user unlocks. Fake gate — no real payment yet. Tests willingness to pay.
 
 ## 4. Logic (step-by-step)
 
 1. User enters a Decision.
 2. System checks the input.
-3. System generates a Verdict.
-4. System creates an Action.
-5. System saves the Decision.
-6. System tracks the Action.
+3. System generates a Verdict and Action (full blueprint, always computed).
+4. System streams a partial response: the problem and what the user is avoiding. Verdict and Action are NOT shown yet.
+5. DecisionGate renders below the partial response: "You're still avoiding the decision. Unlock the verdict + exact next step."
+6. User clicks "Unlock decision — €5" → gate opens (local state, no real payment).
+7. System shows Verdict, exact next Action, and 24h commitment button.
+8. System saves the Decision.
+9. System tracks the Action.
 7. System updates UserState.
 
 ## 5. How all parts connect

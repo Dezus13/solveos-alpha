@@ -236,6 +236,55 @@ function ExecutionPressure({ turn }: { turn: ConversationTurn }) {
   );
 }
 
+function DecisionGate({ turn }: { turn: ConversationTurn }) {
+  const [unlocked, setUnlocked] = useState(false);
+  const blueprint = turn.blueprint;
+  if (!blueprint) return null;
+
+  const verdict = blueprint.recommendation || '';
+  const action = actionFromTurn(turn);
+
+  if (!unlocked) {
+    return (
+      <div className="mt-3 rounded-xl border border-amber-400/20 bg-amber-400/[0.03] px-4 py-4">
+        <p className="text-sm font-semibold text-slate-200">
+          You&apos;re still avoiding the decision.
+        </p>
+        <p className="mt-1 text-[13px] leading-relaxed text-slate-400">
+          Unlock the verdict + exact next step.
+        </p>
+        <button
+          type="button"
+          onClick={() => setUnlocked(true)}
+          className="mt-4 rounded-xl border border-amber-400/30 bg-amber-400/[0.1] px-5 py-2.5 text-[11px] font-black uppercase tracking-widest text-amber-200 transition-colors hover:bg-amber-400/[0.18]"
+        >
+          Unlock decision — €5
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 space-y-2">
+      <div className="rounded-xl border border-emerald-500/15 bg-emerald-500/[0.04] px-4 py-3">
+        <div className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-emerald-400">
+          Verdict
+        </div>
+        <div className="text-sm font-semibold leading-snug text-white">{verdict}</div>
+        {action && (
+          <>
+            <div className="mb-1.5 mt-3 text-[10px] font-black uppercase tracking-widest text-slate-500">
+              Do this next
+            </div>
+            <div className="text-sm leading-snug text-slate-200">{action}</div>
+          </>
+        )}
+      </div>
+      <ExecutionPressure turn={turn} />
+    </div>
+  );
+}
+
 function AssistantMessage({ turn, isLatest, copy, onSaveDecision }: {
   turn: ConversationTurn;
   isLatest: boolean;
@@ -281,7 +330,7 @@ function AssistantMessage({ turn, isLatest, copy, onSaveDecision }: {
             <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-purple-300 align-middle" />
           )}
         </div>
-        {turn.blueprint && (!isLatest || streamed === turn.content) && <ExecutionPressure turn={turn} />}
+        {turn.blueprint && (!isLatest || streamed === turn.content) && <DecisionGate turn={turn} />}
         <div className="mt-2 flex items-center gap-1.5 text-slate-500">
           <button
             type="button"
