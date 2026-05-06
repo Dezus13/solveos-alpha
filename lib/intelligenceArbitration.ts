@@ -3,6 +3,7 @@ import type { RestraintAssessment } from './restraintIntelligence';
 import type { SessionPressureLevel } from './pressureEngine';
 import type { RecommendationFirmness, TrustCalibration } from './trustCalibration';
 import type { MemoryDecayAssessment } from './memoryDecay';
+import type { IntentAssessment } from './intentDifferentiation';
 
 type PriorityCategory = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
 type PressureGovernor = 'MINIMAL' | 'LOW' | 'MODERATE' | 'HIGH';
@@ -27,7 +28,8 @@ type ArbitrationSignalName =
   | 'execution readiness'
   | 'recovery'
   | 'low confidence'
-  | 'high-stakes caution';
+  | 'high-stakes caution'
+  | 'intent ambiguity';
 
 type Suppression =
   | 'deep analysis'
@@ -63,6 +65,7 @@ interface ArbitrationInput {
   hasContradictionSignal: boolean;
   hasNarrativeSignal: boolean;
   hasCompressionSignal: boolean;
+  intentAssessment?: IntentAssessment;
 }
 
 export interface ArbitrationContract {
@@ -242,6 +245,16 @@ function collectSignals(input: ArbitrationInput): ArbitrationSignal[] {
     });
   }
 
+  if (input.intentAssessment?.intentConfidence === 'LOW') {
+    const reasons = input.intentAssessment.ambiguityReasons;
+    addSignal(signals, {
+      name: 'intent ambiguity',
+      priority: 'HIGH',
+      weight: 74,
+      evidence: `Intent confidence is LOW${reasons.length ? `: ${reasons.slice(0, 2).join('; ')}` : ''}. Avoid strong diagnosis.`,
+    });
+  }
+
   addSignal(signals, {
     name: 'stylistic optimization',
     priority: 'LOW',
@@ -343,6 +356,10 @@ export function arbitrateIntelligence(input: ArbitrationInput): ArbitrationContr
     suppressionList.push('high-certainty recommendation', 'aggressive challenge', 'rapid escalation');
     rationale.push('Low confidence wins because the evidence does not justify strong claims.');
   }
+  if (dominantState === 'intent ambiguity' || input.intentAssessment?.intentConfidence === 'LOW') {
+    suppressionList.push('high-certainty recommendation', 'aggressive challenge');
+    rationale.push('Intent ambiguity suppresses strong diagnosis — working assumption replaces confident classification.');
+  }
   if (dominantState === 'high-stakes caution') {
     suppressionList.push('high-certainty recommendation', 'rapid escalation', 'hype amplification');
     rationale.push('High-stakes caution wins because downside and verification matter more than force.');
@@ -419,7 +436,7 @@ export function arbitrateIntelligence(input: ArbitrationInput): ArbitrationContr
     explorationAllowance,
     challengeIntensity,
     recommendationFirmness: input.trust.recommendationFirmness,
-    shouldAskQuestion: input.trust.shouldAskQuestion && input.restraint.level !== 'minimal',
+    shouldAskQuestion: (input.trust.shouldAskQuestion || input.intentAssessment?.intentConfidence === 'LOW') && input.restraint.level !== 'minimal',
     allowMemory,
     allowPatternInsight: input.restraint.allowPatternInsight && depthLevel !== 'short',
     allowContradiction,

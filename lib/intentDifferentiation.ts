@@ -9,6 +9,17 @@ export type IntentFamily =
   | 'strategic_risk'
   | 'standard';
 
+export type IntentConfidence = 'HIGH' | 'MEDIUM' | 'LOW';
+
+export interface IntentAssessment {
+  primaryIntent: IntentFamily;
+  secondaryIntent: IntentFamily | null;
+  intentConfidence: IntentConfidence;
+  ambiguityReasons: string[];
+  primaryMatchCount: number;
+  secondaryMatchCount: number;
+}
+
 interface FamilyLens {
   lens: string;
   leverage: string;
@@ -63,6 +74,8 @@ const FAMILY_LENS: Record<IntentFamily, FamilyLens> = {
   },
 };
 
+// ─── Pattern definitions ──────────────────────────────────────────────────────
+
 const PROCRASTINATION_PATTERNS = [
   /\bwhy am i procrastinat/i,
   /\bprocrastinat/i,
@@ -73,6 +86,8 @@ const PROCRASTINATION_PATTERNS = [
   /\bstalling\b/i,
   /\bkeep postponing\b/i,
   /\bkeep (?:finding )?excuses\b/i,
+  /\bwhy (?:do i|am i) (?:keep )?delay(?:ing)?\b/i,
+  /\bkeep changing (?:my )?(?:mind|ideas?|direction)\b/i,
 ];
 
 const UNCERTAINTY_PATTERNS = [
@@ -157,6 +172,7 @@ const EMOTIONAL_OVERLOAD_PATTERNS = [
   /\bno (?:energy|capacity|bandwidth) (?:left|for)\b/i,
   /\bcan'?t think (?:straight|clearly)\b/i,
   /\bmentally (?:drained|exhausted|done)\b/i,
+  /\btired but\b/i,
 ];
 
 const STRATEGIC_RISK_PATTERNS = [
@@ -171,41 +187,117 @@ const STRATEGIC_RISK_PATTERNS = [
   /\bexposure (?:too|is) (?:high|large|big)\b/i,
 ];
 
-function matchesAny(text: string, patterns: RegExp[]): boolean {
-  return patterns.some((p) => p.test(text));
+const ALL_FAMILY_PATTERNS: Array<[IntentFamily, RegExp[]]> = [
+  ['procrastination', PROCRASTINATION_PATTERNS],
+  ['fear', FEAR_PATTERNS],
+  ['emotional_overload', EMOTIONAL_OVERLOAD_PATTERNS],
+  ['execution_failure', EXECUTION_FAILURE_PATTERNS],
+  ['confusion', CONFUSION_PATTERNS],
+  ['uncertainty', UNCERTAINTY_PATTERNS],
+  ['strategic_risk', STRATEGIC_RISK_PATTERNS],
+  ['lack_of_clarity', LACK_OF_CLARITY_PATTERNS],
+];
+
+// ─── Scoring ──────────────────────────────────────────────────────────────────
+
+interface FamilyScore {
+  family: IntentFamily;
+  score: number;
 }
 
+function countPatternMatches(text: string, patterns: RegExp[]): number {
+  return patterns.filter((p) => p.test(text)).length;
+}
+
+function rankFamilies(problem: string): FamilyScore[] {
+  return ALL_FAMILY_PATTERNS.map(([family, patterns]) => ({
+    family,
+    score: countPatternMatches(problem, patterns),
+  }))
+    .filter(({ score }) => score > 0)
+    .sort((a, b) => b.score - a.score);
+}
+
+function computeConfidence(
+  ranked: FamilyScore[],
+  wordCount: number,
+): IntentConfidence {
+  if (ranked.length === 0) return 'LOW';
+
+  const top = ranked[0];
+  const second = ranked[1];
+
+  if (wordCount <= 4) return 'LOW';
+
+  // HIGH: strong unambiguous match
+  if (top.score >= 3) return 'HIGH';
+  if (top.score >= 2 && (!second || top.score >= second.score * 2)) return 'HIGH';
+
+  // LOW: competing signals or weak single match
+  if (second && second.score >= top.score) return 'LOW';
+  if (ranked.length >= 3) return 'LOW';
+  if (top.score === 1 && wordCount <= 8) return 'LOW';
+
+  return 'MEDIUM';
+}
+
+function computeAmbiguityReasons(
+  ranked: FamilyScore[],
+  wordCount: number,
+  confidence: IntentConfidence,
+): string[] {
+  if (confidence === 'HIGH') return [];
+  const reasons: string[] = [];
+
+  if (wordCount <= 4) reasons.push('question is too short to infer clear intent');
+  if (ranked.length === 0) reasons.push('no specific intent patterns matched');
+  if (ranked.length >= 2 && ranked[1].score >= 1) {
+    reasons.push(`competing intent: "${ranked[1].family.replace('_', ' ')}" signals also present`);
+  }
+  if (ranked.length >= 3) reasons.push('three or more intent families active simultaneously');
+  if (ranked[0]?.score === 1 && wordCount > 8) {
+    reasons.push('single keyword match — intent inferred, not confirmed');
+  }
+  if (confidence === 'LOW' && ranked.length === 0) {
+    reasons.push('insufficient specificity to classify intent reliably');
+  }
+  return reasons;
+}
+
+// ─── Public assessment API ────────────────────────────────────────────────────
+
+export function assessIntent(problem: string): IntentAssessment {
+  const wordCount = problem.trim().split(/\s+/).filter(Boolean).length;
+  const ranked = rankFamilies(problem);
+  const primaryFamily: IntentFamily = ranked[0]?.family ?? 'standard';
+  const secondaryFamily: IntentFamily | null = ranked[1]?.family ?? null;
+  const confidence = computeConfidence(ranked, wordCount);
+  const ambiguityReasons = computeAmbiguityReasons(ranked, wordCount, confidence);
+
+  return {
+    primaryIntent: primaryFamily,
+    secondaryIntent: secondaryFamily,
+    intentConfidence: confidence,
+    ambiguityReasons,
+    primaryMatchCount: ranked[0]?.score ?? 0,
+    secondaryMatchCount: ranked[1]?.score ?? 0,
+  };
+}
+
+// Backwards-compatible fast-path for semantic-guards
 export function classifyIntentFamily(problem: string): IntentFamily {
-  if (matchesAny(problem, PROCRASTINATION_PATTERNS)) return 'procrastination';
-  if (matchesAny(problem, FEAR_PATTERNS)) return 'fear';
-  if (matchesAny(problem, EMOTIONAL_OVERLOAD_PATTERNS)) return 'emotional_overload';
-  if (matchesAny(problem, EXECUTION_FAILURE_PATTERNS)) return 'execution_failure';
-  if (matchesAny(problem, CONFUSION_PATTERNS)) return 'confusion';
-  if (matchesAny(problem, UNCERTAINTY_PATTERNS)) return 'uncertainty';
-  if (matchesAny(problem, STRATEGIC_RISK_PATTERNS)) return 'strategic_risk';
-  if (matchesAny(problem, LACK_OF_CLARITY_PATTERNS)) return 'lack_of_clarity';
-  return 'standard';
+  return assessIntent(problem).primaryIntent;
 }
 
 export function classifySecondaryIntentFamily(
   problem: string,
-  primary: IntentFamily
+  primary: IntentFamily,
 ): IntentFamily | null {
-  const candidates: Array<[IntentFamily, RegExp[]]> = [
-    ['procrastination', PROCRASTINATION_PATTERNS],
-    ['fear', FEAR_PATTERNS],
-    ['emotional_overload', EMOTIONAL_OVERLOAD_PATTERNS],
-    ['execution_failure', EXECUTION_FAILURE_PATTERNS],
-    ['confusion', CONFUSION_PATTERNS],
-    ['uncertainty', UNCERTAINTY_PATTERNS],
-    ['strategic_risk', STRATEGIC_RISK_PATTERNS],
-    ['lack_of_clarity', LACK_OF_CLARITY_PATTERNS],
-  ];
-  for (const [family, patterns] of candidates) {
-    if (family !== primary && matchesAny(problem, patterns)) return family;
-  }
-  return null;
+  const ranked = rankFamilies(problem);
+  return ranked.find((r) => r.family !== primary)?.family ?? null;
 }
+
+// ─── Semantic response memory ─────────────────────────────────────────────────
 
 export interface SemanticResponsePattern {
   frameType: IntentFamily | string;
@@ -260,7 +352,7 @@ function detectFramingKeywordFromContent(content: string): string {
 }
 
 export function extractRecentSemanticPatterns(
-  history: Array<{ role: string; content: string }>
+  history: Array<{ role: string; content: string }>,
 ): SemanticResponsePattern[] {
   return history
     .filter((t) => t.role === 'assistant' && t.content.trim())
@@ -274,18 +366,13 @@ export function extractRecentSemanticPatterns(
 
 function buildDiversityEnforcementNote(
   family: IntentFamily,
-  recentPatterns: SemanticResponsePattern[]
+  recentPatterns: SemanticResponsePattern[],
 ): string {
   if (recentPatterns.length === 0) return '';
-
   const last = recentPatterns[recentPatterns.length - 1];
-  const prevFrame = last.frameType;
-  const prevVerdict = last.verdictClass;
-  const prevKeyword = last.framingKeyword;
-
-  const sameFamily = prevFrame === family;
+  const sameFamily = last.frameType === family;
   const sameVerdict =
-    prevVerdict === 'Reversible Experiment' &&
+    last.verdictClass === 'Reversible Experiment' &&
     recentPatterns.filter((p) => p.verdictClass === 'Reversible Experiment').length >= 2;
 
   if (!sameFamily && !sameVerdict) return '';
@@ -293,150 +380,231 @@ function buildDiversityEnforcementNote(
   const lines = ['RESPONSE DIVERSITY ENFORCEMENT:'];
   if (sameFamily) {
     lines.push(
-      `The previous response used "${prevFrame}" framing${prevKeyword ? ` (keyword: "${prevKeyword}")` : ''}.`
+      `Previous response used "${last.frameType}" framing${last.framingKeyword ? ` (keyword: "${last.framingKeyword}")` : ''}.`,
     );
-    lines.push('You MUST approach this response from a different diagnostic angle.');
-    lines.push('Change: the framing perspective, the diagnostic question, and the primary leverage point.');
+    lines.push('Approach this response from a different diagnostic angle.');
+    lines.push('Change the framing perspective, the diagnostic question, and the primary leverage point.');
   }
   if (sameVerdict) {
     lines.push(
-      `"${prevVerdict}" has appeared in ${recentPatterns.filter((p) => p.verdictClass === prevVerdict).length} consecutive responses.`
+      `"Reversible Experiment" appeared in ${recentPatterns.filter((p) => p.verdictClass === 'Reversible Experiment').length} consecutive responses.`,
     );
-    lines.push('Select a different verdict class unless there is overwhelming evidence for the same one.');
-    lines.push('Consider: Delay (evidence gap), Full Commit (clear upside), or Kill The Idea (fatal flaw).');
+    lines.push('Select a different verdict class unless evidence overwhelmingly supports the same one.');
   }
   lines.push('Do not repeat the same strategic template even if the topic is similar.');
   return lines.join('\n');
 }
 
-export function buildIntentDifferentiationInstruction(
-  problem: string,
-  conversationHistory: Array<{ role: string; content: string }>
+// ─── Mixed-intent routing ─────────────────────────────────────────────────────
+
+type MixedPair = `${IntentFamily}+${IntentFamily}`;
+
+function makePairKey(a: IntentFamily, b: IntentFamily): MixedPair {
+  return [a, b].sort().join('+') as MixedPair;
+}
+
+const MIXED_INTENT_ROUTING: Partial<Record<MixedPair, string>> = {
+  'fear+procrastination': [
+    'MIXED INTENT: EXECUTION FRICTION + FEAR',
+    'Both are active. The friction blocking action is fear-based.',
+    'Combined lens: the first step is blocked by a specific feared outcome, not an unclear task.',
+    'Answer structure: (1) name what is feared specifically, (2) assess whether that fear is rational or inflated, (3) name the one unblocking action once the fear is sized.',
+    'Do not treat these as separate — resolve the fear to unlock the action.',
+  ].join('\n'),
+
+  'lack_of_clarity+uncertainty': [
+    'MIXED INTENT: TRAJECTORY UNCERTAINTY + PRIORITY CONFUSION',
+    'Both are active. Measuring ROI requires knowing what outcome is being tracked.',
+    'Combined lens: before assessing whether effort is compounding, define the one metric that would confirm value.',
+    'Answer structure: (1) identify what the user is actually trying to achieve, (2) name the one signal that proves forward motion, (3) then assess ROI against that signal.',
+    'Do not assess trajectory without first compressing to the right output definition.',
+  ].join('\n'),
+
+  'emotional_overload+execution_failure': [
+    'MIXED INTENT: LOAD OVERLOAD + EXECUTION BREAKDOWN',
+    'Both are active. The system is failing because capacity is exhausted, not because the plan is wrong.',
+    'Combined lens: execution is structurally broken by overload.',
+    'Answer structure: (1) identify what is consuming capacity, (2) name what to stop or defer, (3) then and only then locate the execution barrier.',
+    'Do not fix the execution structure while the load remains unmanaged.',
+  ].join('\n'),
+
+  'confusion+fear': [
+    'MIXED INTENT: DECISION PARALYSIS + FEAR',
+    'Both are active. The confusion may be manufactured by fear of the decision itself.',
+    'Combined lens: compress to the one choice fear is avoiding.',
+    'Answer structure: (1) name what the user is avoiding deciding, (2) price the feared downside, (3) give the compressed binary that bypasses the noise.',
+    'Do not expand options — the confusion is a symptom, not the root problem.',
+  ].join('\n'),
+
+  'strategic_risk+uncertainty': [
+    'MIXED INTENT: RISK EXPOSURE + TRAJECTORY DOUBT',
+    'Both are active. These are the same question at different time horizons.',
+    'Combined lens: the trajectory question and the risk question resolve together.',
+    'Answer structure: (1) name the actual downside exposure limit, (2) name the ROI signal that justifies continued exposure, (3) give the threshold that flips the verdict.',
+    'Risk and trajectory are not separate concerns here — size the risk against the expected return.',
+  ].join('\n'),
+
+  'procrastination+lack_of_clarity': [
+    'MIXED INTENT: EXECUTION FRICTION + PRIORITY CONFUSION',
+    'Both are active. The first action is blocked because the priority is unclear.',
+    'Combined lens: clarify the priority to unlock the first step.',
+    'Answer structure: (1) force-rank to one priority, (2) name the first physical action under that priority, (3) nothing else until that action is complete.',
+    'Do not diagnose friction without first establishing which task should be acted on.',
+  ].join('\n'),
+};
+
+function buildMixedIntentNote(
+  primary: IntentFamily,
+  secondary: IntentFamily,
+  primaryCount: number,
+  secondaryCount: number,
 ): string {
-  const family = classifyIntentFamily(problem);
-  if (family === 'standard') return '';
+  if (primaryCount < 1 || secondaryCount < 1) return '';
+  if (secondaryCount < primaryCount - 1) return '';
 
-  const secondary = classifySecondaryIntentFamily(problem, family);
-  const recentPatterns = extractRecentSemanticPatterns(conversationHistory);
-  const lens = FAMILY_LENS[family];
-  const diversityNote = buildDiversityEnforcementNote(family, recentPatterns);
+  const key = makePairKey(primary, secondary);
+  return MIXED_INTENT_ROUTING[key] ?? '';
+}
 
-  const lines: string[] = [
-    'SEMANTIC INTENT DIFFERENTIATION:',
-    `Primary intent: ${family.replace('_', ' ').toUpperCase()}`,
-    `Diagnostic lens: ${lens.lens}`,
-    `Leverage point: ${lens.leverage}`,
-    `Framing question: ${lens.frame}`,
+// ─── Confidence-aware instruction builder ─────────────────────────────────────
+
+function buildLowConfidenceSection(assessment: IntentAssessment): string {
+  const lines = [
+    'INTENT AMBIGUITY — LOW CONFIDENCE:',
+    `Working assumption: ${assessment.primaryIntent === 'standard' ? 'general decision question' : assessment.primaryIntent.replace('_', ' ')}.`,
   ];
+  if (assessment.ambiguityReasons.length > 0) {
+    lines.push(`Ambiguity signals: ${assessment.ambiguityReasons.join('; ')}.`);
+  }
+  lines.push(
+    'Behavior: avoid strong diagnosis or confident framing.',
+    'Give a practical provisional answer based on the working assumption.',
+    'If one clarifying question would unlock a significantly better answer, ask it — but only one, and only if truly necessary.',
+    'Do not label the user\'s emotional state or over-interpret sparse input.',
+  );
+  return lines.join('\n');
+}
 
-  if (secondary) {
-    const sl = FAMILY_LENS[secondary];
+function buildMediumConfidenceSection(assessment: IntentAssessment): string {
+  const lens = FAMILY_LENS[assessment.primaryIntent];
+  const lines = [
+    'INTENT CLASSIFICATION — MEDIUM CONFIDENCE:',
+    `Primary intent (assumed): ${assessment.primaryIntent.replace('_', ' ').toUpperCase()}`,
+    `Diagnostic lens: ${lens.lens}`,
+    `Working assumption: this is likely a ${lens.lens} question.`,
+  ];
+  if (assessment.secondaryIntent) {
     lines.push(
-      `Secondary intent: ${secondary.replace('_', ' ').toUpperCase()} — use ${sl.lens} as a supporting layer only.`
+      `Secondary signal also present: ${assessment.secondaryIntent.replace('_', ' ')} — acknowledge if directly relevant.`,
     );
   }
+  lines.push(
+    'Behavior: state the working assumption naturally in one phrase. Answer based on it.',
+    'Avoid overconfident diagnostic framing. Prefer grounded, provisional phrasing.',
+    'Example: "If the core issue is..." or "Assuming the question is about..." before the analysis.',
+  );
+  return lines.join('\n');
+}
 
-  lines.push('');
-  lines.push('INTENT-SPECIFIC ROUTING:');
-
+function buildFamilyRoutingSection(family: IntentFamily): string {
+  const lines: string[] = [];
   switch (family) {
     case 'procrastination':
       lines.push('This is an EXECUTION FRICTION problem, not a strategy question.');
       lines.push('Do NOT use generic reversible-experiment framing as the primary lens.');
-      lines.push(
-        'Diagnose: name the specific friction type (fear-of-failure, unclear-first-step, wrong-sequence, perfectionism-lock, unclear-owner).'
-      );
-      lines.push(
-        'Output: identify the friction type + the single unblocking action. No motivational framing.'
-      );
-      lines.push(
-        'The recommendation must name a concrete obstacle — not abstract "take action" advice.'
-      );
+      lines.push('Diagnose: name the friction type (fear-of-failure, unclear-first-step, wrong-sequence, perfectionism-lock, unclear-owner).');
+      lines.push('Output: friction type + single unblocking action. No motivational framing.');
       break;
-
     case 'uncertainty':
       lines.push('This is a TRAJECTORY AND ROI question.');
-      lines.push(
-        'Do NOT default to "run an experiment" unless genuine uncertainty about the path exists.'
-      );
-      lines.push(
-        'Diagnose: is current effort generating compounding signal or diminishing returns?'
-      );
-      lines.push(
-        'Output: trajectory assessment with one specific ROI indicator that confirms or refutes the path\'s value.'
-      );
-      lines.push(
-        'Include: time investment audit, opportunity cost of continuing, one measurable signal to track.'
-      );
+      lines.push('Do NOT default to "run an experiment" unless genuine path uncertainty exists.');
+      lines.push('Diagnose: is current effort generating compounding signal or diminishing returns?');
+      lines.push('Output: trajectory assessment + one measurable ROI indicator. Include opportunity cost of continuing.');
       break;
-
     case 'fear':
       lines.push('This is a DOWNSIDE CONTAINMENT question.');
       lines.push('Do NOT minimize fear or provide reassurance framing.');
-      lines.push(
-        'Diagnose: separate survivable failure modes from catastrophic ones and price each realistically.'
-      );
-      lines.push(
-        'Output: name the most likely failure mode, its actual probability, and the containment action.'
-      );
-      lines.push(
-        'Distinguish "this hurts" from "this ends you" — they require fundamentally different responses.'
-      );
+      lines.push('Diagnose: separate survivable failure modes from catastrophic ones and price each.');
+      lines.push('Distinguish "this hurts" from "this ends you" — they require fundamentally different responses.');
       break;
-
     case 'execution_failure':
       lines.push('This is an EXECUTION BARRIER question.');
       lines.push('Do NOT diagnose motivation or willpower — locate the system error.');
-      lines.push(
-        'Diagnose: sequencing error, capacity mismatch, definition-of-done problem, or environment mismatch?'
-      );
-      lines.push(
-        'Output: name the specific barrier type and the structural fix — not encouragement or general advice.'
-      );
+      lines.push('Diagnose: sequencing error, capacity mismatch, definition-of-done problem, or environment mismatch?');
+      lines.push('Output: barrier type + structural fix. Not encouragement.');
       break;
-
     case 'confusion':
       lines.push('This is a DECISION COMPRESSION question.');
       lines.push('Do NOT provide frameworks, option lists, or multi-path analysis.');
-      lines.push(
-        'Diagnose: identify the single binary question that resolves the confusion if answered.'
-      );
-      lines.push(
-        'Output: the compressed decision question, the evidence that answers it, and the fastest path to that evidence.'
-      );
-      lines.push('Compress to one discriminating factor — not a list of considerations.');
+      lines.push('Compress to the single binary question that resolves the confusion if answered.');
+      lines.push('Output: the compressed question + the evidence that answers it. One discriminating factor only.');
       break;
-
     case 'lack_of_clarity':
       lines.push('This is a PRIORITY CLARIFICATION question.');
-      lines.push('Do NOT provide a comprehensive list of everything to consider.');
-      lines.push(
-        'Diagnose: force-rank available options by asymmetric upside and irreversibility.'
-      );
-      lines.push(
-        'Output: one clear priority with the logic — and what stops mattering once that priority is set.'
-      );
+      lines.push('Do NOT provide a comprehensive list of considerations.');
+      lines.push('Force-rank by asymmetric upside and irreversibility.');
+      lines.push('Output: one clear priority + what stops mattering once that priority is set.');
       break;
-
     case 'emotional_overload':
       lines.push('This is a LOAD REDUCTION question, not a strategy question.');
       lines.push('Do NOT add more analysis, frameworks, or additional considerations.');
-      lines.push('Diagnose: what is overloading the plate and what can be dropped or deferred today.');
-      lines.push(
-        'Output: one thing to stop, one thing to defer, the minimal next move. Nothing else.'
-      );
+      lines.push('Output: one thing to stop, one thing to defer, the minimal next move. Nothing else.');
       break;
-
     case 'strategic_risk':
       lines.push('This is a RISK CALIBRATION question.');
       lines.push('Do NOT use generic risk management language.');
-      lines.push(
-        'Diagnose: separate tail risk (catastrophic, low probability) from expected variance (normal, manageable).'
-      );
-      lines.push(
-        'Output: actual exposure limit, signal that risk is materializing, and the one hedge that changes the equation.'
-      );
+      lines.push('Diagnose: separate tail risk from expected variance.');
+      lines.push('Output: actual exposure limit + signal that risk is materializing + the one hedge that changes the equation.');
       break;
+    default:
+      break;
+  }
+  return lines.join('\n');
+}
+
+export function buildIntentDifferentiationInstruction(
+  assessment: IntentAssessment,
+  conversationHistory: Array<{ role: string; content: string }>,
+): string {
+  const { primaryIntent, secondaryIntent, intentConfidence, primaryMatchCount, secondaryMatchCount } = assessment;
+
+  if (primaryIntent === 'standard' && intentConfidence === 'LOW') return '';
+
+  const recentPatterns = extractRecentSemanticPatterns(conversationHistory);
+  const diversityNote = buildDiversityEnforcementNote(primaryIntent, recentPatterns);
+  const mixedNote = secondaryIntent
+    ? buildMixedIntentNote(primaryIntent, secondaryIntent, primaryMatchCount, secondaryMatchCount)
+    : '';
+
+  const lines: string[] = ['SEMANTIC INTENT DIFFERENTIATION:'];
+
+  if (intentConfidence === 'LOW') {
+    lines.push(buildLowConfidenceSection(assessment));
+  } else if (intentConfidence === 'MEDIUM') {
+    lines.push(buildMediumConfidenceSection(assessment));
+    if (primaryIntent !== 'standard') {
+      lines.push('');
+      lines.push('INTENT-SPECIFIC ROUTING (medium confidence — apply with stated assumption):');
+      lines.push(buildFamilyRoutingSection(primaryIntent));
+    }
+  } else {
+    const lens = FAMILY_LENS[primaryIntent];
+    lines.push(`Primary intent: ${primaryIntent.replace('_', ' ').toUpperCase()}`);
+    lines.push(`Diagnostic lens: ${lens.lens}`);
+    lines.push(`Leverage point: ${lens.leverage}`);
+    lines.push(`Framing question: ${lens.frame}`);
+    if (secondaryIntent && !mixedNote) {
+      const sl = FAMILY_LENS[secondaryIntent];
+      lines.push(`Secondary intent: ${secondaryIntent.replace('_', ' ').toUpperCase()} — use ${sl.lens} as a supporting layer.`);
+    }
+    lines.push('');
+    lines.push('INTENT-SPECIFIC ROUTING:');
+    lines.push(buildFamilyRoutingSection(primaryIntent));
+  }
+
+  if (mixedNote) {
+    lines.push('');
+    lines.push(mixedNote);
   }
 
   if (diversityNote) {
@@ -444,5 +612,5 @@ export function buildIntentDifferentiationInstruction(
     lines.push(diversityNote);
   }
 
-  return lines.filter((line, i, arr) => !(line === '' && arr[i - 1] === '')).join('\n');
+  return lines.filter((line, i, arr) => !(line === '' && (i === 0 || arr[i - 1] === ''))).join('\n');
 }

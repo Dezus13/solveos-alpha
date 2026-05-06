@@ -3,7 +3,7 @@ import { saveDecision, getDecisionHistory } from '@/lib/memory';
 import { getMemoryIntelligenceFromHistory } from '@/lib/memory-graph';
 import { computeNetworkIntelligence, calibrateScore, buildCalibrationContext, computeDecisionAccuracy, computeCalibrationScore } from '@/lib/benchmarks';
 import { isPlanModeRequest, isReviewModeRequest, semanticVerdictForQuestion, shouldRejectDecisionOutput, detectVerdictLoop, buildForceDiversityInstruction, semanticVerdictExcluding, extractVerdictClass, buildIntentInstruction, enforceIntentRouting, detectSolveRequestIntent, extractLiteralOutput } from '@/lib/semantic-guards';
-import { buildIntentDifferentiationInstruction } from '@/lib/intentDifferentiation';
+import { assessIntent, buildIntentDifferentiationInstruction } from '@/lib/intentDifferentiation';
 import { detectInputLanguage } from '@/lib/i18n';
 import { buildOutcomeLearningInstruction } from '@/lib/outcomeLearning';
 import { buildLongitudinalMemoryInstruction } from '@/lib/longitudinalMemory';
@@ -1303,7 +1303,10 @@ export async function POST(req: Request) {
     }
     const diversityInstruction = bannedVerdict ? buildForceDiversityInstruction(bannedVerdict) : '';
     const intentInstruction = isReview ? '' : buildIntentInstruction(problem, conversationHistoryForGuard);
-    const intentDifferentiationInstruction = isReview ? '' : buildIntentDifferentiationInstruction(problem, conversationHistoryForGuard);
+    const intentAssessment = isReview ? undefined : assessIntent(problem);
+    const intentDifferentiationInstruction = (isReview || !intentAssessment)
+      ? ''
+      : buildIntentDifferentiationInstruction(intentAssessment, conversationHistoryForGuard);
     const basePressureLevel = isReview ? 0 : computeSessionPressureLevel(conversationHistoryForGuard);
     const conversationMemoryNote = buildConversationMemoryNote(conversationHistoryForGuard);
     const followUpInstruction = buildFollowUpInstruction(problem, conversationHistoryForGuard.length > 0);
@@ -1370,6 +1373,7 @@ export async function POST(req: Request) {
       hasContradictionSignal: Boolean(contradictionIntelligenceInstruction),
       hasNarrativeSignal: Boolean(narrativeIntelligenceInstruction),
       hasCompressionSignal: compressionIntelligenceInstruction.includes('SHORT ANSWER MODE ACTIVE'),
+      intentAssessment,
     });
     console.info('Solve pipeline: identity kernel entered');
     const { contract: kernelContract, kernel } = applyIdentityKernel(arbitration, conversationHistoryForGuard);
