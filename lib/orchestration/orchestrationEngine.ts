@@ -7,6 +7,7 @@ import type { SessionPressureLevel } from '../pressureEngine';
 import type { RestraintAssessment } from '../restraintIntelligence';
 import type { TrustCalibration } from '../trustCalibration';
 import type { PipelineInspector } from '../debug/pipelineInspector';
+import { buildSystemHealthReport, type SystemHealthReport } from '../core/architectureRules';
 
 export type OrchestrationStage =
   | 'intent routing'
@@ -108,6 +109,7 @@ export interface OrchestrationResult {
   synthesisPriority: string[];
   stageOrder: OrchestrationStage[];
   conflictNotes: string[];
+  architectureHealth: SystemHealthReport;
 }
 
 const STAGE_ORDER: OrchestrationStage[] = [
@@ -557,6 +559,7 @@ export function orchestrateSolveIntelligence(input: OrchestrationInput, inspecto
   const frame = primaryFrame(active, input);
   const depth = responseDepth(input, active);
   const risk = riskLevel(input);
+  const architectureHealth = buildSystemHealthReport();
 
   const result = {
     activeIntelligences: active,
@@ -567,7 +570,9 @@ export function orchestrateSolveIntelligence(input: OrchestrationInput, inspecto
     synthesisPriority: synthesisPriority(frame, active, input),
     stageOrder: STAGE_ORDER,
     conflictNotes,
+    architectureHealth,
   };
+  inspector?.captureSystemHealth(architectureHealth);
   inspector?.captureOrchestration(result);
   return result;
 }

@@ -1,5 +1,6 @@
 import type { OrchestrationResult } from '../orchestration/orchestrationEngine';
 import type { ResponseSynthesisResult } from '../synthesis/responseSynthesizer';
+import type { SystemHealthReport } from '../core/architectureRules';
 
 export type PipelineEventName =
   | 'intent_detected'
@@ -11,6 +12,7 @@ export type PipelineEventName =
   | 'compression_applied'
   | 'contradiction_filtered'
   | 'duplicate_prevention_triggered'
+  | 'architecture_health_checked'
   | 'final_response_generated';
 
 export interface PipelineEvent {
@@ -42,6 +44,7 @@ export interface PipelineInspectionReport {
   reasoningMetadata: Record<string, RedactedValue>;
   suppressionMetadata: Array<Record<string, RedactedValue>>;
   duplicatePreventionTriggers: string[];
+  systemHealth?: SystemHealthReport;
   events: PipelineEvent[];
 }
 
@@ -117,6 +120,7 @@ export class PipelineInspector {
   private activatedIntelligences: string[] = [];
   private suppressedIntelligences: string[] = [];
   private duplicatePreventionTriggers: string[] = [];
+  private systemHealth?: SystemHealthReport;
   private suppressionMetadata: Array<Record<string, RedactedValue>> = [];
   private reasoningMetadata: Record<string, RedactedValue> = {};
   private completedAt?: string;
@@ -219,6 +223,39 @@ export class PipelineInspector {
     });
   }
 
+  captureSystemHealth(report: SystemHealthReport): void {
+    if (!this.enabled) return;
+    this.systemHealth = report;
+    this.reasoningMetadata = {
+      ...this.reasoningMetadata,
+      systemHealth: redactRecord({
+        status: report.status,
+        scores: report.scores,
+        issueCount: report.issues.length,
+      }),
+    };
+    this.record('architecture_health_checked', 'architecture stabilization', {
+      decisions: {
+        status: report.status,
+        scores: report.scores,
+        issueCount: report.issues.length,
+        criticalIssues: report.issues.filter((item) => item.severity === 'critical').length,
+        warningIssues: report.issues.filter((item) => item.severity === 'warning').length,
+      },
+      reasoningMetadata: {
+        summary: report.summary,
+      },
+      suppressionMetadata: {
+        issues: report.issues.map((item) => ({
+          id: item.id,
+          severity: item.severity,
+          ruleId: item.ruleId,
+          modules: item.modules,
+        })),
+      },
+    });
+  }
+
   captureSynthesis(strategy: ResponseSynthesisResult): void {
     if (!this.enabled) return;
     this.synthesis = redactRecord({
@@ -295,6 +332,7 @@ export class PipelineInspector {
       reasoningMetadata: this.reasoningMetadata,
       suppressionMetadata: this.suppressionMetadata,
       duplicatePreventionTriggers: this.duplicatePreventionTriggers,
+      systemHealth: this.systemHealth,
       events: this.events,
     };
   }
