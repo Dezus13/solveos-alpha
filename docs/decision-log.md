@@ -4,6 +4,27 @@ This file tracks what we change, why we change it, and what we do next.
 
 ---
 
+## 2026-05-06 — Narrative intelligence
+
+### Changed
+
+- `lib/narrativeIntelligence.ts`: Added internal detection for recurring long-range themes, directional drift, false resets, direction instability, and dramatic-change pressure.
+- `app/api/solve/route.ts`: Injects Narrative Intelligence into the solver context alongside longitudinal memory and execution capacity.
+- `lib/memory.ts`: Adds `narrative:*` tags to high-signal stored decisions such as turning points, failures/recoveries, and unfinished pursuits.
+- `lib/prompts.ts` and `docs/specs/0005-identity-and-pressure.md`: Documented tone rules and integration constraints.
+
+### Why
+
+- SolveOS should remember trajectory, not just the last message.
+- Users often change direction abruptly, reset timelines, or escalate emotionally into bigger moves. The advisor should ask what changed and simplify when continuity matters.
+- This stays invisible: no storytelling UI, no therapist language, no profile labels.
+
+### Not done
+
+- No separate narrative memory store. The current implementation uses existing decision memory, conversation history, and internal tags.
+
+---
+
 ## 2026-05-05 — Conversation memory and context continuity
 
 ### Changed

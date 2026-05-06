@@ -5,6 +5,7 @@
 - Define the Identity Engine.
 - Define the Pressure Layer.
 - Define the Session Pressure System (in-session hesitation detection and tone escalation).
+- Define Narrative Intelligence (long-range continuity, directional shifts, false resets, and story-pressure reduction).
 
 ## 2. Where it is used
 
@@ -13,6 +14,7 @@
 - Home summary lines.
 - User profile updates.
 - AI prompt construction (session pressure directive injected per turn).
+- AI prompt construction (narrative directive injected per turn when high-signal history exists).
 
 ## 3. Main objects
 
@@ -26,6 +28,7 @@
 - PressureLine: message shown based on PressureState.
 - SessionPressureLevel: 0 (normal) | 1 (pressure) | 2 (confrontational) — computed from conversation history per request.
 - HesitationSignal: detected avoidance pattern in user messages (hedging language, short follow-ups, multiple questions, repeated turns).
+- NarrativeSignal: recurring long-range theme, directional drift, false reset, stability issue, or dramatic-change pressure detected from conversation and decision memory.
 - ActionStatus: `pending`, `done`, `blocked`, or `skipped`.
 - BlockerCategory: reason the user did not act (`fear`, `unclear`, `lazy`, `external`).
 
@@ -185,12 +188,41 @@ Detects hesitation within a single conversation session and escalates the AI res
 
 - No additional storage. Pressure is derived from `conversationHistory` sent with each request.
 
-## 11. Files involved
+## 11. Narrative Intelligence
+
+Narrative Intelligence makes SolveOS respect continuity across time without adding a storytelling UI.
+
+### What it detects
+
+| Signal | Meaning | Response effect |
+|---|---|---|
+| Recurring themes | Reinvention, escape, recovery, rebuilding, direction search, scaling pressure, avoidance, instability | Advice acknowledges the underlying direction quietly and sequences the next move |
+| Directional drift | Examples: startup -> relocation, discipline -> burnout, planning -> paralysis | Ask what changed before endorsing the new direction |
+| False reset | User acts as if prior failures, plans, constraints, or timelines disappeared | Restore continuity calmly and ask what is materially different |
+| Direction instability | Many new directions or inspiration inputs without sustained execution | Reduce expansion advice and simplify to one execution lane |
+| Dramatic-change pressure | Big-move fantasies, all-or-nothing framing, romanticized transformation | Shift toward stable leverage, compounding, consistency, and operational calm |
+
+### Memory priority
+
+High-signal narrative memories are tagged internally with `narrative:*` tags when they involve major turning points, emotional pivots, repeated ambitions, failures, recoveries, or long-term unfinished pursuits.
+
+Low-signal chatter, generic moods, and trivial events are not given narrative tags.
+
+### Tone rules
+
+- No storytelling UI.
+- No therapist language.
+- Never say "your narrative", "your arc", "identity pattern", "behavior profile", or "character arc".
+- Use at most one continuity reference per answer.
+- The answer should feel like a calm advisor remembers the trajectory, not like the app is profiling the user.
+
+## 12. Files involved
 
 - `lib/identityEngine.ts`
 - `lib/userProfile.ts`
 - `lib/actionReminders.ts`
 - `lib/pressureEngine.ts` — session pressure detection and directive building
+- `lib/narrativeIntelligence.ts` — long-range continuity and narrative pressure directive building
 - `app/api/solve/route.ts` — pressure level computed and injected per request
 - `components/DecisionConsole.tsx`
 - `components/IdentityWidget.tsx`

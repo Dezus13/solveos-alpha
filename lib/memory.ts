@@ -12,6 +12,7 @@ import {
 } from './types';
 import { computeLearningResult } from './benchmarks';
 import { buildMemoryGraph, getMemoryIntelligenceFromHistory } from './memory-graph';
+import { narrativeMemoryTags } from './narrativeIntelligence';
 
 const REVIEW_EXPIRY_DAYS = 90;
 const MEMORY_FILE = path.join(process.cwd(), 'data', 'decisions.json');
@@ -347,7 +348,7 @@ export async function saveDecision(
   entry: Omit<DecisionMemoryEntry, 'id' | 'timestamp' | 'tags' | 'similarity'>
 ) {
   return withMemoryWrite(async history => {
-    const tags = extractTags(entry.problem, entry.context);
+    const tags = extractMemoryTags(entry.problem, entry.context, entry.blueprint);
     const timestamp = new Date().toISOString();
 
     const newEntry = applyMemorySnapshotFields({
@@ -376,7 +377,7 @@ export async function saveDecisionSnapshot(
     const existing = history.find(e => e.id === entry.id);
     if (existing) return existing;
 
-    const tags = extractTags(entry.problem, entry.context);
+    const tags = extractMemoryTags(entry.problem, entry.context, entry.blueprint);
     const timestamp = entry.createdAt || new Date().toISOString();
     const newEntry = applyMemorySnapshotFields({
       ...entry,
@@ -687,6 +688,13 @@ function extractTags(problem: string, context?: DecisionContext): string[] {
   }
 
   return Array.from(tags);
+}
+
+function extractMemoryTags(problem: string, context?: DecisionContext, blueprint?: DecisionMemoryEntry['blueprint']): string[] {
+  return Array.from(new Set([
+    ...extractTags(problem, context),
+    ...narrativeMemoryTags(problem, blueprint),
+  ]));
 }
 
 /**
