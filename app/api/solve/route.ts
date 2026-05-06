@@ -17,6 +17,7 @@ import { assessMemoryDecay, buildMemoryDecayInstruction } from '@/lib/memoryDeca
 import { applyIdentityKernel, buildIdentityKernelInstruction } from '@/lib/identityKernel';
 import { runSelfEvaluationStage } from '@/lib/selfEvaluation';
 import { orchestrateSolveIntelligence, buildOrchestrationInstruction } from '@/lib/orchestration/orchestrationEngine';
+import { synthesizeResponseStrategy, buildResponseSynthesisInstruction } from '@/lib/synthesis/responseSynthesizer';
 import { buildProfileDirective, applyProfileAdjustments, scoreMessageFor } from '@/lib/profileEngine';
 import { computeSessionPressureLevel, buildPressureDirective } from '@/lib/pressureEngine';
 import type { CouncilMetrics, CounterfactualPath, DecisionBlueprint, DecisionContext, ExecutionPlanWeek, MilestoneMetric, MilestoneStatus, PreMortemRisk, ScenarioBranch, SecondOrderEffect, SolveRequest, SolveResponse, UserProfileData, WarRoomDebate } from '@/lib/types';
@@ -1409,6 +1410,8 @@ export async function POST(req: Request) {
       selfEvaluationEligible: !selfEvaluationStage.adjustments?.bypassed,
     });
     const orchestrationInstruction = buildOrchestrationInstruction(orchestration);
+    const responseSynthesis = synthesizeResponseStrategy(orchestration);
+    const responseSynthesisInstruction = buildResponseSynthesisInstruction(responseSynthesis);
     if (pressureLevel > 0) {
       console.info('Pressure mode active:', {
         pressureLevel,
@@ -1434,8 +1437,9 @@ export async function POST(req: Request) {
       streaming,
       selfEvaluationBypassed: Boolean(selfEvaluationStage.adjustments?.bypassed),
       orchestrationFrame: orchestration.primaryFrame,
+      synthesisMode: responseSynthesis.selectedMode,
     }));
-    const conversationContext = [identityKernelInstruction, arbitrationInstruction, orchestrationInstruction, selfEvaluationInstruction, memoryDecayInstruction, trustCalibrationInstruction, restraintIntelligenceInstruction, energyStateInstruction, finalPersistentMemoryInstruction, finalLongitudinalMemoryInstruction, finalNarrativeIntelligenceInstruction, finalOutcomeLearningInstruction, conversationMemoryNote, followUpInstruction, finalFirstResponseQualityInstruction, compressionIntelligenceInstruction, conversationalFlowInstruction, finalStrategicArchitectureInstruction, finalContradictionIntelligenceInstruction, executionCapacityInstructionWithHistory, adaptiveResponseInstruction, finalStrategicToolInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, intentDifferentiationInstruction, pressureDirective]
+    const conversationContext = [identityKernelInstruction, arbitrationInstruction, orchestrationInstruction, responseSynthesisInstruction, selfEvaluationInstruction, memoryDecayInstruction, trustCalibrationInstruction, restraintIntelligenceInstruction, energyStateInstruction, finalPersistentMemoryInstruction, finalLongitudinalMemoryInstruction, finalNarrativeIntelligenceInstruction, finalOutcomeLearningInstruction, conversationMemoryNote, followUpInstruction, finalFirstResponseQualityInstruction, compressionIntelligenceInstruction, conversationalFlowInstruction, finalStrategicArchitectureInstruction, finalContradictionIntelligenceInstruction, executionCapacityInstructionWithHistory, adaptiveResponseInstruction, finalStrategicToolInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, intentDifferentiationInstruction, pressureDirective]
       .filter(Boolean)
       .join('\n\n')
       .trim();
