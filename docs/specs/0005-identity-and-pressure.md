@@ -499,7 +499,59 @@ Suppress phrases such as "life-changing", "powerful", "incredible insight", "you
 
 Prefer grounded, useful, practical, precise, stable wording.
 
-## 18. Files involved
+## 18. Bounded Self-Evaluation
+
+Bounded Self-Evaluation is the final private quality-control layer before output. It is not visible self-critique and does not expose chain-of-thought.
+
+### Checks
+
+It watches for:
+
+- fluff
+- repeated ideas
+- fake certainty
+- generic consultant phrasing
+- emotional over-framing
+- excessive length
+- weak actionable value
+- over-analysis
+- pacing mismatch
+- identity kernel violations
+
+### Scoring
+
+The scoring dimensions are internal only:
+
+- clarity
+- usefulness
+- signal density
+- realism
+- decisiveness
+- restraint
+- pacing fit
+
+No labels or scores are shown to the user.
+
+### Correction bounds
+
+The system may perform at most one private pass to:
+
+- compress
+- simplify
+- sharpen
+- soften
+- reduce hype
+- improve pacing
+
+It may not restart reasoning, recursively self-criticize, or narrate the review. If the draft can lose 30% length without losing meaning, it should be compressed before final output.
+
+### Runtime behavior
+
+- `planSelfEvaluation()` computes draft-risk checks from the current arbitration contract, identity kernel, and recent conversation.
+- `BOUNDED SELF-EVALUATION` is injected after identity kernel and arbitration instructions.
+- The instruction preserves final behavior: calm, useful, non-hyped, operationally honest, signal-dense, and reality-oriented.
+
+## 19. Files involved
 
 - `lib/identityEngine.ts`
 - `lib/userProfile.ts`
@@ -512,6 +564,7 @@ Prefer grounded, useful, practical, precise, stable wording.
 - `lib/trustCalibration.ts` — evidence, ambiguity, stakes, and firmness calibration
 - `lib/memoryDecay.ts` — signal aging, decayed history view, freshness gates, and callback restraint
 - `lib/identityKernel.ts` — invariant behavioral core and drift suppression
+- `lib/selfEvaluation.ts` — one-pass private response quality check and bounded correction directive
 - `app/api/solve/route.ts` — pressure level computed and injected per request
 - `components/DecisionConsole.tsx`
 - `components/IdentityWidget.tsx`

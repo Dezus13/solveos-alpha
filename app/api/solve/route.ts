@@ -14,6 +14,7 @@ import { arbitrateIntelligence, buildArbitrationInstruction } from '@/lib/intell
 import { buildTrustCalibrationInstruction, calibrateTrust } from '@/lib/trustCalibration';
 import { assessMemoryDecay, buildMemoryDecayInstruction } from '@/lib/memoryDecay';
 import { applyIdentityKernel, buildIdentityKernelInstruction } from '@/lib/identityKernel';
+import { buildSelfEvaluationInstruction, planSelfEvaluation } from '@/lib/selfEvaluation';
 import { buildProfileDirective, applyProfileAdjustments, scoreMessageFor } from '@/lib/profileEngine';
 import { computeSessionPressureLevel, buildPressureDirective } from '@/lib/pressureEngine';
 import type { CouncilMetrics, CounterfactualPath, DecisionBlueprint, DecisionContext, ExecutionPlanWeek, MilestoneMetric, MilestoneStatus, PreMortemRisk, ScenarioBranch, SecondOrderEffect, SolveRequest, SolveResponse, UserProfileData, WarRoomDebate } from '@/lib/types';
@@ -1368,6 +1369,8 @@ export async function POST(req: Request) {
     const { contract: kernelContract, kernel } = applyIdentityKernel(arbitration, conversationHistoryForGuard);
     const identityKernelInstruction = buildIdentityKernelInstruction(kernel);
     const arbitrationInstruction = buildArbitrationInstruction(kernelContract);
+    const selfEvaluation = planSelfEvaluation(problem, conversationHistoryForGuard, kernelContract, kernel);
+    const selfEvaluationInstruction = buildSelfEvaluationInstruction(selfEvaluation);
     const pressureLevel = isReview ? 0 : kernelContract.sessionPressureLevel;
     const pressureDirective = buildPressureDirective(pressureLevel);
     if (pressureLevel > 0) {
@@ -1391,7 +1394,7 @@ export async function POST(req: Request) {
     const finalStrategicToolInstruction = kernelContract.allowStructuredTool ? strategicToolInstruction : '';
     const finalFirstResponseQualityInstruction = patternInsightAllowed ? firstResponseQualityInstruction : '';
 
-    const conversationContext = [identityKernelInstruction, arbitrationInstruction, memoryDecayInstruction, trustCalibrationInstruction, restraintIntelligenceInstruction, energyStateInstruction, finalPersistentMemoryInstruction, finalLongitudinalMemoryInstruction, finalNarrativeIntelligenceInstruction, finalOutcomeLearningInstruction, conversationMemoryNote, followUpInstruction, finalFirstResponseQualityInstruction, compressionIntelligenceInstruction, conversationalFlowInstruction, finalStrategicArchitectureInstruction, finalContradictionIntelligenceInstruction, executionCapacityInstructionWithHistory, adaptiveResponseInstruction, finalStrategicToolInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
+    const conversationContext = [identityKernelInstruction, arbitrationInstruction, selfEvaluationInstruction, memoryDecayInstruction, trustCalibrationInstruction, restraintIntelligenceInstruction, energyStateInstruction, finalPersistentMemoryInstruction, finalLongitudinalMemoryInstruction, finalNarrativeIntelligenceInstruction, finalOutcomeLearningInstruction, conversationMemoryNote, followUpInstruction, finalFirstResponseQualityInstruction, compressionIntelligenceInstruction, conversationalFlowInstruction, finalStrategicArchitectureInstruction, finalContradictionIntelligenceInstruction, executionCapacityInstructionWithHistory, adaptiveResponseInstruction, finalStrategicToolInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
       .filter(Boolean)
       .join('\n\n')
       .trim();

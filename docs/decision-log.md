@@ -4,6 +4,26 @@ This file tracks what we change, why we change it, and what we do next.
 
 ---
 
+## 2026-05-06 — Bounded self-evaluation system
+
+### Changed
+
+- `lib/selfEvaluation.ts`: Added one-pass draft quality planning for clarity, usefulness, signal density, realism, decisiveness, restraint, and pacing fit.
+- `app/api/solve/route.ts`: Injects `BOUNDED SELF-EVALUATION` after identity kernel and arbitration so final responses get one private quality pass.
+- `lib/prompts.ts`: Added self-evaluation precedence and safety rules for no visible critique, scores, labels, or hidden reasoning.
+- `docs/specs/0005-identity-and-pressure.md`: Documented checks, internal scoring, bounded correction rules, and runtime behavior.
+
+### Why
+
+- SolveOS should catch verbosity drift, fake certainty, low-signal phrasing, and identity violations before final output.
+- The pass is deliberately bounded so quality control improves the answer without recursive overthinking.
+
+### Not done
+
+- No user-visible self-critique or chain-of-thought exposure. The system only emits the final answer.
+
+---
+
 ## 2026-05-06 — Identity kernel system
 
 ### Changed
