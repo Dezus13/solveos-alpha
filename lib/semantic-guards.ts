@@ -167,6 +167,38 @@ export function detectSolveRequestIntent(problem: string): SolveRequestIntent {
   return 'normal_decision';
 }
 
+// ─── Intent family verdict routing ───────────────────────────────────────────
+
+import { classifyIntentFamily } from './intentDifferentiation';
+
+function semanticVerdictForIntentFamily(problem: string, mode: string): string | null {
+  const family = classifyIntentFamily(problem);
+  const isRedTeam = mode === 'Red Team';
+
+  switch (family) {
+    case 'procrastination':
+      return 'Reversible Experiment: identify the specific friction point blocking the first action — the obstacle is not motivation, it is a concrete step that is unclear, unowned, or sequenced incorrectly.';
+    case 'uncertainty':
+      return 'Delay: this is a trajectory question, not a commitment question — before continuing, define one measurable signal that would confirm the current path is generating compounding value.';
+    case 'fear':
+      return isRedTeam
+        ? 'Kill The Idea: the fear may be a rational signal — price the worst-case failure mode and test whether it is actually survivable before committing further.'
+        : 'Reversible Experiment: separate survivable failure modes from catastrophic ones, price the most likely downside, and size the next move so failure is containable.';
+    case 'execution_failure':
+      return 'Reversible Experiment: locate the system error — sequencing, capacity, or definition-of-done — before adding new effort on top of a broken execution structure.';
+    case 'confusion':
+      return 'Delay: compress the decision to one binary question — name the single piece of evidence that resolves it, then collect only that evidence before deciding.';
+    case 'lack_of_clarity':
+      return 'Delay: force-rank one priority by asymmetric upside and irreversibility — everything else waits until that priority is clear and owned.';
+    case 'emotional_overload':
+      return 'Delay: reduce load before adding direction — stop one thing, defer one thing, then take the smallest possible next action.';
+    case 'strategic_risk':
+      return 'Reversible Experiment: calibrate the actual exposure — separate tail risk from expected variance, name the survivable limit, then size the bet so a bad outcome does not end the game.';
+    default:
+      return null;
+  }
+}
+
 // ─── Intent classification ────────────────────────────────────────────────────
 
 const CONTRARIAN_TRIGGERS = [
@@ -289,6 +321,10 @@ export function semanticVerdictForQuestion(problem: string, mode = 'Strategy'): 
       ? 'Kill The Idea: shut it down if the failure evidence is real, the product has no salvageable segment, and continued effort only burns option value.'
       : 'Kill The Idea: allow shutdown as the verdict if the product fails a final salvage test against clear retention, demand, and willingness-to-pay evidence.';
   }
+
+  // Intent-family routing: procrastination, uncertainty, fear, confusion, etc.
+  const familyVerdict = semanticVerdictForIntentFamily(problem, mode);
+  if (familyVerdict) return familyVerdict;
 
   return 'Reversible Experiment: make the next move create evidence instead of defaulting to a generic commitment.';
 }

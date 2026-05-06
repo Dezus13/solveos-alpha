@@ -3,6 +3,7 @@ import { saveDecision, getDecisionHistory } from '@/lib/memory';
 import { getMemoryIntelligenceFromHistory } from '@/lib/memory-graph';
 import { computeNetworkIntelligence, calibrateScore, buildCalibrationContext, computeDecisionAccuracy, computeCalibrationScore } from '@/lib/benchmarks';
 import { isPlanModeRequest, isReviewModeRequest, semanticVerdictForQuestion, shouldRejectDecisionOutput, detectVerdictLoop, buildForceDiversityInstruction, semanticVerdictExcluding, extractVerdictClass, buildIntentInstruction, enforceIntentRouting, detectSolveRequestIntent, extractLiteralOutput } from '@/lib/semantic-guards';
+import { buildIntentDifferentiationInstruction } from '@/lib/intentDifferentiation';
 import { detectInputLanguage } from '@/lib/i18n';
 import { buildOutcomeLearningInstruction } from '@/lib/outcomeLearning';
 import { buildLongitudinalMemoryInstruction } from '@/lib/longitudinalMemory';
@@ -1302,6 +1303,7 @@ export async function POST(req: Request) {
     }
     const diversityInstruction = bannedVerdict ? buildForceDiversityInstruction(bannedVerdict) : '';
     const intentInstruction = isReview ? '' : buildIntentInstruction(problem, conversationHistoryForGuard);
+    const intentDifferentiationInstruction = isReview ? '' : buildIntentDifferentiationInstruction(problem, conversationHistoryForGuard);
     const basePressureLevel = isReview ? 0 : computeSessionPressureLevel(conversationHistoryForGuard);
     const conversationMemoryNote = buildConversationMemoryNote(conversationHistoryForGuard);
     const followUpInstruction = buildFollowUpInstruction(problem, conversationHistoryForGuard.length > 0);
@@ -1403,7 +1405,7 @@ export async function POST(req: Request) {
       streaming,
       selfEvaluationBypassed: Boolean(selfEvaluationStage.adjustments?.bypassed),
     }));
-    const conversationContext = [identityKernelInstruction, arbitrationInstruction, selfEvaluationInstruction, memoryDecayInstruction, trustCalibrationInstruction, restraintIntelligenceInstruction, energyStateInstruction, finalPersistentMemoryInstruction, finalLongitudinalMemoryInstruction, finalNarrativeIntelligenceInstruction, finalOutcomeLearningInstruction, conversationMemoryNote, followUpInstruction, finalFirstResponseQualityInstruction, compressionIntelligenceInstruction, conversationalFlowInstruction, finalStrategicArchitectureInstruction, finalContradictionIntelligenceInstruction, executionCapacityInstructionWithHistory, adaptiveResponseInstruction, finalStrategicToolInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
+    const conversationContext = [identityKernelInstruction, arbitrationInstruction, selfEvaluationInstruction, memoryDecayInstruction, trustCalibrationInstruction, restraintIntelligenceInstruction, energyStateInstruction, finalPersistentMemoryInstruction, finalLongitudinalMemoryInstruction, finalNarrativeIntelligenceInstruction, finalOutcomeLearningInstruction, conversationMemoryNote, followUpInstruction, finalFirstResponseQualityInstruction, compressionIntelligenceInstruction, conversationalFlowInstruction, finalStrategicArchitectureInstruction, finalContradictionIntelligenceInstruction, executionCapacityInstructionWithHistory, adaptiveResponseInstruction, finalStrategicToolInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, intentDifferentiationInstruction, pressureDirective]
       .filter(Boolean)
       .join('\n\n')
       .trim();
