@@ -8,6 +8,7 @@ import type { RestraintAssessment } from '../restraintIntelligence';
 import type { TrustCalibration } from '../trustCalibration';
 import type { PipelineInspector } from '../debug/pipelineInspector';
 import { buildSystemHealthReport, type SystemHealthReport } from '../core/architectureRules';
+import { generateExplainabilityReport, type ExplainabilityReport } from '../core/explainabilityEngine';
 import {
   arbitrateIntelligencePriority,
   type IntelligenceConfidenceScore,
@@ -125,6 +126,7 @@ export interface OrchestrationResult {
   conflictNotes: string[];
   architectureHealth: SystemHealthReport;
   priorityArbitration: IntelligencePriorityArbitrationResult;
+  explainabilityReport?: ExplainabilityReport;
 }
 
 const STAGE_ORDER: OrchestrationStage[] = [
@@ -589,7 +591,7 @@ export function orchestrateSolveIntelligence(input: OrchestrationInput, inspecto
   const risk = riskLevel(input);
   const architectureHealth = buildSystemHealthReport();
 
-  const result = {
+  const result: OrchestrationResult = {
     activeIntelligences: active,
     suppressedIntelligences: suppressed,
     primaryFrame: frame,
@@ -601,8 +603,13 @@ export function orchestrateSolveIntelligence(input: OrchestrationInput, inspecto
     architectureHealth,
     priorityArbitration,
   };
+  result.explainabilityReport = generateExplainabilityReport({
+    orchestration: result,
+    mode: 'compact',
+  });
   inspector?.captureSystemHealth(architectureHealth);
   inspector?.capturePriorityArbitration(priorityArbitration);
+  inspector?.captureExplainability(result.explainabilityReport);
   inspector?.captureOrchestration(result);
   return result;
 }

@@ -4,6 +4,7 @@ import type {
   PrimaryFrame,
 } from '../orchestration/orchestrationEngine';
 import type { PipelineInspector } from '../debug/pipelineInspector';
+import { generateExplainabilityReport, type ExplainabilityReport } from '../core/explainabilityEngine';
 
 export type ResponseMode =
   | 'fast-direct'
@@ -44,6 +45,7 @@ export interface ResponseSynthesisResult {
   contradictionFiltering: ContradictionPolicy;
   safeguards: string[];
   rationale: string[];
+  explainabilityReport?: ExplainabilityReport;
 }
 
 const FRAME_TO_MODE: Record<PrimaryFrame, ResponseMode> = {
@@ -216,7 +218,7 @@ export function synthesizeResponseStrategy(result: OrchestrationResult, inspecto
   const responseLength = selectLength(result, selectedMode);
   const compression = compressionLevel(result, responseLength);
 
-  const strategy = {
+  const strategy: ResponseSynthesisResult = {
     selectedMode,
     finalTone: MODE_TO_TONE[selectedMode],
     responseLength,
@@ -232,6 +234,12 @@ export function synthesizeResponseStrategy(result: OrchestrationResult, inspecto
     safeguards: safeguards(result, selectedMode, compression),
     rationale: rationale(result, selectedMode, responseLength),
   };
+  strategy.explainabilityReport = generateExplainabilityReport({
+    orchestration: result,
+    synthesis: strategy,
+    mode: 'verbose',
+  });
+  inspector?.captureExplainability(strategy.explainabilityReport);
   inspector?.captureSynthesis(strategy);
   return strategy;
 }

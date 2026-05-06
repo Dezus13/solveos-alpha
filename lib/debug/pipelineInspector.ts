@@ -1,6 +1,7 @@
 import type { OrchestrationResult } from '../orchestration/orchestrationEngine';
 import type { ResponseSynthesisResult } from '../synthesis/responseSynthesizer';
 import type { SystemHealthReport } from '../core/architectureRules';
+import type { ExplainabilityReport } from '../core/explainabilityEngine';
 import type { IntelligencePriorityArbitrationResult } from '../core/intelligencePriority';
 
 export type PipelineEventName =
@@ -14,6 +15,7 @@ export type PipelineEventName =
   | 'contradiction_filtered'
   | 'duplicate_prevention_triggered'
   | 'architecture_health_checked'
+  | 'explainability_report_generated'
   | 'priority_arbitration_completed'
   | 'final_response_generated';
 
@@ -42,6 +44,7 @@ export interface PipelineInspectionReport {
     suppressedIntelligences: string[];
     orchestrationPriority?: Record<string, RedactedValue>;
     priorityArbitration?: Record<string, RedactedValue>;
+    explainability?: Record<string, RedactedValue>;
     synthesis?: Record<string, RedactedValue>;
   };
   reasoningMetadata: Record<string, RedactedValue>;
@@ -120,6 +123,7 @@ export class PipelineInspector {
   private detectedIntent?: Record<string, RedactedValue>;
   private orchestrationPriority?: Record<string, RedactedValue>;
   private priorityArbitration?: Record<string, RedactedValue>;
+  private explainability?: Record<string, RedactedValue>;
   private synthesis?: Record<string, RedactedValue>;
   private activatedIntelligences: string[] = [];
   private suppressedIntelligences: string[] = [];
@@ -292,6 +296,40 @@ export class PipelineInspector {
     });
   }
 
+  captureExplainability(report: ExplainabilityReport): void {
+    if (!this.enabled) return;
+    this.explainability = redactRecord({
+      mode: report.mode,
+      selectedIntelligence: report.reasoningTrace.selectedIntelligence ?? null,
+      rejectedCount: report.reasoningTrace.rejectedIntelligences.length,
+      routingPath: report.reasoningTrace.routingPath,
+      arbitrationOutcome: report.reasoningTrace.arbitrationOutcome,
+      synthesisDecisions: report.reasoningTrace.synthesisDecisions ?? null,
+      escalationTriggers: report.reasoningTrace.escalationTriggers,
+      visualization: {
+        nodeCount: report.visualization.nodes.length,
+        edgeCount: report.visualization.edges.length,
+      },
+      snapshotCount: report.snapshots.length,
+      safety: report.safety,
+    });
+    this.reasoningMetadata = {
+      ...this.reasoningMetadata,
+      explainability: this.explainability,
+    };
+    this.record('explainability_report_generated', 'explainability', {
+      decisions: this.explainability,
+      reasoningMetadata: {
+        mode: report.mode,
+        selectedIntelligence: report.reasoningTrace.selectedIntelligence ?? null,
+      },
+      suppressionMetadata: {
+        rejectedIntelligences: report.reasoningTrace.rejectedIntelligences,
+        safetyPolicy: report.safety.policy,
+      },
+    });
+  }
+
   captureSynthesis(strategy: ResponseSynthesisResult): void {
     if (!this.enabled) return;
     this.synthesis = redactRecord({
@@ -364,6 +402,7 @@ export class PipelineInspector {
         suppressedIntelligences: this.suppressedIntelligences,
         orchestrationPriority: this.orchestrationPriority,
         priorityArbitration: this.priorityArbitration,
+        explainability: this.explainability,
         synthesis: this.synthesis,
       },
       reasoningMetadata: this.reasoningMetadata,
