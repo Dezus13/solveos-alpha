@@ -4,6 +4,27 @@ This file tracks what we change, why we change it, and what we do next.
 
 ---
 
+## 2026-05-06 — Energy state intelligence
+
+### Changed
+
+- `lib/energyStateIntelligence.ts`: Added probabilistic operational state inference for execution, hesitation, overload, exploration, recovery, impulsive, and stable states.
+- `app/api/solve/route.ts`: Injects `ENERGY STATE INTELLIGENCE` after restraint and uses it to calibrate session pressure before building the pressure directive.
+- `lib/prompts.ts`: Updated solver prompts so energy calibration controls pressure, pacing, depth, and optionality without naming inferred states.
+- `docs/specs/0005-identity-and-pressure.md`: Documented energy states, signals, runtime behavior, and safety rules.
+
+### Why
+
+- SolveOS should not apply the same pressure to a user who is executing, overloaded, recovering, exploring, or acting impulsively.
+- This is operational readiness calibration, not emotion detection.
+- Pressure should help execution, not create urgency or dependency.
+
+### Not done
+
+- No visible state labels or UI. The state estimate remains internal and suppressible when confidence is weak.
+
+---
+
 ## 2026-05-06 — Restraint intelligence
 
 ### Changed

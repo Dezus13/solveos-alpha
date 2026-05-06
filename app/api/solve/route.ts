@@ -9,6 +9,7 @@ import { buildLongitudinalMemoryInstruction } from '@/lib/longitudinalMemory';
 import { buildExecutionCapacityInstruction } from '@/lib/executionCapacity';
 import { buildNarrativeIntelligenceInstruction } from '@/lib/narrativeIntelligence';
 import { assessRestraint, buildRestraintIntelligenceInstruction } from '@/lib/restraintIntelligence';
+import { assessEnergyState, buildEnergyStateInstruction, calibratePressureLevel } from '@/lib/energyStateIntelligence';
 import { buildProfileDirective, applyProfileAdjustments, scoreMessageFor } from '@/lib/profileEngine';
 import { computeSessionPressureLevel, buildPressureDirective } from '@/lib/pressureEngine';
 import type { CouncilMetrics, CounterfactualPath, DecisionBlueprint, DecisionContext, ExecutionPlanWeek, MilestoneMetric, MilestoneStatus, PreMortemRisk, ScenarioBranch, SecondOrderEffect, SolveRequest, SolveResponse, UserProfileData, WarRoomDebate } from '@/lib/types';
@@ -1293,11 +1294,7 @@ export async function POST(req: Request) {
     }
     const diversityInstruction = bannedVerdict ? buildForceDiversityInstruction(bannedVerdict) : '';
     const intentInstruction = isReview ? '' : buildIntentInstruction(problem, conversationHistoryForGuard);
-    const pressureLevel = isReview ? 0 : computeSessionPressureLevel(conversationHistoryForGuard);
-    const pressureDirective = buildPressureDirective(pressureLevel);
-    if (pressureLevel > 0) {
-      console.info('Pressure mode active:', { pressureLevel, turnCount: conversationHistoryForGuard.filter((t) => t.role === 'user').length });
-    }
+    const basePressureLevel = isReview ? 0 : computeSessionPressureLevel(conversationHistoryForGuard);
     const conversationMemoryNote = buildConversationMemoryNote(conversationHistoryForGuard);
     const followUpInstruction = buildFollowUpInstruction(problem, conversationHistoryForGuard.length > 0);
     const responseStyleInstruction = buildResponseStyleInstruction(problem, conversationHistoryForGuard);
@@ -1321,10 +1318,14 @@ export async function POST(req: Request) {
     let executionCapacityInstructionWithHistory = executionCapacityInstruction;
     let restraint = assessRestraint(problem, conversationHistoryForGuard, []);
     let restraintIntelligenceInstruction = buildRestraintIntelligenceInstruction(restraint);
+    let energyState = assessEnergyState(problem, conversationHistoryForGuard, []);
+    let energyStateInstruction = buildEnergyStateInstruction(energyState);
 
     try {
       restraint = assessRestraint(problem, conversationHistoryForGuard, history);
       restraintIntelligenceInstruction = buildRestraintIntelligenceInstruction(restraint);
+      energyState = assessEnergyState(problem, conversationHistoryForGuard, history);
+      energyStateInstruction = buildEnergyStateInstruction(energyState);
       const intel = getMemoryIntelligenceFromHistory(problem, history, context);
       memoryScore = intel.memoryScore;
       memoryContext = intel.strategicContext;
@@ -1341,6 +1342,17 @@ export async function POST(req: Request) {
       // Continue analysis without memory enrichment.
     }
 
+    const pressureLevel = isReview ? 0 : calibratePressureLevel(basePressureLevel, energyState);
+    const pressureDirective = buildPressureDirective(pressureLevel);
+    if (pressureLevel > 0) {
+      console.info('Pressure mode active:', {
+        pressureLevel,
+        basePressureLevel,
+        energyState: energyState.state,
+        turnCount: conversationHistoryForGuard.filter((t) => t.role === 'user').length,
+      });
+    }
+
     const memoryAllowed = restraint.allowMemory;
     const patternInsightAllowed = restraint.allowPatternInsight;
     const deepAnalysisAllowed = restraint.allowDeepAnalysis;
@@ -1353,7 +1365,7 @@ export async function POST(req: Request) {
     const finalStrategicToolInstruction = deepAnalysisAllowed ? strategicToolInstruction : '';
     const finalFirstResponseQualityInstruction = patternInsightAllowed ? firstResponseQualityInstruction : '';
 
-    const conversationContext = [restraintIntelligenceInstruction, finalPersistentMemoryInstruction, finalLongitudinalMemoryInstruction, finalNarrativeIntelligenceInstruction, finalOutcomeLearningInstruction, conversationMemoryNote, followUpInstruction, finalFirstResponseQualityInstruction, compressionIntelligenceInstruction, conversationalFlowInstruction, finalStrategicArchitectureInstruction, finalContradictionIntelligenceInstruction, executionCapacityInstructionWithHistory, adaptiveResponseInstruction, finalStrategicToolInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
+    const conversationContext = [restraintIntelligenceInstruction, energyStateInstruction, finalPersistentMemoryInstruction, finalLongitudinalMemoryInstruction, finalNarrativeIntelligenceInstruction, finalOutcomeLearningInstruction, conversationMemoryNote, followUpInstruction, finalFirstResponseQualityInstruction, compressionIntelligenceInstruction, conversationalFlowInstruction, finalStrategicArchitectureInstruction, finalContradictionIntelligenceInstruction, executionCapacityInstructionWithHistory, adaptiveResponseInstruction, finalStrategicToolInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
       .filter(Boolean)
       .join('\n\n')
       .trim();

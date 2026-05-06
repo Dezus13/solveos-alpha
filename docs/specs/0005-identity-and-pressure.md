@@ -7,6 +7,7 @@
 - Define the Session Pressure System (in-session hesitation detection and tone escalation).
 - Define Narrative Intelligence (long-range continuity, directional shifts, false resets, and story-pressure reduction).
 - Define Restraint Intelligence (thresholding for insight, memory, complexity, interpretation, and response depth).
+- Define Energy State Intelligence (operational readiness calibration for pressure, pacing, depth, and optionality).
 
 ## 2. Where it is used
 
@@ -17,6 +18,7 @@
 - AI prompt construction (session pressure directive injected per turn).
 - AI prompt construction (narrative directive injected per turn when high-signal history exists).
 - AI prompt construction (restraint directive injected per turn and used as the governor for other intelligence layers).
+- AI prompt construction (energy directive injected per turn and used to calibrate pressure intensity and response rhythm).
 
 ## 3. Main objects
 
@@ -32,6 +34,7 @@
 - HesitationSignal: detected avoidance pattern in user messages (hedging language, short follow-ups, multiple questions, repeated turns).
 - NarrativeSignal: recurring long-range theme, directional drift, false reset, stability issue, or dramatic-change pressure detected from conversation and decision memory.
 - RestraintSignal: simple ask, confirmation, factual question, reassurance, emotional overload, high stakes, ambiguity, tradeoff, or weak memory relevance.
+- EnergyState: operational estimate of `EXECUTION`, `HESITATION`, `OVERLOAD`, `EXPLORATION`, `RECOVERY`, `IMPULSIVE`, or `STABLE`.
 - ActionStatus: `pending`, `done`, `blocked`, or `skipped`.
 - BlockerCategory: reason the user did not act (`fear`, `unclear`, `lazy`, `external`).
 
@@ -256,7 +259,49 @@ Restraint Intelligence prevents SolveOS from maximizing analysis on every turn.
 - Not every response needs a lesson, insight, reframing, or optimization.
 - Prefer grounded realism, quiet precision, and useful clarity.
 
-## 13. Files involved
+## 13. Energy State Intelligence
+
+Energy State Intelligence is operational calibration, not emotion detection. It adjusts pressure, pacing, depth, and optionality based on inferred execution energy.
+
+### States
+
+| State | Response adaptation |
+|---|---|
+| `EXECUTION` | Concise, direct, action-first, less reflection |
+| `HESITATION` | Less theory, more decisiveness, clearer tradeoffs |
+| `OVERLOAD` | Lower complexity, narrower scope, no option explosion, stabilize first |
+| `EXPLORATION` | Broader thinking and comparative framing allowed |
+| `RECOVERY` | No pressure escalation, no "push harder"; re-entry simplicity |
+| `IMPULSIVE` | Slower pacing, downside risk, verification before commitment |
+| `STABLE` | Balanced strategic reasoning |
+
+### Signals
+
+- Response length and short operational asks.
+- Repetition and unresolved loops.
+- Urgency spikes.
+- Rapid topic switching.
+- Reassurance seeking.
+- Optimization loops.
+- Commitment language.
+- Action reporting.
+- Unfinished plans and restart cycles from memory.
+- Strategic patience signals such as validation-first language.
+
+### Runtime behavior
+
+- `assessEnergyState()` computes probabilistic state scores and a confidence delta.
+- Low-confidence estimates collapse toward `STABLE` and may suppress the directive entirely.
+- `calibratePressureLevel()` scales session pressure down for overload, recovery, impulsive, execution, or exploration states when direct pressure would be counterproductive.
+- `ENERGY STATE INTELLIGENCE` is injected after restraint and before memory/strategy directives.
+
+### Safety rules
+
+- Never mention the inferred state, score, or signals to the user.
+- No medical framing, diagnosis language, therapy tone, or mental-health labels.
+- Never emotionally steer, dependency-build, induce urgency, exaggerate stakes, or create artificial confidence.
+
+## 14. Files involved
 
 - `lib/identityEngine.ts`
 - `lib/userProfile.ts`
@@ -264,6 +309,7 @@ Restraint Intelligence prevents SolveOS from maximizing analysis on every turn.
 - `lib/pressureEngine.ts` — session pressure detection and directive building
 - `lib/narrativeIntelligence.ts` — long-range continuity and narrative pressure directive building
 - `lib/restraintIntelligence.ts` — insight, memory, interpretation, and complexity thresholding
+- `lib/energyStateIntelligence.ts` — operational energy calibration and pressure scaling
 - `app/api/solve/route.ts` — pressure level computed and injected per request
 - `components/DecisionConsole.tsx`
 - `components/IdentityWidget.tsx`
