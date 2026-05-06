@@ -4,6 +4,27 @@ This file tracks what we change, why we change it, and what we do next.
 
 ---
 
+## 2026-05-06 — Intelligence arbitration layer
+
+### Changed
+
+- `lib/intelligenceArbitration.ts`: Added central arbitration engine that collects active signals, scores priority, resolves conflicts, applies suppressions, and produces a final response contract.
+- `app/api/solve/route.ts`: Uses the arbitration contract to decide final pressure, memory, narrative, contradiction, strategic architecture, tool-mode, and first-response permissions.
+- `lib/prompts.ts`: Updated prompts so `INTELLIGENCE ARBITRATION` is the final coordination layer above other directives.
+- `docs/specs/0005-identity-and-pressure.md`: Documented priority categories, override rules, governors, temporal smoothing, runtime behavior, and safety constraints.
+
+### Why
+
+- SolveOS now has multiple intelligence layers that can disagree.
+- Overload, impulsive risk, recovery, execution readiness, exploration, restraint, pressure, and contradiction signals need one final arbiter.
+- Final response behavior should be stable and coordinated instead of a stack of competing instructions.
+
+### Not done
+
+- No client-visible state persistence. Temporal smoothing currently uses recent conversation turns inside each request.
+
+---
+
 ## 2026-05-06 — Energy state intelligence
 
 ### Changed

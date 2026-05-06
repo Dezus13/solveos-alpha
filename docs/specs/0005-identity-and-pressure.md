@@ -8,6 +8,7 @@
 - Define Narrative Intelligence (long-range continuity, directional shifts, false resets, and story-pressure reduction).
 - Define Restraint Intelligence (thresholding for insight, memory, complexity, interpretation, and response depth).
 - Define Energy State Intelligence (operational readiness calibration for pressure, pacing, depth, and optionality).
+- Define Intelligence Arbitration (central conflict resolution and final response contract).
 
 ## 2. Where it is used
 
@@ -19,6 +20,7 @@
 - AI prompt construction (narrative directive injected per turn when high-signal history exists).
 - AI prompt construction (restraint directive injected per turn and used as the governor for other intelligence layers).
 - AI prompt construction (energy directive injected per turn and used to calibrate pressure intensity and response rhythm).
+- AI prompt construction (arbitration directive injected first and used as the final coordination layer).
 
 ## 3. Main objects
 
@@ -35,6 +37,7 @@
 - NarrativeSignal: recurring long-range theme, directional drift, false reset, stability issue, or dramatic-change pressure detected from conversation and decision memory.
 - RestraintSignal: simple ask, confirmation, factual question, reassurance, emotional overload, high stakes, ambiguity, tradeoff, or weak memory relevance.
 - EnergyState: operational estimate of `EXECUTION`, `HESITATION`, `OVERLOAD`, `EXPLORATION`, `RECOVERY`, `IMPULSIVE`, or `STABLE`.
+- ArbitrationContract: final internal response contract containing dominant state, pressure, depth, suppressions, pacing, reasoning intensity, and exploration allowance.
 - ActionStatus: `pending`, `done`, `blocked`, or `skipped`.
 - BlockerCategory: reason the user did not act (`fear`, `unclear`, `lazy`, `external`).
 
@@ -292,7 +295,7 @@ Energy State Intelligence is operational calibration, not emotion detection. It 
 
 - `assessEnergyState()` computes probabilistic state scores and a confidence delta.
 - Low-confidence estimates collapse toward `STABLE` and may suppress the directive entirely.
-- `calibratePressureLevel()` scales session pressure down for overload, recovery, impulsive, execution, or exploration states when direct pressure would be counterproductive.
+- Energy assessment provides pressure, pacing, depth, and optionality inputs to the arbitration layer.
 - `ENERGY STATE INTELLIGENCE` is injected after restraint and before memory/strategy directives.
 
 ### Safety rules
@@ -301,7 +304,62 @@ Energy State Intelligence is operational calibration, not emotion detection. It 
 - No medical framing, diagnosis language, therapy tone, or mental-health labels.
 - Never emotionally steer, dependency-build, induce urgency, exaggerate stakes, or create artificial confidence.
 
-## 14. Files involved
+## 14. Intelligence Arbitration
+
+Intelligence Arbitration is the central coordination layer above restraint, energy, pressure, memory, narrative, contradiction, architecture, and tool-mode directives.
+
+It does not detect new user traits. It resolves conflicts between existing systems and produces the final internal response contract.
+
+### Priority categories
+
+| Priority | Signals |
+|---|---|
+| `CRITICAL` | overload, impulsive risk, severe contradiction, execution collapse, recovery |
+| `HIGH` | hesitation, repeated unresolved loops, strategic conflict |
+| `MEDIUM` | exploration, narrative continuity, response compression, execution readiness |
+| `LOW` | stylistic optimization, formatting adaptation |
+
+### Override rules
+
+- Overload suppresses deep analysis, option expansion, aggressive challenge, and optimization stacking.
+- Impulsive risk suppresses hype amplification, high-certainty recommendations, rapid escalation, and option expansion.
+- Execution readiness suppresses excessive caution, long exploratory branches, and option expansion.
+- Recovery or execution collapse suppresses pressure escalation, optimization stacking, deep analysis, and aggressive challenge.
+- Minimal restraint suppresses memory references, narrative continuity, contradiction challenges, and formatting flourish.
+
+### Governors
+
+| Governor | Output |
+|---|---|
+| Pressure | `MINIMAL`, `LOW`, `MODERATE`, `HIGH` |
+| Depth | `short`, `medium`, `deep` |
+| Pacing | `slow`, `steady`, `fast` |
+| Reasoning intensity | `minimal`, `focused`, `expanded` |
+| Exploration allowance | `none`, `limited`, `open` |
+
+### Temporal stability
+
+- The arbitration layer smooths rapid changes using recent conversation turns.
+- Strong repeated overload keeps overload dominant.
+- Repeated execution language can keep execution readiness dominant over compression.
+- Repeated exploration language can keep exploration dominant unless a critical signal appears.
+
+### Runtime behavior
+
+- `arbitrateIntelligence()` runs after restraint, energy, and history-enriched directives are computed.
+- The route uses the arbitration contract, not individual modules, to decide final memory, narrative, contradiction, architecture, tool-mode, and first-response permissions.
+- The pressure directive is built from the arbitration pressure output.
+- `INTELLIGENCE ARBITRATION` is injected first in `conversationContext`.
+
+### Safety
+
+- The arbitration contract remains internal only.
+- No manipulative escalation.
+- No fake certainty.
+- No pseudo-psychology.
+- No emotional steering or dependency framing.
+
+## 15. Files involved
 
 - `lib/identityEngine.ts`
 - `lib/userProfile.ts`
@@ -310,6 +368,7 @@ Energy State Intelligence is operational calibration, not emotion detection. It 
 - `lib/narrativeIntelligence.ts` — long-range continuity and narrative pressure directive building
 - `lib/restraintIntelligence.ts` — insight, memory, interpretation, and complexity thresholding
 - `lib/energyStateIntelligence.ts` — operational energy calibration and pressure scaling
+- `lib/intelligenceArbitration.ts` — central conflict resolution and final orchestration contract
 - `app/api/solve/route.ts` — pressure level computed and injected per request
 - `components/DecisionConsole.tsx`
 - `components/IdentityWidget.tsx`

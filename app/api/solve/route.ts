@@ -9,7 +9,8 @@ import { buildLongitudinalMemoryInstruction } from '@/lib/longitudinalMemory';
 import { buildExecutionCapacityInstruction } from '@/lib/executionCapacity';
 import { buildNarrativeIntelligenceInstruction } from '@/lib/narrativeIntelligence';
 import { assessRestraint, buildRestraintIntelligenceInstruction } from '@/lib/restraintIntelligence';
-import { assessEnergyState, buildEnergyStateInstruction, calibratePressureLevel } from '@/lib/energyStateIntelligence';
+import { assessEnergyState, buildEnergyStateInstruction } from '@/lib/energyStateIntelligence';
+import { arbitrateIntelligence, buildArbitrationInstruction } from '@/lib/intelligenceArbitration';
 import { buildProfileDirective, applyProfileAdjustments, scoreMessageFor } from '@/lib/profileEngine';
 import { computeSessionPressureLevel, buildPressureDirective } from '@/lib/pressureEngine';
 import type { CouncilMetrics, CounterfactualPath, DecisionBlueprint, DecisionContext, ExecutionPlanWeek, MilestoneMetric, MilestoneStatus, PreMortemRisk, ScenarioBranch, SecondOrderEffect, SolveRequest, SolveResponse, UserProfileData, WarRoomDebate } from '@/lib/types';
@@ -1342,30 +1343,41 @@ export async function POST(req: Request) {
       // Continue analysis without memory enrichment.
     }
 
-    const pressureLevel = isReview ? 0 : calibratePressureLevel(basePressureLevel, energyState);
+    const arbitration = arbitrateIntelligence({
+      problem,
+      conversationHistory: conversationHistoryForGuard,
+      restraint,
+      energy: energyState,
+      basePressureLevel,
+      hasContradictionSignal: Boolean(contradictionIntelligenceInstruction),
+      hasNarrativeSignal: Boolean(narrativeIntelligenceInstruction),
+      hasCompressionSignal: compressionIntelligenceInstruction.includes('SHORT ANSWER MODE ACTIVE'),
+    });
+    const arbitrationInstruction = buildArbitrationInstruction(arbitration);
+    const pressureLevel = isReview ? 0 : arbitration.sessionPressureLevel;
     const pressureDirective = buildPressureDirective(pressureLevel);
     if (pressureLevel > 0) {
       console.info('Pressure mode active:', {
         pressureLevel,
         basePressureLevel,
         energyState: energyState.state,
+        arbitrationState: arbitration.dominantState,
         turnCount: conversationHistoryForGuard.filter((t) => t.role === 'user').length,
       });
     }
 
-    const memoryAllowed = restraint.allowMemory;
-    const patternInsightAllowed = restraint.allowPatternInsight;
-    const deepAnalysisAllowed = restraint.allowDeepAnalysis;
+    const memoryAllowed = arbitration.allowMemory;
+    const patternInsightAllowed = arbitration.allowPatternInsight;
     const finalPersistentMemoryInstruction = memoryAllowed ? persistentMemoryInstruction : '';
     const finalLongitudinalMemoryInstruction = memoryAllowed ? longitudinalMemoryInstruction : '';
-    const finalNarrativeIntelligenceInstruction = restraint.allowNarrativeReference ? narrativeIntelligenceInstruction : '';
+    const finalNarrativeIntelligenceInstruction = arbitration.allowNarrativeReference ? narrativeIntelligenceInstruction : '';
     const finalOutcomeLearningInstruction = memoryAllowed ? outcomeLearningInstruction : '';
-    const finalContradictionIntelligenceInstruction = restraint.allowContradiction ? contradictionIntelligenceInstruction : '';
-    const finalStrategicArchitectureInstruction = deepAnalysisAllowed ? strategicArchitectureInstruction : '';
-    const finalStrategicToolInstruction = deepAnalysisAllowed ? strategicToolInstruction : '';
+    const finalContradictionIntelligenceInstruction = arbitration.allowContradiction ? contradictionIntelligenceInstruction : '';
+    const finalStrategicArchitectureInstruction = arbitration.allowStrategicArchitecture ? strategicArchitectureInstruction : '';
+    const finalStrategicToolInstruction = arbitration.allowStructuredTool ? strategicToolInstruction : '';
     const finalFirstResponseQualityInstruction = patternInsightAllowed ? firstResponseQualityInstruction : '';
 
-    const conversationContext = [restraintIntelligenceInstruction, energyStateInstruction, finalPersistentMemoryInstruction, finalLongitudinalMemoryInstruction, finalNarrativeIntelligenceInstruction, finalOutcomeLearningInstruction, conversationMemoryNote, followUpInstruction, finalFirstResponseQualityInstruction, compressionIntelligenceInstruction, conversationalFlowInstruction, finalStrategicArchitectureInstruction, finalContradictionIntelligenceInstruction, executionCapacityInstructionWithHistory, adaptiveResponseInstruction, finalStrategicToolInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
+    const conversationContext = [arbitrationInstruction, restraintIntelligenceInstruction, energyStateInstruction, finalPersistentMemoryInstruction, finalLongitudinalMemoryInstruction, finalNarrativeIntelligenceInstruction, finalOutcomeLearningInstruction, conversationMemoryNote, followUpInstruction, finalFirstResponseQualityInstruction, compressionIntelligenceInstruction, conversationalFlowInstruction, finalStrategicArchitectureInstruction, finalContradictionIntelligenceInstruction, executionCapacityInstructionWithHistory, adaptiveResponseInstruction, finalStrategicToolInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
       .filter(Boolean)
       .join('\n\n')
       .trim();
