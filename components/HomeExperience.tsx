@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { Settings, Sparkles } from 'lucide-react';
+import ArchitectureDashboard from '@/components/dashboard/ArchitectureDashboard';
 import DecisionConsole from '@/components/DecisionConsole';
 import SolveOSSymbol from '@/components/SolveOSSymbol';
 import { getActionMetrics, getHistoryRecords, type ActionReminderRecord } from '@/lib/actionReminders';
@@ -10,7 +11,7 @@ import { detectInputLanguage, uiCopy, type SupportedLanguage } from '@/lib/i18n'
 import { getSavedDecisions } from '@/lib/savedDecisions';
 import { readSettings, type ProductSettings, writeSettings } from '@/lib/settings';
 import { SETTINGS_UPDATED, type AppSettings } from '@/lib/settingsStore';
-import type { ConversationTurn, DecisionBlueprint, SolveRequest } from '@/lib/types';
+import type { ConversationTurn, DecisionBlueprint, SolveRequest, SolveResponse } from '@/lib/types';
 
 import en from '@/locales/en/common.json';
 import ar from '@/locales/ar/common.json';
@@ -346,6 +347,9 @@ export default function HomeExperience() {
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [locales, setLocales] = useState<LocaleDictionary>(initialLocales);
   const [latestBlueprint, setLatestBlueprint] = useState<DecisionBlueprint | null>(null);
+  const [pipelineReport, setPipelineReport] = useState<unknown>(undefined);
+  const [pipelineLatencyMs, setPipelineLatencyMs] = useState<number | undefined>(undefined);
+  const [pipelineUpdatedAt, setPipelineUpdatedAt] = useState<number | undefined>(undefined);
   const [activeLanguage, setActiveLanguage] = useState<ConcreteLanguage>(() => readSettings().language.uiLanguage);
   const [resetKey, setResetKey] = useState(0);
   const fetchGenRef = useRef(0);
@@ -415,6 +419,9 @@ export default function HomeExperience() {
   const handleReset = useCallback(() => {
     setThread([]);
     setLatestBlueprint(null);
+    setPipelineReport(undefined);
+    setPipelineLatencyMs(undefined);
+    setPipelineUpdatedAt(undefined);
     setAdvancedOpen(false);
     setResetKey((k) => k + 1);
   }, []);
@@ -430,6 +437,8 @@ export default function HomeExperience() {
 
       setThread((prev) => [...prev, userTurn]);
       setLatestBlueprint(null);
+      setPipelineReport(undefined);
+      setPipelineLatencyMs(undefined);
       setAnalysisError(null);
       setAdvancedOpen(false);
       setLoading(true);
@@ -441,6 +450,7 @@ export default function HomeExperience() {
       void ensureLocale(requestLanguage);
 
       try {
+        const requestStartedAt = performance.now();
         const body: SolveRequest = {
           problem: message,
           language: requestLanguage,
@@ -499,6 +509,8 @@ export default function HomeExperience() {
         }
 
         // Finalize
+        setPipelineLatencyMs(performance.now() - requestStartedAt);
+        setPipelineUpdatedAt(Date.now());
         setStreaming(false);
       } catch (err) {
         const message = err instanceof Error && err.message ? err.message : requestUx.failedGenerate;
@@ -524,18 +536,21 @@ export default function HomeExperience() {
     setAdvancedOpen(true);
     if (latestBlueprint) return;
     setAnalysisLoading(true);
+    setPipelineLatencyMs(undefined);
     const requestLanguage = detectInputLanguage(latestUserMessage, settings.language.uiLanguage);
     const requestUx = languageUx[requestLanguage] || languageUx.English;
     setActiveLanguage(requestLanguage);
     void ensureLocale(requestLanguage);
 
     try {
+      const requestStartedAt = performance.now();
       const body: SolveRequest = {
         problem: latestUserMessage,
         language: requestLanguage,
         mode: 'Risk',
         conversationHistory: recentContextTurns(threadRef.current),
         conversationMemory: buildConversationMemory(threadRef.current),
+        debugPipeline: true,
       };
 
       const response = await fetch('/api/solve', {
@@ -545,7 +560,7 @@ export default function HomeExperience() {
         body: JSON.stringify(body),
       });
 
-      const data = await response.json();
+      const data = await response.json() as SolveResponse;
       if (!response.ok || !data.result) {
         throw new Error(requestUx.failedAdvanced);
       }
@@ -553,6 +568,9 @@ export default function HomeExperience() {
       const blueprint = data.result as DecisionBlueprint;
       blueprint.language = requestLanguage;
       setLatestBlueprint(blueprint);
+      setPipelineReport(data.debug?.pipeline);
+      setPipelineLatencyMs(performance.now() - requestStartedAt);
+      setPipelineUpdatedAt(Date.now());
     } catch (error) {
       const message = error instanceof Error && error.message ? error.message : requestUx.failedAdvanced;
       setAnalysisError(message);
@@ -668,6 +686,16 @@ export default function HomeExperience() {
           onDeleteHistory={handleReset}
         />
       )}
+
+      <div className="hidden xl:block">
+        <ArchitectureDashboard
+          pipeline={pipelineReport}
+          loading={loading || analysisLoading}
+          streaming={streaming}
+          latencyMs={pipelineLatencyMs}
+          lastUpdatedAt={pipelineUpdatedAt}
+        />
+      </div>
     </div>
   );
 }
