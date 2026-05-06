@@ -8,6 +8,7 @@ import { buildOutcomeLearningInstruction } from '@/lib/outcomeLearning';
 import { buildLongitudinalMemoryInstruction } from '@/lib/longitudinalMemory';
 import { buildExecutionCapacityInstruction } from '@/lib/executionCapacity';
 import { buildNarrativeIntelligenceInstruction } from '@/lib/narrativeIntelligence';
+import { assessRestraint, buildRestraintIntelligenceInstruction } from '@/lib/restraintIntelligence';
 import { buildProfileDirective, applyProfileAdjustments, scoreMessageFor } from '@/lib/profileEngine';
 import { computeSessionPressureLevel, buildPressureDirective } from '@/lib/pressureEngine';
 import type { CouncilMetrics, CounterfactualPath, DecisionBlueprint, DecisionContext, ExecutionPlanWeek, MilestoneMetric, MilestoneStatus, PreMortemRisk, ScenarioBranch, SecondOrderEffect, SolveRequest, SolveResponse, UserProfileData, WarRoomDebate } from '@/lib/types';
@@ -1318,8 +1319,12 @@ export async function POST(req: Request) {
     let longitudinalMemoryInstruction = '';
     let narrativeIntelligenceInstruction = '';
     let executionCapacityInstructionWithHistory = executionCapacityInstruction;
+    let restraint = assessRestraint(problem, conversationHistoryForGuard, []);
+    let restraintIntelligenceInstruction = buildRestraintIntelligenceInstruction(restraint);
 
     try {
+      restraint = assessRestraint(problem, conversationHistoryForGuard, history);
+      restraintIntelligenceInstruction = buildRestraintIntelligenceInstruction(restraint);
       const intel = getMemoryIntelligenceFromHistory(problem, history, context);
       memoryScore = intel.memoryScore;
       memoryContext = intel.strategicContext;
@@ -1336,12 +1341,24 @@ export async function POST(req: Request) {
       // Continue analysis without memory enrichment.
     }
 
-    const conversationContext = [persistentMemoryInstruction, longitudinalMemoryInstruction, narrativeIntelligenceInstruction, outcomeLearningInstruction, conversationMemoryNote, followUpInstruction, firstResponseQualityInstruction, compressionIntelligenceInstruction, conversationalFlowInstruction, strategicArchitectureInstruction, contradictionIntelligenceInstruction, executionCapacityInstructionWithHistory, adaptiveResponseInstruction, strategicToolInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
+    const memoryAllowed = restraint.allowMemory;
+    const patternInsightAllowed = restraint.allowPatternInsight;
+    const deepAnalysisAllowed = restraint.allowDeepAnalysis;
+    const finalPersistentMemoryInstruction = memoryAllowed ? persistentMemoryInstruction : '';
+    const finalLongitudinalMemoryInstruction = memoryAllowed ? longitudinalMemoryInstruction : '';
+    const finalNarrativeIntelligenceInstruction = restraint.allowNarrativeReference ? narrativeIntelligenceInstruction : '';
+    const finalOutcomeLearningInstruction = memoryAllowed ? outcomeLearningInstruction : '';
+    const finalContradictionIntelligenceInstruction = restraint.allowContradiction ? contradictionIntelligenceInstruction : '';
+    const finalStrategicArchitectureInstruction = deepAnalysisAllowed ? strategicArchitectureInstruction : '';
+    const finalStrategicToolInstruction = deepAnalysisAllowed ? strategicToolInstruction : '';
+    const finalFirstResponseQualityInstruction = patternInsightAllowed ? firstResponseQualityInstruction : '';
+
+    const conversationContext = [restraintIntelligenceInstruction, finalPersistentMemoryInstruction, finalLongitudinalMemoryInstruction, finalNarrativeIntelligenceInstruction, finalOutcomeLearningInstruction, conversationMemoryNote, followUpInstruction, finalFirstResponseQualityInstruction, compressionIntelligenceInstruction, conversationalFlowInstruction, finalStrategicArchitectureInstruction, finalContradictionIntelligenceInstruction, executionCapacityInstructionWithHistory, adaptiveResponseInstruction, finalStrategicToolInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
       .filter(Boolean)
       .join('\n\n')
       .trim();
 
-    const fullContext = [memoryContext, calibrationNote, userProfileCtx, profileDirective].filter(Boolean).join('\n\n');
+    const fullContext = [memoryAllowed ? memoryContext : '', memoryAllowed ? calibrationNote : '', userProfileCtx, profileDirective].filter(Boolean).join('\n\n');
     
     if (streaming) {
       const { streamingSolveDecision } = await import('@/lib/engine');

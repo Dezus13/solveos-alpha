@@ -6,6 +6,7 @@
 - Define the Pressure Layer.
 - Define the Session Pressure System (in-session hesitation detection and tone escalation).
 - Define Narrative Intelligence (long-range continuity, directional shifts, false resets, and story-pressure reduction).
+- Define Restraint Intelligence (thresholding for insight, memory, complexity, interpretation, and response depth).
 
 ## 2. Where it is used
 
@@ -15,6 +16,7 @@
 - User profile updates.
 - AI prompt construction (session pressure directive injected per turn).
 - AI prompt construction (narrative directive injected per turn when high-signal history exists).
+- AI prompt construction (restraint directive injected per turn and used as the governor for other intelligence layers).
 
 ## 3. Main objects
 
@@ -29,6 +31,7 @@
 - SessionPressureLevel: 0 (normal) | 1 (pressure) | 2 (confrontational) — computed from conversation history per request.
 - HesitationSignal: detected avoidance pattern in user messages (hedging language, short follow-ups, multiple questions, repeated turns).
 - NarrativeSignal: recurring long-range theme, directional drift, false reset, stability issue, or dramatic-change pressure detected from conversation and decision memory.
+- RestraintSignal: simple ask, confirmation, factual question, reassurance, emotional overload, high stakes, ambiguity, tradeoff, or weak memory relevance.
 - ActionStatus: `pending`, `done`, `blocked`, or `skipped`.
 - BlockerCategory: reason the user did not act (`fear`, `unclear`, `lazy`, `external`).
 
@@ -216,13 +219,51 @@ Low-signal chatter, generic moods, and trivial events are not given narrative ta
 - Use at most one continuity reference per answer.
 - The answer should feel like a calm advisor remembers the trajectory, not like the app is profiling the user.
 
-## 12. Files involved
+## 12. Restraint Intelligence
+
+Restraint Intelligence prevents SolveOS from maximizing analysis on every turn.
+
+### What it gates
+
+| Gate | Suppressed when signal is weak |
+|---|---|
+| Insight threshold | Strategic observations, pattern recognition, contradiction notices, narrative references |
+| Memory restraint | Prior decisions, prior conversation memory, longitudinal references, narrative continuity |
+| Advice restraint | Frameworks, long explanations, excessive structure, repeated advisor cadence |
+| Interpretation restraint | Mood, identity, motive, emotion, personality, hidden intent |
+| Complexity threshold | Deep strategic analysis, leverage framing, multi-section synthesis |
+
+### Restraint levels
+
+| Level | Trigger | Response effect |
+|---|---|---|
+| minimal | Simple question, confirmation, factual ask, reassurance, overload, known answer | Direct answer, one practical point, no memory or pattern commentary |
+| normal | Moderate decision with no major ambiguity | Useful answer with only the reasoning needed |
+| deep | High stakes, meaningful ambiguity, multi-option tradeoff, explicit analysis request | Deeper analysis allowed, but still no sprawl or fake certainty |
+
+### Runtime behavior
+
+- `assessRestraint()` runs in `app/api/solve/route.ts` after decision history is loaded.
+- The route withholds memory, longitudinal, narrative, contradiction, first-response insight, strategic architecture, and structured tool directives when restraint does not allow them.
+- `RESTRAINT INTELLIGENCE` is injected before other conversation directives so it acts as the governor.
+- Calibration and scoring can still run internally, but visible memory references are suppressed when memory relevance is weak.
+
+### Tone rules
+
+- No fake psychological certainty.
+- No profiler, therapist, life guru, or motivational influencer language.
+- Short answers are allowed.
+- Not every response needs a lesson, insight, reframing, or optimization.
+- Prefer grounded realism, quiet precision, and useful clarity.
+
+## 13. Files involved
 
 - `lib/identityEngine.ts`
 - `lib/userProfile.ts`
 - `lib/actionReminders.ts`
 - `lib/pressureEngine.ts` — session pressure detection and directive building
 - `lib/narrativeIntelligence.ts` — long-range continuity and narrative pressure directive building
+- `lib/restraintIntelligence.ts` — insight, memory, interpretation, and complexity thresholding
 - `app/api/solve/route.ts` — pressure level computed and injected per request
 - `components/DecisionConsole.tsx`
 - `components/IdentityWidget.tsx`

@@ -4,6 +4,27 @@ This file tracks what we change, why we change it, and what we do next.
 
 ---
 
+## 2026-05-06 — Restraint intelligence
+
+### Changed
+
+- `lib/restraintIntelligence.ts`: Added restraint assessment for simple asks, confirmations, factual questions, reassurance, overload, known-answer prompts, high stakes, ambiguity, tradeoffs, and weak memory relevance.
+- `app/api/solve/route.ts`: Injects `RESTRAINT INTELLIGENCE` before other directives and deterministically withholds memory, longitudinal, narrative, contradiction, first-response insight, strategic architecture, and structured tool directives when restraint does not allow them.
+- `lib/prompts.ts`: Updated answer architecture so restraint overrides memory, pattern, contradiction, architecture, and tool-mode instructions.
+- `docs/specs/0005-identity-and-pressure.md`: Documented restraint gates, levels, runtime behavior, and tone rules.
+
+### Why
+
+- SolveOS should not turn every turn into a deep strategic memo.
+- Memory and pattern recognition should feel rare and useful, not invasive or performative.
+- Short, direct, practical answers are part of intelligence when the signal is low or the user is overloaded.
+
+### Not done
+
+- No UI indicators. Restraint remains invisible and expressed only through answer behavior.
+
+---
+
 ## 2026-05-06 — Narrative intelligence
 
 ### Changed
