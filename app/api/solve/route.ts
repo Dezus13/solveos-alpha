@@ -11,6 +11,7 @@ import { buildNarrativeIntelligenceInstruction } from '@/lib/narrativeIntelligen
 import { assessRestraint, buildRestraintIntelligenceInstruction } from '@/lib/restraintIntelligence';
 import { assessEnergyState, buildEnergyStateInstruction } from '@/lib/energyStateIntelligence';
 import { arbitrateIntelligence, buildArbitrationInstruction } from '@/lib/intelligenceArbitration';
+import { buildTrustCalibrationInstruction, calibrateTrust } from '@/lib/trustCalibration';
 import { buildProfileDirective, applyProfileAdjustments, scoreMessageFor } from '@/lib/profileEngine';
 import { computeSessionPressureLevel, buildPressureDirective } from '@/lib/pressureEngine';
 import type { CouncilMetrics, CounterfactualPath, DecisionBlueprint, DecisionContext, ExecutionPlanWeek, MilestoneMetric, MilestoneStatus, PreMortemRisk, ScenarioBranch, SecondOrderEffect, SolveRequest, SolveResponse, UserProfileData, WarRoomDebate } from '@/lib/types';
@@ -1321,12 +1322,16 @@ export async function POST(req: Request) {
     let restraintIntelligenceInstruction = buildRestraintIntelligenceInstruction(restraint);
     let energyState = assessEnergyState(problem, conversationHistoryForGuard, []);
     let energyStateInstruction = buildEnergyStateInstruction(energyState);
+    let trustCalibration = calibrateTrust(problem, conversationHistoryForGuard, []);
+    let trustCalibrationInstruction = buildTrustCalibrationInstruction(trustCalibration);
 
     try {
       restraint = assessRestraint(problem, conversationHistoryForGuard, history);
       restraintIntelligenceInstruction = buildRestraintIntelligenceInstruction(restraint);
       energyState = assessEnergyState(problem, conversationHistoryForGuard, history);
       energyStateInstruction = buildEnergyStateInstruction(energyState);
+      trustCalibration = calibrateTrust(problem, conversationHistoryForGuard, history);
+      trustCalibrationInstruction = buildTrustCalibrationInstruction(trustCalibration);
       const intel = getMemoryIntelligenceFromHistory(problem, history, context);
       memoryScore = intel.memoryScore;
       memoryContext = intel.strategicContext;
@@ -1349,6 +1354,7 @@ export async function POST(req: Request) {
       restraint,
       energy: energyState,
       basePressureLevel,
+      trust: trustCalibration,
       hasContradictionSignal: Boolean(contradictionIntelligenceInstruction),
       hasNarrativeSignal: Boolean(narrativeIntelligenceInstruction),
       hasCompressionSignal: compressionIntelligenceInstruction.includes('SHORT ANSWER MODE ACTIVE'),
@@ -1377,7 +1383,7 @@ export async function POST(req: Request) {
     const finalStrategicToolInstruction = arbitration.allowStructuredTool ? strategicToolInstruction : '';
     const finalFirstResponseQualityInstruction = patternInsightAllowed ? firstResponseQualityInstruction : '';
 
-    const conversationContext = [arbitrationInstruction, restraintIntelligenceInstruction, energyStateInstruction, finalPersistentMemoryInstruction, finalLongitudinalMemoryInstruction, finalNarrativeIntelligenceInstruction, finalOutcomeLearningInstruction, conversationMemoryNote, followUpInstruction, finalFirstResponseQualityInstruction, compressionIntelligenceInstruction, conversationalFlowInstruction, finalStrategicArchitectureInstruction, finalContradictionIntelligenceInstruction, executionCapacityInstructionWithHistory, adaptiveResponseInstruction, finalStrategicToolInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
+    const conversationContext = [arbitrationInstruction, trustCalibrationInstruction, restraintIntelligenceInstruction, energyStateInstruction, finalPersistentMemoryInstruction, finalLongitudinalMemoryInstruction, finalNarrativeIntelligenceInstruction, finalOutcomeLearningInstruction, conversationMemoryNote, followUpInstruction, finalFirstResponseQualityInstruction, compressionIntelligenceInstruction, conversationalFlowInstruction, finalStrategicArchitectureInstruction, finalContradictionIntelligenceInstruction, executionCapacityInstructionWithHistory, adaptiveResponseInstruction, finalStrategicToolInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
       .filter(Boolean)
       .join('\n\n')
       .trim();

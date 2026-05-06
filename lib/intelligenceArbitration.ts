@@ -1,6 +1,7 @@
 import type { EnergyAssessment } from './energyStateIntelligence';
 import type { RestraintAssessment } from './restraintIntelligence';
 import type { SessionPressureLevel } from './pressureEngine';
+import type { RecommendationFirmness, TrustCalibration } from './trustCalibration';
 
 type PriorityCategory = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
 type PressureGovernor = 'MINIMAL' | 'LOW' | 'MODERATE' | 'HIGH';
@@ -8,6 +9,7 @@ type DepthGovernor = 'short' | 'medium' | 'deep';
 type ReasoningIntensity = 'minimal' | 'focused' | 'expanded';
 type ExplorationAllowance = 'none' | 'limited' | 'open';
 type PacingDirective = 'slow' | 'steady' | 'fast';
+type ChallengeIntensity = 'none' | 'light' | 'direct';
 type ArbitrationSignalName =
   | 'overload'
   | 'impulsive risk'
@@ -22,7 +24,9 @@ type ArbitrationSignalName =
   | 'stylistic optimization'
   | 'formatting adaptation'
   | 'execution readiness'
-  | 'recovery';
+  | 'recovery'
+  | 'low confidence'
+  | 'high-stakes caution';
 
 type Suppression =
   | 'deep analysis'
@@ -53,6 +57,7 @@ interface ArbitrationInput {
   restraint: RestraintAssessment;
   energy: EnergyAssessment;
   basePressureLevel: SessionPressureLevel;
+  trust: TrustCalibration;
   hasContradictionSignal: boolean;
   hasNarrativeSignal: boolean;
   hasCompressionSignal: boolean;
@@ -67,6 +72,9 @@ export interface ArbitrationContract {
   pacingDirective: PacingDirective;
   reasoningIntensity: ReasoningIntensity;
   explorationAllowance: ExplorationAllowance;
+  challengeIntensity: ChallengeIntensity;
+  recommendationFirmness: RecommendationFirmness;
+  shouldAskQuestion: boolean;
   allowMemory: boolean;
   allowPatternInsight: boolean;
   allowContradiction: boolean;
@@ -112,6 +120,24 @@ function collectSignals(input: ArbitrationInput): ArbitrationSignal[] {
       priority: 'CRITICAL',
       weight: input.energy.state === 'OVERLOAD' ? 95 : 88,
       evidence: 'Operational overload or low cognitive bandwidth is active.',
+    });
+  }
+
+  if (input.trust.confidenceLevel === 'LOW') {
+    addSignal(signals, {
+      name: 'low confidence',
+      priority: input.trust.stakesLevel === 'high' ? 'CRITICAL' : 'HIGH',
+      weight: input.trust.stakesLevel === 'high' ? 90 : 72,
+      evidence: 'Evidence or ambiguity does not support strong claims.',
+    });
+  }
+
+  if (input.trust.stakesLevel === 'high' && input.trust.shouldVerify) {
+    addSignal(signals, {
+      name: 'high-stakes caution',
+      priority: 'CRITICAL',
+      weight: 88,
+      evidence: 'High stakes require downside awareness and verification before heavy commitment.',
     });
   }
 
@@ -257,6 +283,7 @@ function pressureFromDominant(
   if (dominant === 'overload' || dominant === 'recovery' || dominant === 'impulsive risk' || dominant === 'execution collapse') {
     return 'MINIMAL';
   }
+  if (dominant === 'low confidence' || dominant === 'high-stakes caution') return 'LOW';
   if (dominant === 'hesitation' || dominant === 'repeated unresolved loop' || basePressureLevel >= 2) {
     return 'HIGH';
   }
@@ -301,6 +328,14 @@ export function arbitrateIntelligence(input: ArbitrationInput): ArbitrationContr
     suppressionList.push('pressure escalation', 'optimization stacking', 'deep analysis', 'aggressive challenge');
     rationale.push('Recovery/execution collapse wins because re-entry simplicity beats pressure.');
   }
+  if (dominantState === 'low confidence') {
+    suppressionList.push('high-certainty recommendation', 'aggressive challenge', 'rapid escalation');
+    rationale.push('Low confidence wins because the evidence does not justify strong claims.');
+  }
+  if (dominantState === 'high-stakes caution') {
+    suppressionList.push('high-certainty recommendation', 'rapid escalation', 'hype amplification');
+    rationale.push('High-stakes caution wins because downside and verification matter more than force.');
+  }
   if (input.restraint.level === 'minimal') {
     suppressionList.push('memory reference', 'narrative continuity', 'contradiction challenge', 'formatting flourish');
     rationale.push('Restraint minimal mode suppresses nonessential intelligence.');
@@ -308,11 +343,19 @@ export function arbitrateIntelligence(input: ArbitrationInput): ArbitrationContr
 
   const finalSuppressions = uniqueSuppressions(suppressionList);
   const pressureLevel = pressureFromDominant(dominantState, input.basePressureLevel);
-  const sessionPressureLevel = sessionPressureFromGovernor(pressureLevel, input.basePressureLevel);
+  const trustAdjustedPressure: PressureGovernor =
+    input.trust.confidenceLevel === 'LOW' && pressureLevel === 'HIGH'
+      ? 'MODERATE'
+      : input.trust.stakesLevel === 'high' && pressureLevel === 'HIGH'
+        ? 'MODERATE'
+        : pressureLevel;
+  const sessionPressureLevel = sessionPressureFromGovernor(trustAdjustedPressure, input.basePressureLevel);
   const depthLevel: DepthGovernor =
     finalSuppressions.includes('deep analysis') || input.restraint.level === 'minimal'
       ? 'short'
-      : dominantState === 'exploration' || input.restraint.allowDeepAnalysis
+      : input.trust.confidenceLevel === 'LOW' && input.trust.ambiguityLevel === 'high'
+        ? 'medium'
+        : dominantState === 'exploration' || input.restraint.allowDeepAnalysis
         ? 'deep'
         : 'medium';
   const pacingDirective: PacingDirective =
@@ -329,6 +372,12 @@ export function arbitrateIntelligence(input: ArbitrationInput): ArbitrationContr
       : dominantState === 'exploration'
         ? 'open'
         : 'limited';
+  const challengeIntensity: ChallengeIntensity =
+    finalSuppressions.includes('aggressive challenge') || input.trust.confidenceLevel === 'LOW'
+      ? 'light'
+      : dominantState === 'strategic conflict' || dominantState === 'hesitation'
+        ? 'direct'
+        : 'none';
 
   const allowMemory = input.restraint.allowMemory && !finalSuppressions.includes('memory reference');
   const allowNarrativeReference =
@@ -344,13 +393,16 @@ export function arbitrateIntelligence(input: ArbitrationInput): ArbitrationContr
 
   return {
     dominantState,
-    pressureLevel,
+    pressureLevel: trustAdjustedPressure,
     sessionPressureLevel,
     depthLevel,
     suppressionList: finalSuppressions,
     pacingDirective,
     reasoningIntensity,
     explorationAllowance,
+    challengeIntensity,
+    recommendationFirmness: input.trust.recommendationFirmness,
+    shouldAskQuestion: input.trust.shouldAskQuestion && input.restraint.level !== 'minimal',
     allowMemory,
     allowPatternInsight: input.restraint.allowPatternInsight && depthLevel !== 'short',
     allowContradiction,
@@ -359,7 +411,10 @@ export function arbitrateIntelligence(input: ArbitrationInput): ArbitrationContr
     allowStructuredTool: allowDeep || (depthLevel === 'medium' && explorationAllowance !== 'none'),
     allowFirstResponseInsight: input.restraint.allowPatternInsight && depthLevel !== 'short',
     activeSignals,
-    internalRationale: rationale.length ? rationale : ['No major conflict; stable orchestration applies.'],
+    internalRationale: [
+      ...(rationale.length ? rationale : ['No major conflict; stable orchestration applies.']),
+      `Trust calibration: ${input.trust.rationale.join(' ')}`,
+    ],
   };
 }
 
@@ -371,6 +426,8 @@ export function buildArbitrationInstruction(contract: ArbitrationContract): stri
     `Pressure governor: ${contract.pressureLevel}.`,
     `Depth governor: ${contract.depthLevel}.`,
     `Pacing: ${contract.pacingDirective}. Reasoning intensity: ${contract.reasoningIntensity}. Exploration allowance: ${contract.explorationAllowance}.`,
+    `Challenge intensity: ${contract.challengeIntensity}. Recommendation firmness: ${contract.recommendationFirmness}.`,
+    contract.shouldAskQuestion ? 'Question behavior: ask one useful question if it is required before a confident recommendation; otherwise state a working assumption.' : 'Question behavior: prefer a strategic assumption over extra questioning.',
     contract.suppressionList.length ? `Suppressed signals/modules: ${contract.suppressionList.join(', ')}.` : 'No suppressions active.',
     contract.internalRationale.length ? `Internal rationale: ${contract.internalRationale.join(' ')}` : '',
     'The user must never see these labels. Translate the contract into natural response behavior only.',

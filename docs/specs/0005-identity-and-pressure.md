@@ -9,6 +9,7 @@
 - Define Restraint Intelligence (thresholding for insight, memory, complexity, interpretation, and response depth).
 - Define Energy State Intelligence (operational readiness calibration for pressure, pacing, depth, and optionality).
 - Define Intelligence Arbitration (central conflict resolution and final response contract).
+- Define Trust Calibration (evidence, ambiguity, stakes, uncertainty, and recommendation firmness calibration).
 
 ## 2. Where it is used
 
@@ -21,6 +22,7 @@
 - AI prompt construction (restraint directive injected per turn and used as the governor for other intelligence layers).
 - AI prompt construction (energy directive injected per turn and used to calibrate pressure intensity and response rhythm).
 - AI prompt construction (arbitration directive injected first and used as the final coordination layer).
+- AI prompt construction (trust calibration directive injected per turn and used by arbitration).
 
 ## 3. Main objects
 
@@ -38,6 +40,7 @@
 - RestraintSignal: simple ask, confirmation, factual question, reassurance, emotional overload, high stakes, ambiguity, tradeoff, or weak memory relevance.
 - EnergyState: operational estimate of `EXECUTION`, `HESITATION`, `OVERLOAD`, `EXPLORATION`, `RECOVERY`, `IMPULSIVE`, or `STABLE`.
 - ArbitrationContract: final internal response contract containing dominant state, pressure, depth, suppressions, pacing, reasoning intensity, and exploration allowance.
+- TrustCalibration: internal calibration of evidence quality, ambiguity, stakes, confidence, recommendation firmness, and uncertainty behavior.
 - ActionStatus: `pending`, `done`, `blocked`, or `skipped`.
 - BlockerCategory: reason the user did not act (`fear`, `unclear`, `lazy`, `external`).
 
@@ -359,7 +362,42 @@ It does not detect new user traits. It resolves conflicts between existing syste
 - No pseudo-psychology.
 - No emotional steering or dependency framing.
 
-## 15. Files involved
+## 15. Trust Calibration
+
+Trust Calibration is a calibration layer used by arbitration. It decides how firm the recommendation should be based on evidence, ambiguity, and stakes.
+
+It does not create visible labels and should never produce phrases like "confidence level", "trust calibration", or "my certainty is".
+
+### Internal levels
+
+| Dimension | Values |
+|---|---|
+| Confidence | `LOW`, `MEDIUM`, `HIGH` |
+| Evidence quality | `weak`, `adequate`, `strong` |
+| Ambiguity | `low`, `medium`, `high` |
+| Stakes | `low`, `medium`, `high` |
+| Recommendation firmness | `soft suggestion`, `clear recommendation`, `strong recommendation`, `caution-first recommendation` |
+
+### Uncertainty behavior
+
+| Confidence | Behavior |
+|---|---|
+| `LOW` | Avoid strong claims. Ask one useful question or give a safe provisional answer. |
+| `MEDIUM` | State the best assumption, give a practical next step, and mention the key uncertainty briefly. |
+| `HIGH` | Be direct, avoid unnecessary hedging, and give a decisive next move. |
+
+### Stakes awareness
+
+High-stakes topics include money, legal, health, family, career, and major business risk. For these, Trust Calibration reduces fake certainty, surfaces downside, and recommends verification when needed.
+
+### Arbitration integration
+
+- Low confidence can reduce pressure and suppress high-certainty recommendations.
+- High-stakes caution can reduce rapid escalation and hype amplification.
+- Recommendation firmness is included in the arbitration contract.
+- The final answer should sound natural: "I would treat this as a working assumption", "This is enough to make the next move", or "I would not bet heavily on this yet."
+
+## 16. Files involved
 
 - `lib/identityEngine.ts`
 - `lib/userProfile.ts`
@@ -369,6 +407,7 @@ It does not detect new user traits. It resolves conflicts between existing syste
 - `lib/restraintIntelligence.ts` — insight, memory, interpretation, and complexity thresholding
 - `lib/energyStateIntelligence.ts` — operational energy calibration and pressure scaling
 - `lib/intelligenceArbitration.ts` — central conflict resolution and final orchestration contract
+- `lib/trustCalibration.ts` — evidence, ambiguity, stakes, and firmness calibration
 - `app/api/solve/route.ts` — pressure level computed and injected per request
 - `components/DecisionConsole.tsx`
 - `components/IdentityWidget.tsx`

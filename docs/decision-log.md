@@ -4,6 +4,27 @@ This file tracks what we change, why we change it, and what we do next.
 
 ---
 
+## 2026-05-06 — Trust calibration system
+
+### Changed
+
+- `lib/trustCalibration.ts`: Added evidence quality, ambiguity, stakes, internal confidence, recommendation firmness, and uncertainty behavior calibration.
+- `lib/intelligenceArbitration.ts`: Uses trust calibration to adjust pressure, depth, challenge intensity, high-certainty suppressions, and recommendation firmness.
+- `app/api/solve/route.ts`: Computes trust calibration before arbitration and injects `TRUST CALIBRATION` into the solver context.
+- `lib/prompts.ts`: Added trust calibration precedence and response-style constraints.
+- `docs/specs/0005-identity-and-pressure.md`: Documented trust levels, uncertainty behavior, stakes awareness, and arbitration integration.
+
+### Why
+
+- SolveOS should feel trustworthy: direct when evidence is strong, careful when ambiguity or stakes are high, and practical when confidence is limited.
+- Calibration avoids both fake certainty and weak generic hedging.
+
+### Not done
+
+- No visible confidence labels. Calibration remains internal and expressed only through natural wording.
+
+---
+
 ## 2026-05-06 — Intelligence arbitration layer
 
 ### Changed
