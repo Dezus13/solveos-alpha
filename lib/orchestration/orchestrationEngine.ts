@@ -8,6 +8,13 @@ import type { RestraintAssessment } from '../restraintIntelligence';
 import type { TrustCalibration } from '../trustCalibration';
 import type { PipelineInspector } from '../debug/pipelineInspector';
 import { buildSystemHealthReport, type SystemHealthReport } from '../core/architectureRules';
+import {
+  arbitrateIntelligencePriority,
+  type IntelligenceConfidenceScore,
+  type IntelligencePriorityArbitrationResult,
+  type IntelligencePriorityLevel,
+  type WeightedIntelligenceRoute,
+} from '../core/intelligencePriority';
 
 export type OrchestrationStage =
   | 'intent routing'
@@ -63,6 +70,10 @@ interface IntelligenceCandidate {
   forbiddenOverlap: string[];
   priorityScore: number;
   confidenceScore: number;
+  priorityLevel?: IntelligencePriorityLevel;
+  confidenceBreakdown?: Partial<IntelligenceConfidenceScore>;
+  conflictsWith?: IntelligenceId[];
+  compatibleWith?: IntelligenceId[];
   active: boolean;
 }
 
@@ -74,10 +85,13 @@ export interface IntelligenceActivation {
   forbiddenOverlap: string[];
   priorityScore: number;
   confidenceScore: number;
+  priorityLevel: IntelligencePriorityLevel;
+  weightedScore: number;
+  confidenceBreakdown: IntelligenceConfidenceScore;
 }
 
 export interface SuppressedIntelligence extends IntelligenceActivation {
-  suppressedBy: IntelligenceId | 'orchestration-threshold';
+  suppressedBy: IntelligenceId | 'orchestration-threshold' | 'priority-threshold';
   reason: string;
 }
 
@@ -110,6 +124,7 @@ export interface OrchestrationResult {
   stageOrder: OrchestrationStage[];
   conflictNotes: string[];
   architectureHealth: SystemHealthReport;
+  priorityArbitration: IntelligencePriorityArbitrationResult;
 }
 
 const STAGE_ORDER: OrchestrationStage[] = [
@@ -203,6 +218,7 @@ function buildCandidates(input: OrchestrationInput): IntelligenceCandidate[] {
       forbiddenOverlap: ['confidence calibration', 'memory callbacks', 'tone identity'],
       priorityScore: input.detectedIntent.requestIntent !== 'normal_decision' ? 98 : intent?.intentConfidence === 'LOW' ? 84 : 68,
       confidenceScore: intent ? (intent.intentConfidence === 'HIGH' ? 88 : intent.intentConfidence === 'MEDIUM' ? 66 : 42) : 70,
+      priorityLevel: input.detectedIntent.requestIntent !== 'normal_decision' ? 'CRITICAL' : 'HIGH',
     }),
     candidate({
       id: 'memory-relevance',
@@ -217,6 +233,7 @@ function buildCandidates(input: OrchestrationInput): IntelligenceCandidate[] {
       forbiddenOverlap: ['user identity labels', 'pressure escalation', 'fresh intent routing'],
       priorityScore: input.memoryDecay.callbackAllowed ? 62 : 44,
       confidenceScore: clampScore(input.memoryDecay.averageFreshness * 100),
+      priorityLevel: 'LOW',
     }),
     candidate({
       id: 'identity-kernel',
@@ -231,6 +248,7 @@ function buildCandidates(input: OrchestrationInput): IntelligenceCandidate[] {
       forbiddenOverlap: ['user behavior scoring', 'verdict routing', 'memory relevance'],
       priorityScore: input.identityKernel.driftSignals.length > 0 ? 92 : 74,
       confidenceScore: input.identityKernel.driftSignals.length > 0 ? 86 : 72,
+      priorityLevel: input.identityKernel.driftSignals.length > 0 ? 'CRITICAL' : 'HIGH',
     }),
     candidate({
       id: 'session-pressure',
@@ -246,6 +264,8 @@ function buildCandidates(input: OrchestrationInput): IntelligenceCandidate[] {
       forbiddenOverlap: ['persistent deadline pressure', 'overload recovery', 'risk verification'],
       priorityScore: input.finalPressureLevel >= 2 ? 82 : input.finalPressureLevel === 1 ? 66 : 48,
       confidenceScore: clampScore(Math.max(input.energy.confidence * 100, input.basePressureLevel * 35)),
+      priorityLevel: input.finalPressureLevel >= 2 ? 'HIGH' : 'NORMAL',
+      conflictsWith: ['risk-calibration'],
     }),
     candidate({
       id: 'overload-intelligence',
@@ -260,6 +280,8 @@ function buildCandidates(input: OrchestrationInput): IntelligenceCandidate[] {
       forbiddenOverlap: ['execution failure diagnosis', 'aggressive challenge', 'pressure escalation'],
       priorityScore: 90,
       confidenceScore: input.energy.state === 'OVERLOAD' ? 86 : 70,
+      priorityLevel: 'CRITICAL',
+      conflictsWith: ['execution-failure'],
     }),
     candidate({
       id: 'execution-readiness',
@@ -274,6 +296,7 @@ function buildCandidates(input: OrchestrationInput): IntelligenceCandidate[] {
       forbiddenOverlap: ['option expansion', 'long exploratory analysis', 'overload diagnosis'],
       priorityScore: 64,
       confidenceScore: input.energy.state === 'EXECUTION' ? 78 : 58,
+      priorityLevel: 'NORMAL',
     }),
     candidate({
       id: 'execution-failure',
@@ -287,6 +310,8 @@ function buildCandidates(input: OrchestrationInput): IntelligenceCandidate[] {
       forbiddenOverlap: ['overload reduction conclusion', 'motivation diagnosis', 'identity labels'],
       priorityScore: overloadActive ? 58 : 76,
       confidenceScore: intent?.primaryIntent === 'execution_failure' ? 82 : 60,
+      priorityLevel: overloadActive ? 'NORMAL' : 'HIGH',
+      conflictsWith: ['overload-intelligence'],
     }),
     candidate({
       id: 'risk-calibration',
@@ -303,6 +328,8 @@ function buildCandidates(input: OrchestrationInput): IntelligenceCandidate[] {
       forbiddenOverlap: ['fake certainty', 'pressure escalation', 'hype amplification'],
       priorityScore: input.trust.stakesLevel === 'high' ? 88 : 70,
       confidenceScore: input.trust.confidenceLevel === 'HIGH' ? 82 : input.trust.confidenceLevel === 'MEDIUM' ? 64 : 46,
+      priorityLevel: input.trust.stakesLevel === 'high' ? 'CRITICAL' : 'HIGH',
+      conflictsWith: ['session-pressure'],
     }),
     candidate({
       id: 'self-evaluation',
@@ -315,6 +342,7 @@ function buildCandidates(input: OrchestrationInput): IntelligenceCandidate[] {
       forbiddenOverlap: ['new reasoning loops', 'verdict changes', 'visible self-critique'],
       priorityScore: 56,
       confidenceScore: 72,
+      priorityLevel: 'PASSIVE',
     }),
     candidate({
       id: 'response-compression',
@@ -330,6 +358,8 @@ function buildCandidates(input: OrchestrationInput): IntelligenceCandidate[] {
       forbiddenOverlap: ['strategic architecture expansion', 'formatting flourish', 'memory callbacks'],
       priorityScore: input.restraint.level === 'minimal' ? 78 : 60,
       confidenceScore: input.hasCompressionSignal ? 78 : 62,
+      priorityLevel: input.restraint.level === 'minimal' ? 'HIGH' : 'NORMAL',
+      conflictsWith: ['structured-tooling'],
     }),
     candidate({
       id: 'narrative-continuity',
@@ -343,6 +373,8 @@ function buildCandidates(input: OrchestrationInput): IntelligenceCandidate[] {
       forbiddenOverlap: ['identity diagnosis', 'surveillance-like callbacks', 'memory dumping'],
       priorityScore: 50,
       confidenceScore: 58,
+      priorityLevel: 'LOW',
+      compatibleWith: ['memory-relevance'],
     }),
     candidate({
       id: 'contradiction-check',
@@ -356,6 +388,8 @@ function buildCandidates(input: OrchestrationInput): IntelligenceCandidate[] {
       forbiddenOverlap: ['aggressive challenge', 'personality diagnosis', 'multi-critique stacking'],
       priorityScore: 54,
       confidenceScore: 60,
+      priorityLevel: 'LOW',
+      compatibleWith: ['risk-calibration'],
     }),
     candidate({
       id: 'structured-tooling',
@@ -369,11 +403,29 @@ function buildCandidates(input: OrchestrationInput): IntelligenceCandidate[] {
       forbiddenOverlap: ['formatting for display', 'over-sectioning', 'compression mode'],
       priorityScore: 48,
       confidenceScore: 56,
+      priorityLevel: 'LOW',
+      conflictsWith: ['response-compression'],
     }),
   ];
 }
 
-function activationFrom(candidate: IntelligenceCandidate): IntelligenceActivation {
+function routeForCandidate(candidate: IntelligenceCandidate) {
+  return {
+    id: candidate.id,
+    active: candidate.active,
+    basePriorityScore: candidate.priorityScore,
+    confidenceScore: candidate.confidenceScore,
+    triggerConditions: candidate.triggerConditions,
+    ownedResponsibility: candidate.ownedResponsibility,
+    forbiddenOverlap: candidate.forbiddenOverlap,
+    priorityLevel: candidate.priorityLevel,
+    confidenceBreakdown: candidate.confidenceBreakdown,
+    conflictsWith: candidate.conflictsWith,
+    compatibleWith: candidate.compatibleWith,
+  };
+}
+
+function activationFrom(candidate: IntelligenceCandidate, route: WeightedIntelligenceRoute): IntelligenceActivation {
   return {
     id: candidate.id,
     stage: candidate.stage,
@@ -382,6 +434,9 @@ function activationFrom(candidate: IntelligenceCandidate): IntelligenceActivatio
     forbiddenOverlap: candidate.forbiddenOverlap,
     priorityScore: candidate.priorityScore,
     confidenceScore: candidate.confidenceScore,
+    priorityLevel: route.priorityLevel,
+    weightedScore: route.weightedScore,
+    confidenceBreakdown: route.confidenceBreakdown,
   };
 }
 
@@ -389,9 +444,10 @@ function suppress(
   item: IntelligenceCandidate,
   suppressedBy: SuppressedIntelligence['suppressedBy'],
   reason: string,
+  route: WeightedIntelligenceRoute,
 ): SuppressedIntelligence {
   return {
-    ...activationFrom(item),
+    ...activationFrom(item, route),
     suppressedBy,
     reason,
   };
@@ -401,62 +457,34 @@ function applyConflictPrevention(candidates: IntelligenceCandidate[]): {
   active: IntelligenceActivation[];
   suppressed: SuppressedIntelligence[];
   conflictNotes: string[];
+  priorityArbitration: IntelligencePriorityArbitrationResult;
 } {
-  const activeCandidates = candidates
-    .filter((item) => item.active && item.priorityScore >= MIN_ACTIVE_PRIORITY)
-    .sort((a, b) => b.priorityScore - a.priorityScore || b.confidenceScore - a.confidenceScore);
-  const suppressed: SuppressedIntelligence[] = candidates
-    .filter((item) => !item.active || item.priorityScore < MIN_ACTIVE_PRIORITY)
-    .map((item) => suppress(item, 'orchestration-threshold', item.active ? 'Priority below activation threshold.' : 'Trigger conditions not met.'));
-  const conflictNotes: string[] = [];
-  const suppressedIds = new Set<IntelligenceId>(suppressed.map((item) => item.id));
+  const candidateById = new Map(candidates.map((item) => [item.id, item]));
+  const priorityArbitration = arbitrateIntelligencePriority(
+    candidates.map(routeForCandidate),
+    { minActivePriority: MIN_ACTIVE_PRIORITY },
+  );
+  const active = priorityArbitration.activeSignals
+    .map((route) => {
+      const item = candidateById.get(route.id as IntelligenceId);
+      return item ? activationFrom(item, route) : undefined;
+    })
+    .filter((item): item is IntelligenceActivation => Boolean(item));
+  const suppressed = priorityArbitration.suppressedSignals
+    .map((route) => {
+      const item = candidateById.get(route.id as IntelligenceId);
+      if (!item) return undefined;
+      const suppressedBy = route.suppressedBy === 'priority-threshold'
+        ? item.active && item.priorityScore < MIN_ACTIVE_PRIORITY
+          ? 'orchestration-threshold'
+          : 'priority-threshold'
+        : route.suppressedBy as SuppressedIntelligence['suppressedBy'];
+      return suppress(item, suppressedBy, route.routingReason, route);
+    })
+    .filter((item): item is SuppressedIntelligence => Boolean(item));
+  const conflictNotes = priorityArbitration.conflicts.map((item) => item.reason);
 
-  const activeById = new Map(activeCandidates.map((item) => [item.id, item]));
-  const suppressIfPresent = (id: IntelligenceId, by: IntelligenceId, reason: string) => {
-    const item = activeById.get(id);
-    if (!item || suppressedIds.has(id)) return;
-    suppressedIds.add(id);
-    suppressed.push(suppress(item, by, reason));
-    conflictNotes.push(reason);
-  };
-
-  if (activeById.has('overload-intelligence') && activeById.has('execution-failure')) {
-    suppressIfPresent(
-      'execution-failure',
-      'overload-intelligence',
-      'Overload owns the visible conclusion; execution failure may inform reasoning silently to avoid duplicate "cannot execute" diagnostics.',
-    );
-  }
-
-  if (activeById.has('response-compression') && activeById.has('structured-tooling')) {
-    const compression = activeById.get('response-compression')!;
-    const tooling = activeById.get('structured-tooling')!;
-    if (compression.priorityScore >= tooling.priorityScore) {
-      suppressIfPresent(
-        'structured-tooling',
-        'response-compression',
-        'Compression outranks structured tooling; avoid adding sections or tables when the answer should be short.',
-      );
-    }
-  }
-
-  if (activeById.has('risk-calibration') && activeById.has('session-pressure')) {
-    const risk = activeById.get('risk-calibration')!;
-    const pressure = activeById.get('session-pressure')!;
-    if (risk.priorityScore > pressure.priorityScore) {
-      suppressIfPresent(
-        'session-pressure',
-        'risk-calibration',
-        'Risk verification outranks pressure; do not push urgency when downside sizing is the primary frame.',
-      );
-    }
-  }
-
-  const active = activeCandidates
-    .filter((item) => !suppressedIds.has(item.id))
-    .map(activationFrom);
-
-  return { active, suppressed, conflictNotes };
+  return { active, suppressed, conflictNotes, priorityArbitration };
 }
 
 function riskLevel(input: OrchestrationInput): OrchestrationRiskLevel {
@@ -555,7 +583,7 @@ export function orchestrateSolveIntelligence(input: OrchestrationInput, inspecto
     trustConfidence: input.trust.confidenceLevel,
   });
   const candidates = buildCandidates(input);
-  const { active, suppressed, conflictNotes } = applyConflictPrevention(candidates);
+  const { active, suppressed, conflictNotes, priorityArbitration } = applyConflictPrevention(candidates);
   const frame = primaryFrame(active, input);
   const depth = responseDepth(input, active);
   const risk = riskLevel(input);
@@ -571,8 +599,10 @@ export function orchestrateSolveIntelligence(input: OrchestrationInput, inspecto
     stageOrder: STAGE_ORDER,
     conflictNotes,
     architectureHealth,
+    priorityArbitration,
   };
   inspector?.captureSystemHealth(architectureHealth);
+  inspector?.capturePriorityArbitration(priorityArbitration);
   inspector?.captureOrchestration(result);
   return result;
 }
@@ -587,12 +617,14 @@ export function buildOrchestrationInstruction(result: OrchestrationResult): stri
     .slice(0, 4)
     .map((item) => `${item.id} by ${item.suppressedBy}`)
     .join(', ');
+  const dominant = result.priorityArbitration.dominantIntelligence;
 
   return [
     'CENTRAL ORCHESTRATION:',
     'This is the authoritative coordination layer for this response. Use it to prevent duplicated diagnostics and conflicting framing.',
     `Pipeline order: ${result.stageOrder.join(' -> ')}.`,
     `Primary frame: ${result.primaryFrame}. Response depth: ${result.responseDepth}. Risk level: ${result.riskLevel}.`,
+    dominant ? `Priority arbitration winner: ${dominant.id} (${dominant.priorityLevel}, ${dominant.weightedScore}).` : '',
     active ? `Active intelligences: ${active}.` : 'Active intelligences: stable baseline only.',
     suppressed ? `Conflict suppressions: ${suppressed}.` : '',
     result.conflictNotes.length ? `Conflict prevention notes: ${result.conflictNotes.join(' ')}` : '',

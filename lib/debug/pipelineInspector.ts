@@ -1,6 +1,7 @@
 import type { OrchestrationResult } from '../orchestration/orchestrationEngine';
 import type { ResponseSynthesisResult } from '../synthesis/responseSynthesizer';
 import type { SystemHealthReport } from '../core/architectureRules';
+import type { IntelligencePriorityArbitrationResult } from '../core/intelligencePriority';
 
 export type PipelineEventName =
   | 'intent_detected'
@@ -13,6 +14,7 @@ export type PipelineEventName =
   | 'contradiction_filtered'
   | 'duplicate_prevention_triggered'
   | 'architecture_health_checked'
+  | 'priority_arbitration_completed'
   | 'final_response_generated';
 
 export interface PipelineEvent {
@@ -39,6 +41,7 @@ export interface PipelineInspectionReport {
     activatedIntelligences: string[];
     suppressedIntelligences: string[];
     orchestrationPriority?: Record<string, RedactedValue>;
+    priorityArbitration?: Record<string, RedactedValue>;
     synthesis?: Record<string, RedactedValue>;
   };
   reasoningMetadata: Record<string, RedactedValue>;
@@ -116,6 +119,7 @@ export class PipelineInspector {
   private readonly events: PipelineEvent[] = [];
   private detectedIntent?: Record<string, RedactedValue>;
   private orchestrationPriority?: Record<string, RedactedValue>;
+  private priorityArbitration?: Record<string, RedactedValue>;
   private synthesis?: Record<string, RedactedValue>;
   private activatedIntelligences: string[] = [];
   private suppressedIntelligences: string[] = [];
@@ -256,6 +260,38 @@ export class PipelineInspector {
     });
   }
 
+  capturePriorityArbitration(result: IntelligencePriorityArbitrationResult): void {
+    if (!this.enabled) return;
+    this.priorityArbitration = redactRecord({
+      winningIntelligence: result.debugVisualization.winningIntelligence ?? null,
+      why: result.debugVisualization.why,
+      synthesisPrecedence: result.synthesisPrecedence,
+      mergedIntelligences: result.mergedIntelligences,
+      conflicts: result.conflicts.map((item) => ({
+        modules: item.modules,
+        dominantIntelligence: item.dominantIntelligence,
+        suppressedIntelligences: item.suppressedIntelligences,
+      })),
+      suppressedModules: result.debugVisualization.suppressedModules,
+      confidenceBreakdown: result.debugVisualization.confidenceBreakdown ?? null,
+    });
+    this.reasoningMetadata = {
+      ...this.reasoningMetadata,
+      priorityArbitration: this.priorityArbitration,
+    };
+    this.record('priority_arbitration_completed', 'intelligence priority arbitration', {
+      decisions: this.priorityArbitration,
+      reasoningMetadata: {
+        activeCount: result.activeSignals.length,
+        suppressedCount: result.suppressedSignals.length,
+        routedCount: result.routedSignals.length,
+      },
+      suppressionMetadata: {
+        suppressedModules: result.debugVisualization.suppressedModules,
+      },
+    });
+  }
+
   captureSynthesis(strategy: ResponseSynthesisResult): void {
     if (!this.enabled) return;
     this.synthesis = redactRecord({
@@ -327,6 +363,7 @@ export class PipelineInspector {
         activatedIntelligences: this.activatedIntelligences,
         suppressedIntelligences: this.suppressedIntelligences,
         orchestrationPriority: this.orchestrationPriority,
+        priorityArbitration: this.priorityArbitration,
         synthesis: this.synthesis,
       },
       reasoningMetadata: this.reasoningMetadata,
