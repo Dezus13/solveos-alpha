@@ -45,6 +45,15 @@ export interface SelfEvaluationPlan {
   rationale: string[];
 }
 
+export interface SelfEvaluationStageResult {
+  response: string;
+  metadata?: SelfEvaluationPlan;
+  adjustments?: {
+    bypassed: boolean;
+    reason?: string;
+  };
+}
+
 const CONSULTANT_PHRASES = /\b(holistic|robust|synergy|stakeholder alignment|strategic framework|navigate|balanced approach|measured phased approach|proceed with caution)\b/i;
 const HYPE_PHRASES = /\b(life-changing|game-changing|incredible|powerful insight|unlock your potential|transformational|destined|now or never)\b/i;
 const FAKE_CERTAINTY = /\b(definitely|guaranteed|without question|100%|no doubt|always|never|inevitable)\b/i;
@@ -167,4 +176,30 @@ export function buildSelfEvaluationInstruction(plan: SelfEvaluationPlan): string
     'Identity check: preserve the identity kernel after revision: calm, useful, non-hyped, operationally honest, signal-dense, and reality-oriented.',
     'Safety: no chain-of-thought exposure, no self-awareness language, no "I analyzed my reasoning", no visible critique behavior.',
   ].join('\n');
+}
+
+export function runSelfEvaluationStage(
+  problem: string,
+  conversationHistory: Array<{ role: string; content: string }>,
+  contract: ArbitrationContract,
+  kernel: IdentityKernelContract,
+): SelfEvaluationStageResult {
+  try {
+    const plan = planSelfEvaluation(problem, conversationHistory, contract, kernel);
+    return {
+      response: buildSelfEvaluationInstruction(plan),
+      metadata: plan,
+      adjustments: { bypassed: false },
+    };
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'Unknown self-evaluation failure';
+    console.warn('Solve pipeline: self evaluation bypassed', { reason });
+    return {
+      response: '',
+      adjustments: {
+        bypassed: true,
+        reason,
+      },
+    };
+  }
 }

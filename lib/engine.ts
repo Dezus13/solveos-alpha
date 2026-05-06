@@ -87,6 +87,15 @@ function buildLocalizedStreamingFallback(language: string): string {
   return 'Reversible Experiment: do not make a large irreversible move yet. Test the riskiest assumption with one segment, one success metric, and one timebox. If real users, revenue, or behavior do not produce a clear signal within 7-14 days, change the decision.';
 }
 
+function textToStream(text: string): ReadableStream<Uint8Array> {
+  return new ReadableStream({
+    start(controller) {
+      controller.enqueue(new TextEncoder().encode(text));
+      controller.close();
+    },
+  });
+}
+
 /**
  * Calculate council metrics from agent analyses
  * Measures confidence, agreement, feasibility, and debate intensity
@@ -490,7 +499,15 @@ export async function streamingSolveDecision(
     temperature: 0.8,
     top_p: 0.95,
     max_tokens: 1000,
+  }).catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : 'Unknown streaming response failure';
+    console.error('Streaming engine failed before response creation, using fallback:', message);
+    return null;
   });
+
+  if (!response) {
+    return textToStream(buildLocalizedStreamingFallback(language));
+  }
 
   return new ReadableStream({
     async start(controller) {
@@ -503,7 +520,10 @@ export async function streamingSolveDecision(
         }
         controller.close();
       } catch (error) {
-        controller.error(error);
+        const message = error instanceof Error ? error.message : 'Unknown streaming interruption';
+        console.error('Streaming engine interrupted, using fallback:', message);
+        controller.enqueue(new TextEncoder().encode(buildLocalizedStreamingFallback(language)));
+        controller.close();
       }
     },
   });

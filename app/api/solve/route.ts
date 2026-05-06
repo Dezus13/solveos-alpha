@@ -14,7 +14,7 @@ import { arbitrateIntelligence, buildArbitrationInstruction } from '@/lib/intell
 import { buildTrustCalibrationInstruction, calibrateTrust } from '@/lib/trustCalibration';
 import { assessMemoryDecay, buildMemoryDecayInstruction } from '@/lib/memoryDecay';
 import { applyIdentityKernel, buildIdentityKernelInstruction } from '@/lib/identityKernel';
-import { buildSelfEvaluationInstruction, planSelfEvaluation } from '@/lib/selfEvaluation';
+import { runSelfEvaluationStage } from '@/lib/selfEvaluation';
 import { buildProfileDirective, applyProfileAdjustments, scoreMessageFor } from '@/lib/profileEngine';
 import { computeSessionPressureLevel, buildPressureDirective } from '@/lib/pressureEngine';
 import type { CouncilMetrics, CounterfactualPath, DecisionBlueprint, DecisionContext, ExecutionPlanWeek, MilestoneMetric, MilestoneStatus, PreMortemRisk, ScenarioBranch, SecondOrderEffect, SolveRequest, SolveResponse, UserProfileData, WarRoomDebate } from '@/lib/types';
@@ -1328,6 +1328,7 @@ export async function POST(req: Request) {
     let restraintIntelligenceInstruction = buildRestraintIntelligenceInstruction(restraint);
     let energyState = assessEnergyState(problem, conversationHistoryForGuard, decayedHistory);
     let energyStateInstruction = buildEnergyStateInstruction(energyState);
+    console.info('Solve pipeline: trust calibration entered (initial)');
     let trustCalibration = calibrateTrust(problem, conversationHistoryForGuard, decayedHistory);
     let trustCalibrationInstruction = buildTrustCalibrationInstruction(trustCalibration);
 
@@ -1336,6 +1337,7 @@ export async function POST(req: Request) {
       restraintIntelligenceInstruction = buildRestraintIntelligenceInstruction(restraint);
       energyState = assessEnergyState(problem, conversationHistoryForGuard, decayedHistory);
       energyStateInstruction = buildEnergyStateInstruction(energyState);
+      console.info('Solve pipeline: trust calibration entered (memory-enriched)');
       trustCalibration = calibrateTrust(problem, conversationHistoryForGuard, decayedHistory);
       trustCalibrationInstruction = buildTrustCalibrationInstruction(trustCalibration);
       const intel = getMemoryIntelligenceFromHistory(problem, decayedHistory, context);
@@ -1354,6 +1356,7 @@ export async function POST(req: Request) {
       // Continue analysis without memory enrichment.
     }
 
+    console.info('Solve pipeline: arbitration entered');
     const arbitration = arbitrateIntelligence({
       problem,
       conversationHistory: conversationHistoryForGuard,
@@ -1366,11 +1369,13 @@ export async function POST(req: Request) {
       hasNarrativeSignal: Boolean(narrativeIntelligenceInstruction),
       hasCompressionSignal: compressionIntelligenceInstruction.includes('SHORT ANSWER MODE ACTIVE'),
     });
+    console.info('Solve pipeline: identity kernel entered');
     const { contract: kernelContract, kernel } = applyIdentityKernel(arbitration, conversationHistoryForGuard);
     const identityKernelInstruction = buildIdentityKernelInstruction(kernel);
     const arbitrationInstruction = buildArbitrationInstruction(kernelContract);
-    const selfEvaluation = planSelfEvaluation(problem, conversationHistoryForGuard, kernelContract, kernel);
-    const selfEvaluationInstruction = buildSelfEvaluationInstruction(selfEvaluation);
+    console.info('Solve pipeline: self evaluation entered');
+    const selfEvaluationStage = runSelfEvaluationStage(problem, conversationHistoryForGuard, kernelContract, kernel);
+    const selfEvaluationInstruction = selfEvaluationStage.response;
     const pressureLevel = isReview ? 0 : kernelContract.sessionPressureLevel;
     const pressureDirective = buildPressureDirective(pressureLevel);
     if (pressureLevel > 0) {
@@ -1394,6 +1399,10 @@ export async function POST(req: Request) {
     const finalStrategicToolInstruction = kernelContract.allowStructuredTool ? strategicToolInstruction : '';
     const finalFirstResponseQualityInstruction = patternInsightAllowed ? firstResponseQualityInstruction : '';
 
+    console.info('Solve pipeline: final assembly entered', JSON.stringify({
+      streaming,
+      selfEvaluationBypassed: Boolean(selfEvaluationStage.adjustments?.bypassed),
+    }));
     const conversationContext = [identityKernelInstruction, arbitrationInstruction, selfEvaluationInstruction, memoryDecayInstruction, trustCalibrationInstruction, restraintIntelligenceInstruction, energyStateInstruction, finalPersistentMemoryInstruction, finalLongitudinalMemoryInstruction, finalNarrativeIntelligenceInstruction, finalOutcomeLearningInstruction, conversationMemoryNote, followUpInstruction, finalFirstResponseQualityInstruction, compressionIntelligenceInstruction, conversationalFlowInstruction, finalStrategicArchitectureInstruction, finalContradictionIntelligenceInstruction, executionCapacityInstructionWithHistory, adaptiveResponseInstruction, finalStrategicToolInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
       .filter(Boolean)
       .join('\n\n')
