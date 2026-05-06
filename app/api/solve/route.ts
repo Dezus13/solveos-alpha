@@ -13,6 +13,7 @@ import { assessEnergyState, buildEnergyStateInstruction } from '@/lib/energyStat
 import { arbitrateIntelligence, buildArbitrationInstruction } from '@/lib/intelligenceArbitration';
 import { buildTrustCalibrationInstruction, calibrateTrust } from '@/lib/trustCalibration';
 import { assessMemoryDecay, buildMemoryDecayInstruction } from '@/lib/memoryDecay';
+import { applyIdentityKernel, buildIdentityKernelInstruction } from '@/lib/identityKernel';
 import { buildProfileDirective, applyProfileAdjustments, scoreMessageFor } from '@/lib/profileEngine';
 import { computeSessionPressureLevel, buildPressureDirective } from '@/lib/pressureEngine';
 import type { CouncilMetrics, CounterfactualPath, DecisionBlueprint, DecisionContext, ExecutionPlanWeek, MilestoneMetric, MilestoneStatus, PreMortemRisk, ScenarioBranch, SecondOrderEffect, SolveRequest, SolveResponse, UserProfileData, WarRoomDebate } from '@/lib/types';
@@ -1364,31 +1365,33 @@ export async function POST(req: Request) {
       hasNarrativeSignal: Boolean(narrativeIntelligenceInstruction),
       hasCompressionSignal: compressionIntelligenceInstruction.includes('SHORT ANSWER MODE ACTIVE'),
     });
-    const arbitrationInstruction = buildArbitrationInstruction(arbitration);
-    const pressureLevel = isReview ? 0 : arbitration.sessionPressureLevel;
+    const { contract: kernelContract, kernel } = applyIdentityKernel(arbitration, conversationHistoryForGuard);
+    const identityKernelInstruction = buildIdentityKernelInstruction(kernel);
+    const arbitrationInstruction = buildArbitrationInstruction(kernelContract);
+    const pressureLevel = isReview ? 0 : kernelContract.sessionPressureLevel;
     const pressureDirective = buildPressureDirective(pressureLevel);
     if (pressureLevel > 0) {
       console.info('Pressure mode active:', {
         pressureLevel,
         basePressureLevel,
         energyState: energyState.state,
-        arbitrationState: arbitration.dominantState,
+        arbitrationState: kernelContract.dominantState,
         turnCount: conversationHistoryForGuard.filter((t) => t.role === 'user').length,
       });
     }
 
-    const memoryAllowed = arbitration.allowMemory;
-    const patternInsightAllowed = arbitration.allowPatternInsight;
+    const memoryAllowed = kernelContract.allowMemory;
+    const patternInsightAllowed = kernelContract.allowPatternInsight;
     const finalPersistentMemoryInstruction = memoryAllowed ? persistentMemoryInstruction : '';
     const finalLongitudinalMemoryInstruction = memoryAllowed ? longitudinalMemoryInstruction : '';
-    const finalNarrativeIntelligenceInstruction = arbitration.allowNarrativeReference ? narrativeIntelligenceInstruction : '';
+    const finalNarrativeIntelligenceInstruction = kernelContract.allowNarrativeReference ? narrativeIntelligenceInstruction : '';
     const finalOutcomeLearningInstruction = memoryAllowed ? outcomeLearningInstruction : '';
-    const finalContradictionIntelligenceInstruction = arbitration.allowContradiction ? contradictionIntelligenceInstruction : '';
-    const finalStrategicArchitectureInstruction = arbitration.allowStrategicArchitecture ? strategicArchitectureInstruction : '';
-    const finalStrategicToolInstruction = arbitration.allowStructuredTool ? strategicToolInstruction : '';
+    const finalContradictionIntelligenceInstruction = kernelContract.allowContradiction ? contradictionIntelligenceInstruction : '';
+    const finalStrategicArchitectureInstruction = kernelContract.allowStrategicArchitecture ? strategicArchitectureInstruction : '';
+    const finalStrategicToolInstruction = kernelContract.allowStructuredTool ? strategicToolInstruction : '';
     const finalFirstResponseQualityInstruction = patternInsightAllowed ? firstResponseQualityInstruction : '';
 
-    const conversationContext = [arbitrationInstruction, memoryDecayInstruction, trustCalibrationInstruction, restraintIntelligenceInstruction, energyStateInstruction, finalPersistentMemoryInstruction, finalLongitudinalMemoryInstruction, finalNarrativeIntelligenceInstruction, finalOutcomeLearningInstruction, conversationMemoryNote, followUpInstruction, finalFirstResponseQualityInstruction, compressionIntelligenceInstruction, conversationalFlowInstruction, finalStrategicArchitectureInstruction, finalContradictionIntelligenceInstruction, executionCapacityInstructionWithHistory, adaptiveResponseInstruction, finalStrategicToolInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
+    const conversationContext = [identityKernelInstruction, arbitrationInstruction, memoryDecayInstruction, trustCalibrationInstruction, restraintIntelligenceInstruction, energyStateInstruction, finalPersistentMemoryInstruction, finalLongitudinalMemoryInstruction, finalNarrativeIntelligenceInstruction, finalOutcomeLearningInstruction, conversationMemoryNote, followUpInstruction, finalFirstResponseQualityInstruction, compressionIntelligenceInstruction, conversationalFlowInstruction, finalStrategicArchitectureInstruction, finalContradictionIntelligenceInstruction, executionCapacityInstructionWithHistory, adaptiveResponseInstruction, finalStrategicToolInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
       .filter(Boolean)
       .join('\n\n')
       .trim();

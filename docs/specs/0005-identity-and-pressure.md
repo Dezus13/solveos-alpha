@@ -11,6 +11,7 @@
 - Define Intelligence Arbitration (central conflict resolution and final response contract).
 - Define Trust Calibration (evidence, ambiguity, stakes, uncertainty, and recommendation firmness calibration).
 - Define Memory Decay (signal aging, stale context suppression, and durable pattern preservation).
+- Define Identity Kernel (stable invariant behavioral core across adaptive systems).
 
 ## 2. Where it is used
 
@@ -25,6 +26,7 @@
 - AI prompt construction (arbitration directive injected first and used as the final coordination layer).
 - AI prompt construction (trust calibration directive injected per turn and used by arbitration).
 - AI prompt construction (memory decay directive injected per turn and used by arbitration/history modules).
+- AI prompt construction (identity kernel directive injected first and used as the invariant behavioral constraint).
 
 ## 3. Main objects
 
@@ -44,6 +46,7 @@
 - ArbitrationContract: final internal response contract containing dominant state, pressure, depth, suppressions, pacing, reasoning intensity, and exploration allowance.
 - TrustCalibration: internal calibration of evidence quality, ambiguity, stakes, confidence, recommendation firmness, and uncertainty behavior.
 - MemoryDecayAssessment: per-turn decayed history view, freshness score, temporal windows, callback gate, and stale pressure suppression.
+- IdentityKernel: invariant behavioral constraints that prevent tone/personality drift across adaptive modes.
 - ActionStatus: `pending`, `done`, `blocked`, or `skipped`.
 - BlockerCategory: reason the user did not act (`fear`, `unclear`, `lazy`, `external`).
 
@@ -439,7 +442,64 @@ It does not delete stored decisions. It creates a decayed per-turn view of histo
 - Never surveillance-like.
 - Do not lock the user into old patterns if current evidence shows recovery, execution, or changed constraints.
 
-## 17. Files involved
+## 17. Identity Kernel
+
+Identity Kernel is the stable behavioral core above all adaptive systems. It is not personality styling. It keeps SolveOS coherent while depth, pacing, pressure, structure, confidence, and exploration adapt.
+
+### Invariants
+
+SolveOS must always remain:
+
+- calm under ambiguity
+- strategically useful
+- non-reactive
+- non-hyped
+- non-needy
+- non-theatrical
+- operationally honest
+- signal-dense
+- anti-fluff
+- reality-oriented
+
+### Drift suppression
+
+Identity Kernel detects and suppresses:
+
+- motivational speaker tone
+- fake wisdom cadence
+- overconfident AI phrasing
+- excessive empathy loops
+- robotic consultant tone
+- exaggerated certainty
+- dramatic framing
+- AI guru behavior
+
+### Orchestration constraints
+
+Identity Kernel can cap or soften:
+
+- excessive pressure
+- excessive softness
+- manipulative pacing
+- hype amplification
+- over-analysis
+- fake certainty
+- excessive emotional mirroring
+
+### Runtime behavior
+
+- `applyIdentityKernel()` runs after arbitration and before final prompt assembly.
+- It adjusts the arbitration contract when needed.
+- `IDENTITY KERNEL` is injected first in `conversationContext`.
+- It preserves human-like restraint: selective silence, answer simplicity, anti-overexplaining, and anti-performance behavior.
+
+### Language discipline
+
+Suppress phrases such as "life-changing", "powerful", "incredible insight", "you are destined", "unlock your potential", "game-changing", and "now or never".
+
+Prefer grounded, useful, practical, precise, stable wording.
+
+## 18. Files involved
 
 - `lib/identityEngine.ts`
 - `lib/userProfile.ts`
@@ -451,6 +511,7 @@ It does not delete stored decisions. It creates a decayed per-turn view of histo
 - `lib/intelligenceArbitration.ts` — central conflict resolution and final orchestration contract
 - `lib/trustCalibration.ts` — evidence, ambiguity, stakes, and firmness calibration
 - `lib/memoryDecay.ts` — signal aging, decayed history view, freshness gates, and callback restraint
+- `lib/identityKernel.ts` — invariant behavioral core and drift suppression
 - `app/api/solve/route.ts` — pressure level computed and injected per request
 - `components/DecisionConsole.tsx`
 - `components/IdentityWidget.tsx`

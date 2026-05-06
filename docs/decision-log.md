@@ -4,6 +4,26 @@ This file tracks what we change, why we change it, and what we do next.
 
 ---
 
+## 2026-05-06 — Identity kernel system
+
+### Changed
+
+- `lib/identityKernel.ts`: Added invariant behavioral core, drift detection, suppression list, pressure/depth caps, and language bans.
+- `app/api/solve/route.ts`: Applies the identity kernel after arbitration and injects `IDENTITY KERNEL` first in `conversationContext`.
+- `lib/prompts.ts`: Added identity-kernel precedence and stable core behavior constraints.
+- `docs/specs/0005-identity-and-pressure.md`: Documented invariants, drift suppression, orchestration constraints, runtime behavior, and language discipline.
+
+### Why
+
+- SolveOS can now adapt pressure, pacing, depth, confidence, and exploration without drifting into hype, drama, over-softness, fake certainty, or performance.
+- The kernel keeps the system recognizable across long conversations and many adaptive layers.
+
+### Not done
+
+- No UI or visible identity labels. The kernel is internal behavior architecture only.
+
+---
+
 ## 2026-05-06 — Memory decay and signal aging
 
 ### Changed
