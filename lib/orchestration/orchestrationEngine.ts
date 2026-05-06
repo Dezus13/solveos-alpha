@@ -6,6 +6,7 @@ import type { MemoryDecayAssessment } from '../memoryDecay';
 import type { SessionPressureLevel } from '../pressureEngine';
 import type { RestraintAssessment } from '../restraintIntelligence';
 import type { TrustCalibration } from '../trustCalibration';
+import type { PipelineInspector } from '../debug/pipelineInspector';
 
 export type OrchestrationStage =
   | 'intent routing'
@@ -538,14 +539,26 @@ function synthesisPriority(frame: PrimaryFrame, active: IntelligenceActivation[]
   return priorities.slice(0, 6);
 }
 
-export function orchestrateSolveIntelligence(input: OrchestrationInput): OrchestrationResult {
+export function orchestrateSolveIntelligence(input: OrchestrationInput, inspector?: PipelineInspector): OrchestrationResult {
+  inspector?.captureOrchestrationStarted({
+    requestIntent: input.detectedIntent.requestIntent,
+    mode: input.detectedIntent.mode,
+    isReview: input.detectedIntent.isReview,
+    intentFamily: input.detectedIntent.intentAssessment?.primaryIntent ?? 'none',
+    basePressureLevel: input.basePressureLevel,
+    finalPressureLevel: input.finalPressureLevel,
+    memoryCallbackAllowed: input.memoryDecay.callbackAllowed,
+    restraintLevel: input.restraint.level,
+    energyState: input.energy.state,
+    trustConfidence: input.trust.confidenceLevel,
+  });
   const candidates = buildCandidates(input);
   const { active, suppressed, conflictNotes } = applyConflictPrevention(candidates);
   const frame = primaryFrame(active, input);
   const depth = responseDepth(input, active);
   const risk = riskLevel(input);
 
-  return {
+  const result = {
     activeIntelligences: active,
     suppressedIntelligences: suppressed,
     primaryFrame: frame,
@@ -555,6 +568,8 @@ export function orchestrateSolveIntelligence(input: OrchestrationInput): Orchest
     stageOrder: STAGE_ORDER,
     conflictNotes,
   };
+  inspector?.captureOrchestration(result);
+  return result;
 }
 
 export function buildOrchestrationInstruction(result: OrchestrationResult): string {

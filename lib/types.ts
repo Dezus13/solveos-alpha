@@ -139,6 +139,7 @@ export interface SolveRequest {
   userProfile?: string;           // legacy text description (kept for backwards compat)
   userProfileData?: UserProfileData; // structured profile for active engine adjustments
   streaming?: boolean;
+  debugPipeline?: boolean;
 }
 
 export interface DecisionContext {
@@ -336,6 +337,9 @@ export interface SolveResponse {
   decisionAccuracy?: number;
   calibrationScore?: number;
   sessionPressureLevel?: 0 | 1 | 2;
+  debug?: {
+    pipeline?: unknown;
+  };
 }
 
 export interface DecisionOutcome {

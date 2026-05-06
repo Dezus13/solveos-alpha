@@ -3,6 +3,7 @@ import type {
   OrchestrationResult,
   PrimaryFrame,
 } from '../orchestration/orchestrationEngine';
+import type { PipelineInspector } from '../debug/pipelineInspector';
 
 export type ResponseMode =
   | 'fast-direct'
@@ -210,12 +211,12 @@ function rationale(result: OrchestrationResult, mode: ResponseMode, length: Resp
   ];
 }
 
-export function synthesizeResponseStrategy(result: OrchestrationResult): ResponseSynthesisResult {
+export function synthesizeResponseStrategy(result: OrchestrationResult, inspector?: PipelineInspector): ResponseSynthesisResult {
   const selectedMode = selectMode(result);
   const responseLength = selectLength(result, selectedMode);
   const compression = compressionLevel(result, responseLength);
 
-  return {
+  const strategy = {
     selectedMode,
     finalTone: MODE_TO_TONE[selectedMode],
     responseLength,
@@ -231,6 +232,8 @@ export function synthesizeResponseStrategy(result: OrchestrationResult): Respons
     safeguards: safeguards(result, selectedMode, compression),
     rationale: rationale(result, selectedMode, responseLength),
   };
+  inspector?.captureSynthesis(strategy);
+  return strategy;
 }
 
 export function buildResponseSynthesisInstruction(strategy: ResponseSynthesisResult): string {

@@ -18,6 +18,7 @@ import { applyIdentityKernel, buildIdentityKernelInstruction } from '@/lib/ident
 import { runSelfEvaluationStage } from '@/lib/selfEvaluation';
 import { orchestrateSolveIntelligence, buildOrchestrationInstruction } from '@/lib/orchestration/orchestrationEngine';
 import { synthesizeResponseStrategy, buildResponseSynthesisInstruction } from '@/lib/synthesis/responseSynthesizer';
+import { createPipelineInspector, shouldEnablePipelineInspector } from '@/lib/debug/pipelineInspector';
 import { buildProfileDirective, applyProfileAdjustments, scoreMessageFor } from '@/lib/profileEngine';
 import { computeSessionPressureLevel, buildPressureDirective } from '@/lib/pressureEngine';
 import type { CouncilMetrics, CounterfactualPath, DecisionBlueprint, DecisionContext, ExecutionPlanWeek, MilestoneMetric, MilestoneStatus, PreMortemRisk, ScenarioBranch, SecondOrderEffect, SolveRequest, SolveResponse, UserProfileData, WarRoomDebate } from '@/lib/types';
@@ -1238,6 +1239,7 @@ export async function POST(req: Request) {
     const persistentConversationMemory = readConversationMemory(body);
     const conversationHistoryForGuard = readConversationHistory(body);
     const streaming = typeof body.streaming === 'boolean' ? body.streaming : false;
+    const pipelineInspector = createPipelineInspector(shouldEnablePipelineInspector(body.debugPipeline));
 
     if (!problem) {
       return NextResponse.json(
@@ -1269,6 +1271,13 @@ export async function POST(req: Request) {
     const profileDirective = userProfileData ? buildProfileDirective(userProfileData) : '';
 
     const requestIntent = detectSolveRequestIntent(problem);
+    pipelineInspector.captureIntent({
+      requestIntent,
+      mode,
+      language,
+      hasConversationHistory: conversationHistoryForGuard.length > 0,
+      streaming,
+    });
     console.info('Solve request intent detected:', {
       intent: requestIntent,
       problemPreview: problem.slice(0, 80),
@@ -1276,15 +1285,27 @@ export async function POST(req: Request) {
     });
     if (requestIntent === 'literal_output') {
       const literal = extractLiteralOutput(problem);
-      return NextResponse.json(directSolveResponse(literal || problem, 'literal_output'));
+      pipelineInspector.captureFinalResponse('json', { intent: 'literal_output', resultType: 'directResponse' });
+      return NextResponse.json({
+        ...directSolveResponse(literal || problem, 'literal_output'),
+        debug: pipelineInspector.report() ? { pipeline: pipelineInspector.report() } : undefined,
+      });
     }
 
     if (requestIntent === 'debug_request') {
-      return NextResponse.json(buildDiagnosticResponse(problem, 'debug_request'));
+      pipelineInspector.captureFinalResponse('json', { intent: 'debug_request', resultType: 'diagnostic' });
+      return NextResponse.json({
+        ...buildDiagnosticResponse(problem, 'debug_request'),
+        debug: pipelineInspector.report() ? { pipeline: pipelineInspector.report() } : undefined,
+      });
     }
 
     if (requestIntent === 'architect_request') {
-      return NextResponse.json(buildDiagnosticResponse(problem, 'architect_request'));
+      pipelineInspector.captureFinalResponse('json', { intent: 'architect_request', resultType: 'diagnostic' });
+      return NextResponse.json({
+        ...buildDiagnosticResponse(problem, 'architect_request'),
+        debug: pipelineInspector.report() ? { pipeline: pipelineInspector.report() } : undefined,
+      });
     }
 
     const history = await getDecisionHistory().catch(() => []);
@@ -1296,11 +1317,17 @@ export async function POST(req: Request) {
     const bannedVerdict = isReview ? null : detectVerdictLoop(conversationHistoryForGuard);
     if (bannedVerdict) {
       const blueprint = buildRecoveryBlueprint(problem, bannedVerdict, language);
+      pipelineInspector.captureFinalResponse('json', {
+        intent: 'recovery_mode',
+        repeatedVerdict: bannedVerdict,
+        resultType: 'recoveryBlueprint',
+      });
       return NextResponse.json({
         result: blueprint,
         intent: 'recovery_mode',
         memoryScore: 0,
         networkScore: 0,
+        debug: pipelineInspector.report() ? { pipeline: pipelineInspector.report() } : undefined,
       } satisfies SolveResponse);
     }
     const diversityInstruction = bannedVerdict ? buildForceDiversityInstruction(bannedVerdict) : '';
@@ -1408,9 +1435,9 @@ export async function POST(req: Request) {
       hasCompressionSignal: compressionIntelligenceInstruction.includes('SHORT ANSWER MODE ACTIVE'),
       hasStructuredToolSignal: Boolean(strategicToolInstruction),
       selfEvaluationEligible: !selfEvaluationStage.adjustments?.bypassed,
-    });
+    }, pipelineInspector);
     const orchestrationInstruction = buildOrchestrationInstruction(orchestration);
-    const responseSynthesis = synthesizeResponseStrategy(orchestration);
+    const responseSynthesis = synthesizeResponseStrategy(orchestration, pipelineInspector);
     const responseSynthesisInstruction = buildResponseSynthesisInstruction(responseSynthesis);
     if (pressureLevel > 0) {
       console.info('Pressure mode active:', {
@@ -1449,10 +1476,20 @@ export async function POST(req: Request) {
     if (streaming) {
       const { streamingSolveDecision } = await import('@/lib/engine');
       const stream = await streamingSolveDecision(problem, language, fullContext, conversationContext, effectiveMode);
+      pipelineInspector.captureFinalResponse('streaming', {
+        intent: requestIntent,
+        orchestrationFrame: orchestration.primaryFrame,
+        synthesisMode: responseSynthesis.selectedMode,
+      });
+      const pipelineReport = pipelineInspector.report();
+      if (pipelineReport) {
+        console.info('Solve pipeline inspector:', JSON.stringify(pipelineReport));
+      }
       return new Response(stream, {
         headers: {
           'Content-Type': 'text/plain',
           'Cache-Control': 'no-cache',
+          ...(pipelineReport ? { 'X-SolveOS-Pipeline-Inspector': 'enabled' } : {}),
         },
       });
     }
@@ -1564,6 +1601,17 @@ export async function POST(req: Request) {
       calibrationScore,
       sessionPressureLevel: pressureLevel,
     };
+    pipelineInspector.captureFinalResponse('json', {
+      intent: requestIntent,
+      decisionId: saved.id,
+      orchestrationFrame: orchestration.primaryFrame,
+      synthesisMode: responseSynthesis.selectedMode,
+    });
+    const pipelineReport = pipelineInspector.report();
+    if (pipelineReport) {
+      response.debug = { pipeline: pipelineReport };
+      console.info('Solve pipeline inspector:', JSON.stringify(pipelineReport));
+    }
 
     return NextResponse.json(response);
   } catch (error: unknown) {
