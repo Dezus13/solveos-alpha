@@ -10,6 +10,7 @@
 - Define Energy State Intelligence (operational readiness calibration for pressure, pacing, depth, and optionality).
 - Define Intelligence Arbitration (central conflict resolution and final response contract).
 - Define Trust Calibration (evidence, ambiguity, stakes, uncertainty, and recommendation firmness calibration).
+- Define Memory Decay (signal aging, stale context suppression, and durable pattern preservation).
 
 ## 2. Where it is used
 
@@ -23,6 +24,7 @@
 - AI prompt construction (energy directive injected per turn and used to calibrate pressure intensity and response rhythm).
 - AI prompt construction (arbitration directive injected first and used as the final coordination layer).
 - AI prompt construction (trust calibration directive injected per turn and used by arbitration).
+- AI prompt construction (memory decay directive injected per turn and used by arbitration/history modules).
 
 ## 3. Main objects
 
@@ -41,6 +43,7 @@
 - EnergyState: operational estimate of `EXECUTION`, `HESITATION`, `OVERLOAD`, `EXPLORATION`, `RECOVERY`, `IMPULSIVE`, or `STABLE`.
 - ArbitrationContract: final internal response contract containing dominant state, pressure, depth, suppressions, pacing, reasoning intensity, and exploration allowance.
 - TrustCalibration: internal calibration of evidence quality, ambiguity, stakes, confidence, recommendation firmness, and uncertainty behavior.
+- MemoryDecayAssessment: per-turn decayed history view, freshness score, temporal windows, callback gate, and stale pressure suppression.
 - ActionStatus: `pending`, `done`, `blocked`, or `skipped`.
 - BlockerCategory: reason the user did not act (`fear`, `unclear`, `lazy`, `external`).
 
@@ -397,7 +400,46 @@ High-stakes topics include money, legal, health, family, career, and major busin
 - Recommendation firmness is included in the arbitration contract.
 - The final answer should sound natural: "I would treat this as a working assumption", "This is enough to make the next move", or "I would not bet heavily on this yet."
 
-## 16. Files involved
+## 16. Memory Decay And Signal Aging
+
+Memory Decay prevents stale conversational states and outdated decision context from dominating future responses.
+
+It does not delete stored decisions. It creates a decayed per-turn view of history for reasoning and arbitration.
+
+### Half-life classes
+
+| Decay speed | Signals |
+|---|---|
+| Fast | emotional urgency, temporary hesitation, short-term overload, transient excitement |
+| Medium | exploration themes, tactical goals, active projects, execution pacing |
+| Slow | long-term goals, repeated behavioral loops, strategic contradictions, recurring decision patterns |
+
+### Temporal windows
+
+| Window | Meaning |
+|---|---|
+| short-term | recent signals that can strongly influence current pacing |
+| medium-term | active projects and tactical context |
+| long-term | durable patterns only; old temporary states fade unless repeated |
+
+### Runtime behavior
+
+- `assessMemoryDecay()` computes freshness with half-life weighting.
+- Fast-decay stale signals are suppressed.
+- Recent recovery or execution evidence reduces old pressure influence.
+- Durable repeated patterns can survive even when older.
+- The route passes `decayedHistory` into memory, outcome learning, longitudinal memory, narrative, execution capacity, energy, restraint, and trust modules.
+- Arbitration uses memory decay to suppress stale callbacks and expired pressure patterns.
+
+### Callback restraint
+
+- Historical references should be rare.
+- High relevance only.
+- Naturally woven.
+- Never surveillance-like.
+- Do not lock the user into old patterns if current evidence shows recovery, execution, or changed constraints.
+
+## 17. Files involved
 
 - `lib/identityEngine.ts`
 - `lib/userProfile.ts`
@@ -408,6 +450,7 @@ High-stakes topics include money, legal, health, family, career, and major busin
 - `lib/energyStateIntelligence.ts` — operational energy calibration and pressure scaling
 - `lib/intelligenceArbitration.ts` — central conflict resolution and final orchestration contract
 - `lib/trustCalibration.ts` — evidence, ambiguity, stakes, and firmness calibration
+- `lib/memoryDecay.ts` — signal aging, decayed history view, freshness gates, and callback restraint
 - `app/api/solve/route.ts` — pressure level computed and injected per request
 - `components/DecisionConsole.tsx`
 - `components/IdentityWidget.tsx`

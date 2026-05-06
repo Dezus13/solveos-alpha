@@ -4,6 +4,28 @@ This file tracks what we change, why we change it, and what we do next.
 
 ---
 
+## 2026-05-06 — Memory decay and signal aging
+
+### Changed
+
+- `lib/memoryDecay.ts`: Added half-life based signal aging, temporal windows, decayed history view, stale pressure suppression, durable pattern preservation, and callback gates.
+- `app/api/solve/route.ts`: Computes memory decay after loading decision history, passes `decayedHistory` into memory-dependent intelligence modules, and injects `MEMORY DECAY AND SIGNAL AGING`.
+- `lib/intelligenceArbitration.ts`: Uses memory decay to suppress stale callbacks and expired pressure patterns.
+- `lib/prompts.ts`: Added memory decay precedence so recent signals dominate stale context.
+- `docs/specs/0005-identity-and-pressure.md`: Documented half-life classes, temporal windows, runtime behavior, and callback restraint.
+
+### Why
+
+- SolveOS should remember intelligently, not indefinitely.
+- Old urgency, overload, hesitation, or caution should fade when the user recovers, executes, or changes constraints.
+- Durable patterns should remain available without turning every answer into a callback.
+
+### Not done
+
+- No destructive pruning of stored decision history. Decay creates a per-turn reasoning view only.
+
+---
+
 ## 2026-05-06 — Trust calibration system
 
 ### Changed

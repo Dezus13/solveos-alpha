@@ -2,6 +2,7 @@ import type { EnergyAssessment } from './energyStateIntelligence';
 import type { RestraintAssessment } from './restraintIntelligence';
 import type { SessionPressureLevel } from './pressureEngine';
 import type { RecommendationFirmness, TrustCalibration } from './trustCalibration';
+import type { MemoryDecayAssessment } from './memoryDecay';
 
 type PriorityCategory = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
 type PressureGovernor = 'MINIMAL' | 'LOW' | 'MODERATE' | 'HIGH';
@@ -58,6 +59,7 @@ interface ArbitrationInput {
   energy: EnergyAssessment;
   basePressureLevel: SessionPressureLevel;
   trust: TrustCalibration;
+  memoryDecay: MemoryDecayAssessment;
   hasContradictionSignal: boolean;
   hasNarrativeSignal: boolean;
   hasCompressionSignal: boolean;
@@ -120,6 +122,15 @@ function collectSignals(input: ArbitrationInput): ArbitrationSignal[] {
       priority: 'CRITICAL',
       weight: input.energy.state === 'OVERLOAD' ? 95 : 88,
       evidence: 'Operational overload or low cognitive bandwidth is active.',
+    });
+  }
+
+  if (input.memoryDecay.expiredPressureSuppressed && input.basePressureLevel > 0) {
+    addSignal(signals, {
+      name: 'response compression',
+      priority: 'MEDIUM',
+      weight: 66,
+      evidence: 'Old pressure or temporary state signals have expired.',
     });
   }
 
@@ -340,11 +351,17 @@ export function arbitrateIntelligence(input: ArbitrationInput): ArbitrationContr
     suppressionList.push('memory reference', 'narrative continuity', 'contradiction challenge', 'formatting flourish');
     rationale.push('Restraint minimal mode suppresses nonessential intelligence.');
   }
+  if (!input.memoryDecay.callbackAllowed) {
+    suppressionList.push('memory reference', 'narrative continuity');
+    rationale.push('Memory decay suppresses callbacks because relevant history is stale or weak.');
+  }
 
   const finalSuppressions = uniqueSuppressions(suppressionList);
   const pressureLevel = pressureFromDominant(dominantState, input.basePressureLevel);
   const trustAdjustedPressure: PressureGovernor =
-    input.trust.confidenceLevel === 'LOW' && pressureLevel === 'HIGH'
+    input.memoryDecay.expiredPressureSuppressed && pressureLevel === 'HIGH'
+      ? 'MODERATE'
+      : input.trust.confidenceLevel === 'LOW' && pressureLevel === 'HIGH'
       ? 'MODERATE'
       : input.trust.stakesLevel === 'high' && pressureLevel === 'HIGH'
         ? 'MODERATE'
@@ -379,7 +396,7 @@ export function arbitrateIntelligence(input: ArbitrationInput): ArbitrationContr
         ? 'direct'
         : 'none';
 
-  const allowMemory = input.restraint.allowMemory && !finalSuppressions.includes('memory reference');
+  const allowMemory = input.restraint.allowMemory && input.memoryDecay.callbackAllowed && !finalSuppressions.includes('memory reference');
   const allowNarrativeReference =
     input.restraint.allowNarrativeReference &&
     !finalSuppressions.includes('narrative continuity') &&
@@ -414,6 +431,7 @@ export function arbitrateIntelligence(input: ArbitrationInput): ArbitrationContr
     internalRationale: [
       ...(rationale.length ? rationale : ['No major conflict; stable orchestration applies.']),
       `Trust calibration: ${input.trust.rationale.join(' ')}`,
+      `Memory decay: ${input.memoryDecay.rationale.join(' ')}`,
     ],
   };
 }

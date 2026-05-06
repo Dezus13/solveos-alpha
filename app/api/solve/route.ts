@@ -12,6 +12,7 @@ import { assessRestraint, buildRestraintIntelligenceInstruction } from '@/lib/re
 import { assessEnergyState, buildEnergyStateInstruction } from '@/lib/energyStateIntelligence';
 import { arbitrateIntelligence, buildArbitrationInstruction } from '@/lib/intelligenceArbitration';
 import { buildTrustCalibrationInstruction, calibrateTrust } from '@/lib/trustCalibration';
+import { assessMemoryDecay, buildMemoryDecayInstruction } from '@/lib/memoryDecay';
 import { buildProfileDirective, applyProfileAdjustments, scoreMessageFor } from '@/lib/profileEngine';
 import { computeSessionPressureLevel, buildPressureDirective } from '@/lib/pressureEngine';
 import type { CouncilMetrics, CounterfactualPath, DecisionBlueprint, DecisionContext, ExecutionPlanWeek, MilestoneMetric, MilestoneStatus, PreMortemRisk, ScenarioBranch, SecondOrderEffect, SolveRequest, SolveResponse, UserProfileData, WarRoomDebate } from '@/lib/types';
@@ -1282,6 +1283,9 @@ export async function POST(req: Request) {
     }
 
     const history = await getDecisionHistory().catch(() => []);
+    const memoryDecay = assessMemoryDecay(history);
+    const decayedHistory = memoryDecay.decayedHistory;
+    const memoryDecayInstruction = buildMemoryDecayInstruction(memoryDecay);
     const isReview = isReviewModeRequest(problem);
     const effectiveMode = isReview ? 'Review' : mode;
     const bannedVerdict = isReview ? null : detectVerdictLoop(conversationHistoryForGuard);
@@ -1318,32 +1322,32 @@ export async function POST(req: Request) {
     let longitudinalMemoryInstruction = '';
     let narrativeIntelligenceInstruction = '';
     let executionCapacityInstructionWithHistory = executionCapacityInstruction;
-    let restraint = assessRestraint(problem, conversationHistoryForGuard, []);
+    let restraint = assessRestraint(problem, conversationHistoryForGuard, decayedHistory);
     let restraintIntelligenceInstruction = buildRestraintIntelligenceInstruction(restraint);
-    let energyState = assessEnergyState(problem, conversationHistoryForGuard, []);
+    let energyState = assessEnergyState(problem, conversationHistoryForGuard, decayedHistory);
     let energyStateInstruction = buildEnergyStateInstruction(energyState);
-    let trustCalibration = calibrateTrust(problem, conversationHistoryForGuard, []);
+    let trustCalibration = calibrateTrust(problem, conversationHistoryForGuard, decayedHistory);
     let trustCalibrationInstruction = buildTrustCalibrationInstruction(trustCalibration);
 
     try {
-      restraint = assessRestraint(problem, conversationHistoryForGuard, history);
+      restraint = assessRestraint(problem, conversationHistoryForGuard, decayedHistory);
       restraintIntelligenceInstruction = buildRestraintIntelligenceInstruction(restraint);
-      energyState = assessEnergyState(problem, conversationHistoryForGuard, history);
+      energyState = assessEnergyState(problem, conversationHistoryForGuard, decayedHistory);
       energyStateInstruction = buildEnergyStateInstruction(energyState);
-      trustCalibration = calibrateTrust(problem, conversationHistoryForGuard, history);
+      trustCalibration = calibrateTrust(problem, conversationHistoryForGuard, decayedHistory);
       trustCalibrationInstruction = buildTrustCalibrationInstruction(trustCalibration);
-      const intel = getMemoryIntelligenceFromHistory(problem, history, context);
+      const intel = getMemoryIntelligenceFromHistory(problem, decayedHistory, context);
       memoryScore = intel.memoryScore;
       memoryContext = intel.strategicContext;
 
       const netIntel = computeNetworkIntelligence(history);
       networkScore = netIntel.networkScore;
-      calibrationNote = buildCalibrationContext(history, domain);
-      outcomeLearningInstruction = buildOutcomeLearningInstruction(history, problem, context);
-      longitudinalMemoryInstruction = buildLongitudinalMemoryInstruction(problem, history);
-      narrativeIntelligenceInstruction = buildNarrativeIntelligenceInstruction(problem, conversationHistoryForGuard, history);
+      calibrationNote = buildCalibrationContext(decayedHistory, domain);
+      outcomeLearningInstruction = buildOutcomeLearningInstruction(decayedHistory, problem, context);
+      longitudinalMemoryInstruction = buildLongitudinalMemoryInstruction(problem, decayedHistory);
+      narrativeIntelligenceInstruction = buildNarrativeIntelligenceInstruction(problem, conversationHistoryForGuard, decayedHistory);
       // Rebuild execution capacity with history signals now available
-      executionCapacityInstructionWithHistory = buildExecutionCapacityInstruction(problem, conversationHistoryForGuard, history);
+      executionCapacityInstructionWithHistory = buildExecutionCapacityInstruction(problem, conversationHistoryForGuard, decayedHistory);
     } catch {
       // Continue analysis without memory enrichment.
     }
@@ -1355,6 +1359,7 @@ export async function POST(req: Request) {
       energy: energyState,
       basePressureLevel,
       trust: trustCalibration,
+      memoryDecay,
       hasContradictionSignal: Boolean(contradictionIntelligenceInstruction),
       hasNarrativeSignal: Boolean(narrativeIntelligenceInstruction),
       hasCompressionSignal: compressionIntelligenceInstruction.includes('SHORT ANSWER MODE ACTIVE'),
@@ -1383,7 +1388,7 @@ export async function POST(req: Request) {
     const finalStrategicToolInstruction = arbitration.allowStructuredTool ? strategicToolInstruction : '';
     const finalFirstResponseQualityInstruction = patternInsightAllowed ? firstResponseQualityInstruction : '';
 
-    const conversationContext = [arbitrationInstruction, trustCalibrationInstruction, restraintIntelligenceInstruction, energyStateInstruction, finalPersistentMemoryInstruction, finalLongitudinalMemoryInstruction, finalNarrativeIntelligenceInstruction, finalOutcomeLearningInstruction, conversationMemoryNote, followUpInstruction, finalFirstResponseQualityInstruction, compressionIntelligenceInstruction, conversationalFlowInstruction, finalStrategicArchitectureInstruction, finalContradictionIntelligenceInstruction, executionCapacityInstructionWithHistory, adaptiveResponseInstruction, finalStrategicToolInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
+    const conversationContext = [arbitrationInstruction, memoryDecayInstruction, trustCalibrationInstruction, restraintIntelligenceInstruction, energyStateInstruction, finalPersistentMemoryInstruction, finalLongitudinalMemoryInstruction, finalNarrativeIntelligenceInstruction, finalOutcomeLearningInstruction, conversationMemoryNote, followUpInstruction, finalFirstResponseQualityInstruction, compressionIntelligenceInstruction, conversationalFlowInstruction, finalStrategicArchitectureInstruction, finalContradictionIntelligenceInstruction, executionCapacityInstructionWithHistory, adaptiveResponseInstruction, finalStrategicToolInstruction, responseStyleInstruction, rawConversationContext, diversityInstruction, intentInstruction, pressureDirective]
       .filter(Boolean)
       .join('\n\n')
       .trim();
