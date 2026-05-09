@@ -129,6 +129,17 @@ const languageUx: Record<ConcreteLanguage, {
   },
 };
 
+async function readSolveError(response: Response, fallback: string): Promise<string> {
+  try {
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) return fallback;
+    const data = await response.json() as Partial<SolveResponse>;
+    return typeof data.error === 'string' && data.error.trim() ? data.error.trim() : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 function isStoredConversationTurn(value: unknown): value is ConversationTurn {
   if (!value || typeof value !== 'object') return false;
   const turn = value as Partial<ConversationTurn>;
@@ -467,7 +478,9 @@ export default function HomeExperience() {
           body: JSON.stringify(body),
         });
 
-        if (!response.ok) throw new Error(requestUx.failedGenerate);
+        if (!response.ok) {
+          throw new Error(await readSolveError(response, requestUx.failedGenerate));
+        }
 
         // Handle streaming response
         const reader = response.body?.getReader();
@@ -506,6 +519,10 @@ export default function HomeExperience() {
               },
             ];
           });
+        }
+
+        if (!assistantContent.trim()) {
+          throw new Error(requestUx.failedGenerate);
         }
 
         // Finalize
@@ -560,9 +577,10 @@ export default function HomeExperience() {
         body: JSON.stringify(body),
       });
 
-      const data = await response.json() as SolveResponse;
-      if (!response.ok || !data.result) {
-        throw new Error(requestUx.failedAdvanced);
+      const data = await response.json().catch(() => null) as SolveResponse | null;
+      if (!response.ok || !data?.result) {
+        const apiMessage = data?.error || await readSolveError(response, requestUx.failedAdvanced);
+        throw new Error(apiMessage);
       }
 
       const blueprint = data.result as DecisionBlueprint;

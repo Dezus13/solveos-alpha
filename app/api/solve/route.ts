@@ -38,6 +38,26 @@ function readLanguage(body: Partial<SolveRequest> | undefined, problem: string):
   return detected;
 }
 
+function localizedApiError(language: string): string {
+  const normalized = language.trim().toLowerCase();
+  if (normalized === 'russian' || normalized === 'ru') {
+    return 'Не удалось сгенерировать ответ. Попробуйте еще раз через минуту.';
+  }
+  if (normalized === 'german' || normalized === 'de') {
+    return 'Antwort konnte nicht generiert werden. Bitte versuche es in einer Minute erneut.';
+  }
+  if (normalized === 'spanish' || normalized === 'es') {
+    return 'No se pudo generar la respuesta. Inténtalo de nuevo en un minuto.';
+  }
+  if (normalized === 'arabic' || normalized === 'ar') {
+    return 'تعذر إنشاء الرد. حاول مرة أخرى بعد دقيقة.';
+  }
+  if (normalized === 'chinese' || normalized === 'zh') {
+    return '无法生成回复。请一分钟后再试。';
+  }
+  return 'Failed to generate a response. Try again in a minute.';
+}
+
 function readContext(body: Partial<SolveRequest> | undefined): DecisionContext | undefined {
   return isRecord(body?.context) ? body.context as DecisionContext : undefined;
 }
@@ -1228,11 +1248,13 @@ function buildRecoveryBlueprint(problem: string, repeatedVerdict: string, langua
 }
 
 export async function POST(req: Request) {
+  let errorLanguage = 'English';
   try {
     const parsedBody = await req.json().catch(() => ({}));
     const body = isRecord(parsedBody) ? parsedBody as Partial<SolveRequest> : {};
     const problem = typeof body.problem === 'string' ? body.problem.trim() : '';
     const language = readLanguage(body, problem);
+    errorLanguage = language;
     const mode = readMode(body);
     const context = readContext(body);
     const rawConversationContext = readConversationContext(body);
@@ -1615,11 +1637,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(response);
   } catch (error: unknown) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : 'An unexpected error occurred while processing your decision.';
     console.error('API /api/solve error:', error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: localizedApiError(errorLanguage) }, { status: 500 });
   }
 }

@@ -489,7 +489,7 @@ export async function streamingSolveDecision(
   });
 
   logPrompt(`streaming-synthesizer:${mode}`, `${systemPrompt}\n\n${streamingPrompt}`);
-  const response = await getOpenAIClient().chat.completions.create({
+  const response = await (async () => getOpenAIClient().chat.completions.create({
     model: 'gpt-4o',
     stream: true,
     messages: [
@@ -499,7 +499,7 @@ export async function streamingSolveDecision(
     temperature: 0.8,
     top_p: 0.95,
     max_tokens: 1000,
-  }).catch((error: unknown) => {
+  }))().catch((error: unknown) => {
     const message = error instanceof Error ? error.message : 'Unknown streaming response failure';
     console.error('Streaming engine failed before response creation, using fallback:', message);
     return null;
@@ -511,18 +511,25 @@ export async function streamingSolveDecision(
 
   return new ReadableStream({
     async start(controller) {
+      let emittedContent = false;
       try {
         for await (const chunk of response) {
           const content = chunk.choices[0]?.delta?.content;
           if (content) {
+            emittedContent = true;
             controller.enqueue(new TextEncoder().encode(content));
           }
+        }
+        if (!emittedContent) {
+          controller.enqueue(new TextEncoder().encode(buildLocalizedStreamingFallback(language)));
         }
         controller.close();
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown streaming interruption';
         console.error('Streaming engine interrupted, using fallback:', message);
-        controller.enqueue(new TextEncoder().encode(buildLocalizedStreamingFallback(language)));
+        if (!emittedContent) {
+          controller.enqueue(new TextEncoder().encode(buildLocalizedStreamingFallback(language)));
+        }
         controller.close();
       }
     },
