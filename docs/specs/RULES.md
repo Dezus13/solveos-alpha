@@ -2,26 +2,22 @@
 
 Every change must follow this workflow:
 
-1. Implement the change in code
-2. Update all affected specs:
-   - 0001-project-overview.md
-   - 0003-decision-engine.md
-   - 0004-action-system.md
-   - 0006-data-and-storage.md
-3. Check for contradictions across specs
-4. Update docs/decision-log.md:
-   - what changed
-   - why
-   - what problem it solves
-5. Create a commit:
+1. Read the root `AGENTS.md`.
+2. Read `спецификации/AGENTS.md` when changing specifications or requirements.
+3. Update the affected source-of-truth specs in `docs/specs/ru/` or `спецификации/`.
+4. Check for contradictions across specs.
+5. Create or update a short implementation note in the relevant spec.
+6. Validate with `npm run lint` and `npm run build`.
+7. Create a commit:
    type: short message
 
 Rules:
-- Specs must always reflect real system behavior
-- No outdated logic allowed
-- No contradictions between files
+- Specs must always reflect real system behavior.
+- No outdated logic allowed.
+- No contradictions between files.
 - If unsure, update specs anyway
-- One logical change = one commit
+- One logical change = one commit.
+- Do not re-create duplicated English functional specs in `docs/specs/*.md`.
 
 Example commit:
 docs: update execution pressure logic in specs
